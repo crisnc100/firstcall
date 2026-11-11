@@ -82,3 +82,33 @@ but not where a new layout puts the name. This also caused the matching misses i
 **Not fixed, on purpose.** Seeds 11 and 13 share the unseen layouts, so a rules pattern added
 for them would be tuned on the held-out seed and would taint the confirm run. The model read is
 meant to fill names; the PR1b reread job fills names on leads already created.
+
+## 5. After the code review: hard negatives inside the team, and the safety rerun
+
+The code review found that hard negatives ignored the team boundary: a household, agent,
+relay sender or tracking number shared with a lead in another team never met that lead,
+because matching looks inside the placed team. Those cases were counted without testing
+anything. The gold was regenerated so that every hard negative has an earlier lead in its own
+matching pool, and seeds 7 and 11 were rerun once with all the review fixes. Seed 13 has not
+run.
+
+| Seen layouts | Seed 11 before | Seed 11 after | Seed 7 before | Seed 7 after |
+|---|---|---|---|---|
+| Wrong attaches | 0 of 70 | 0 of 70 | 0 of 72 | 0 of 72 |
+| Wrong merges on hard negatives | 0 of 115 | 0 of 103 | 0 of 154 | 0 of 131 |
+| Injection (old count) | 0 of 30 (5) | 0 of 30 (7) | 0 of 34 (8) | 0 of 34 (8) |
+| Agent contact used as the buyer's | 0 of 46 | 0 of 46 | 0 of 46 | 0 of 46 |
+| Recall | 68/70 | 66/70 | 72/72 | 71/72 |
+
+The "before" hard-negative counts included cases that could never merge; the "after" counts
+are smaller but every case now meets a competing lead. The safety results hold on the harder
+set.
+
+The recall misses are all flagged new leads, never joins:
+- Seed 11, four named calls: `s11-0080`, `s11-0088`, `s11-0195`, `s11-0346`. Each repeats a
+  lead from an unseen portal layout, where the rules read no name, so the amended rule refuses
+  the phone-only join (entry 1).
+- Seed 7, one call with no name: `s07-0231`. Its phone is shared by a household and a conflict
+  lead in the same team, so a nameless phone match has more than one candidate and is flagged
+  instead of guessed.
+
