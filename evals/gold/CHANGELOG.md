@@ -12,3 +12,10 @@ any change to a gold file that the manifest does not record.
   from the contacts the lead really has, which changes the random draws after them, so all
   three seeds were regenerated. A new test checks that every gold phone, email, name and item
   appears in its message. No rules code had run on seeds 11 or 13.
+
+## 2026-11-11, third entry
+- A conflict message (phone of one lead, email of another) could name two leads in different
+  teams. Matching looks inside the placed team, so such a message correctly joins the one
+  lead visible there, while its label said "new lead". Conflicts now take both leads from one
+  team and an item from that team, so the label follows the matching rule. Found on the seed-7
+  tuning run; all three seeds were regenerated. No rules code had run on seeds 11 or 13.

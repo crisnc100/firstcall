@@ -242,7 +242,7 @@ class Generator:
         if kind == "household":
             return any(lead.person and lead.person.phone for lead in leads)
         if kind == "conflict":
-            return len(self._conflict_pairs(leads)) >= 2
+            return bool(self._conflict_groups(leads))
         return True
 
     def _repeat_targets(self, leads: list[Intent], conflict_sources: set[str]) -> list[Intent]:
@@ -255,6 +255,15 @@ class Generator:
             and lead.person
             and (lead.person.phone or lead.person.email)
         ]
+
+    def _conflict_groups(self, leads: list[Intent]) -> dict[str, list[Intent]]:
+        """Conflict sources by team. Matching looks inside the placed team, so both leads a
+        conflict points to must share the conflict message's team."""
+        groups: dict[str, list[Intent]] = {}
+        for lead in self._conflict_pairs(leads):
+            if lead.team:
+                groups.setdefault(lead.team, []).append(lead)
+        return {team: group for team, group in groups.items() if len(group) >= 2}
 
     def _conflict_pairs(self, leads: list[Intent]) -> list[Intent]:
         return [
@@ -353,15 +362,16 @@ class Generator:
             return Intent("household", "lead", person, item, team, lead_id, "household", layout,
                           hard_negatives=["household_phone"])  # fmt: skip
         if kind == "conflict":
-            pair = self._conflict_pairs(leads)
-            a, b = rng.sample(pair, 2)
+            groups = self._conflict_groups(leads)
+            team = rng.choice(sorted(groups))
+            a, b = rng.sample(groups[team], 2)
             assert a.person and b.person and a.lead and b.lead
             first, last = self._name()
             while first in (a.person.first, b.person.first):
                 first, last = self._name()
             person = Person(first, last, a.person.phone, b.person.email)
             conflict_sources.update((a.lead, b.lead))
-            item, team = self.item_team_pick()
+            item = rng.choice(sorted(i for i, t in self.item_team.items() if t == team))
             layout = rng.choice(("site-form", f"portal-{rng.choice(SEEN_PORTALS)}"))
             return Intent("conflict", "lead", person, item, team, lead_id, "conflict", layout,
                           hard_negatives=["phone_email_conflict"])  # fmt: skip
