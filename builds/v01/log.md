@@ -247,3 +247,39 @@ read-speed test change sits in its own test-only commit.
 
 Both reports still reproduce byte for byte, so none of these changes moves a corpus result.
 This was the last fix round; whatever the fix check finds is deferred.
+
+## Phase 10: the structural email-parsing reset
+
+The fix check on the final slice found four regressions from the compat32 parser (attached
+messages read as the body, encoded display names split at a comma, nested part headers
+outside the budget, folded headers left folded). The same kind of result had come back twice,
+so the approach was set by all four model families, not by another patch.
+
+- **Back to the default parser.** `policy.default`, `get_body` (plain, then HTML) and
+  `get_content`, and `message.get` for From, Subject, Date and Reply-To. The quote-aware tag
+  scan, the inner Reply-To and the domain fix stay. Intake keeps its bounded headers-only
+  `compat32` parse for Message-ID.
+- **The budget lives inside the parser.** A policy subclass checks every header of every part,
+  nested ones included, as the parser meets it. Limits: 4,000 characters for one unfolded
+  header, 64,000 for all headers, 100 parts, and 10 levels of nesting. A stack overflow from
+  deeper nesting is caught too. Each limit ends the message `failed` with a reason, and the raw
+  bytes stay stored.
+- **The root cause was the fixtures.** The corpus is single-part, ASCII, unfolded and
+  LF-only, so every parser change replayed byte for byte. `tests/test_email_structure.py`
+  adds the shapes real mail has: multipart/alternative, an attached message with a decoy
+  number, an encoded display name with a comma, a folded subject, CRLF and bare-CR endings,
+  and a long References header.
+- **Timing at the caps** (CPU, best of three):
+
+  | Case | CPU | Result |
+  |---|---|---|
+  | Legal headers filling 63 KB | 0.2 ms | read |
+  | Headers just over the total | 0.1 ms | refused |
+  | Nested Content-Type just under 4,000 characters | 5.9 ms | read |
+  | Nested Content-Type just over 4,000 characters | 0.1 ms | refused |
+  | x3 payload (100,000 semicolons) | 0.2 ms | refused |
+  | 1,000 nested message layers | 2.8 ms | refused (part count) |
+
+  The caps did not need lowering.
+- **Known limit.** A References header over 4,000 characters, about 75 message ids in a long
+  thread, makes the message fail as over budget. New leads rarely carry long threads.
