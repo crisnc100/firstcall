@@ -129,3 +129,18 @@ Deliberate choices made while building PR1a, with the reason for each.
   test pins its fields to the site-form source.
 - **Left for PR1b:** the `--mode` and `--budget` flags, `docs/rerecord.md` (there is nothing
   recorded to re-record yet), cost and latency figures (no model calls).
+
+## Choices agreed with the orchestrator (2026-11-11)
+
+The plan left these four open. Each was proposed with a recommendation and agreed as proposed.
+
+1. **No note scripts in PR1a.** PR3 generates them and adds their hashes to the manifest
+   before the first note-reading code. PR1a's manifest covers message inputs and labels for
+   seeds 7, 11 and 13.
+2. **A minimal web package and Mailpit now.** `web/` is Vite + TypeScript with one page, so
+   verify runs `npm ci` and the TypeScript build from the first PR. Mailpit runs in compose
+   with its healthcheck. Playwright waits until there are pages to test.
+3. **A repeat delivery writes nothing.** It answers 200 with
+   `{"status": "duplicate_delivery", "message_id": <original>}`, and no new row is stored.
+4. **`firstcall eval --seed N` is rules-only.** It refuses seed 13 until
+   `config/field_methods.yaml` exists. `--mode` and `--budget` come with the model gateway.
