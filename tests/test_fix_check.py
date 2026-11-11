@@ -148,3 +148,12 @@ def test_595516_x2_a_per_ip_429_carries_the_cors_header(
 def test_595516_x2_the_example_form_reports_a_refused_request() -> None:
     script = (ROOT / "examples" / "form.html").read_text()
     assert re.search(r"catch\s*(\(\w*\))?\s*\{[^}]*Please try again", script)
+
+
+@pytest.mark.parametrize("filler", ["<", "<a", "<a>", "a>"])
+def test_1c9500_x2_tag_stripping_stays_fast_at_the_budget(filler: str) -> None:
+    line = (filler * read.MAX_LINE_CHARS)[: read.MAX_LINE_CHARS]
+    body = "\n".join([line] * (read.MAX_LINES - 1))[: read.MAX_TEXT_CHARS]
+    raw = ("From: A <a@b.example>\nSubject: x\nContent-Type: text/html\n\n" + body).encode()
+    with cpu_limit(2.0):
+        read.read(raw, INBOX, REFERENCE)
