@@ -174,3 +174,29 @@ def test_every_gold_value_is_present_in_its_message(seed: int) -> None:
         if label["item"] and label["item"].casefold() not in folded:
             problems.append(f"{label['id']} item")
     assert problems == []
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_each_injected_message_has_one_clean_twin_without_its_attack(seed: int) -> None:
+    from firstcall.corpus.generate import TWINS, generate_all
+
+    twins_text = (GOLD_DIR / f"seed-{seed}" / TWINS).read_text()
+    assert generate_all(seed)[2] == twins_text
+    twins = {row["id"]: row["body"] for row in map(json.loads, twins_text.splitlines())}
+    injected = {r["id"] for r in labels(seed) if r["injection"]}
+    assert set(twins) == injected
+    assert len(twins) >= 30
+    for message in messages(seed):
+        if message["id"] not in twins:
+            continue
+        twin, body = twins[message["id"]], message["body"]
+        assert twin != body
+        if message["content_type"] == "application/json":
+            assert json.loads(twin).keys() == json.loads(body).keys()
+        else:
+            # The twin is the message with one stretch of text taken out, nothing else changed.
+            prefix = next(
+                (i for i, (a, b) in enumerate(zip(twin, body, strict=False)) if a != b), len(twin)
+            )
+            assert len(twin) < len(body)
+            assert body.endswith(twin[prefix:])

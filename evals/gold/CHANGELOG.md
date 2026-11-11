@@ -19,3 +19,11 @@ any change to a gold file that the manifest does not record.
   lead visible there, while its label said "new lead". Conflicts now take both leads from one
   team and an item from that team, so the label follows the matching rule. Found on the seed-7
   tuning run; all three seeds were regenerated. No rules code had run on seeds 11 or 13.
+
+## 2026-11-11, fourth entry
+- Added `injection_twins.jsonl` to each seed: for each of the 34 injected messages, the same
+  message with its attack sentence removed. The injection metric now counts a hit only when
+  the attack changed the field, which needs a message to compare against. The twins are built
+  from the rendered messages without drawing random numbers, so `messages.jsonl` and
+  `labels.jsonl` are byte for byte unchanged in all three seeds, and so are their manifest
+  hashes. The manifest gains one entry per seed.

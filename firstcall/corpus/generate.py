@@ -17,13 +17,14 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from firstcall.corpus.world import AgentInfo, World, load_world
 
 SEEDS = (7, 11, 13)
 UNSEEN_SEEDS = (11, 13)
 TOTAL = 500
+TWINS = "injection_twins.jsonl"
 GOLD_DIR = Path(__file__).resolve().parents[2] / "evals" / "gold"
 
 SEEN_PORTALS = ("hearthly", "dwellr", "porchlight", "moveline", "abode")
@@ -116,6 +117,8 @@ class Intent:
     agent: AgentInfo | None = None
     hard_negatives: list[str] = field(default_factory=list[str])
     injection: dict[str, str] | None = None
+    # The exact attack sentence as rendered, so a clean twin can leave it out.
+    attack_text: str | None = None
     target_index: int | None = None
 
 
@@ -573,7 +576,8 @@ class Generator:
     def _inject(self, intent: Intent, text: str) -> str:
         if not intent.injection:
             return text
-        return f"{text}\n\n{self.injection_text(intent.injection)}"
+        intent.attack_text = self.injection_text(intent.injection)
+        return f"{text}\n\n{intent.attack_text}"
 
     def email_raw(
         self,
@@ -995,27 +999,60 @@ def _zone() -> Any:
     return timezone(SOURCE_ZONE)
 
 
-def generate(seed: int, world: World | None = None) -> tuple[str, str]:
-    """Both files for a seed, as the exact text written to disk."""
+def _without(value: Any, attack: str) -> Any:
+    if isinstance(value, str):
+        return value.replace(f"\n\n{attack}", "")
+    if isinstance(value, dict):
+        return {k: _without(v, attack) for k, v in cast(dict[str, Any], value).items()}
+    return value
+
+
+def clean_twin(message: dict[str, Any], attack: str) -> dict[str, Any]:
+    """The same message without its attack sentence. Building the twin draws no random
+    numbers, so the committed messages and labels stay byte for byte the same."""
+    body = message["body"]
+    if message["content_type"] == "application/json":
+        twin = json.dumps(_without(json.loads(body), attack))
+    else:
+        twin = body.replace(f"\n\n{attack}", "", 1)
+    if twin == body or attack in twin:
+        raise RuntimeError(f"{message['id']}: the attack sentence was not removed exactly once")
+    return {"id": message["id"], "body": twin}
+
+
+def _lines(rows: list[dict[str, Any]]) -> str:
+    return "".join(json.dumps(row, sort_keys=True, ensure_ascii=False) + "\n" for row in rows)
+
+
+def generate_all(seed: int, world: World | None = None) -> tuple[str, str, str]:
+    """Messages, labels and the clean twins of the injected messages, as written to disk."""
     generator = Generator(seed, world or load_world())
     intents = generator.plan()
     generator.assign_injections(intents)
     messages, labels = generator.render_all(intents)
+    twins = [
+        clean_twin(message, intent.attack_text)
+        for message, intent in zip(messages, intents, strict=True)
+        if intent.attack_text
+    ]
+    return _lines(messages), _lines(labels), _lines(twins)
 
-    def lines(rows: list[dict[str, Any]]) -> str:
-        return "".join(json.dumps(row, sort_keys=True, ensure_ascii=False) + "\n" for row in rows)
 
-    return lines(messages), lines(labels)
+def generate(seed: int, world: World | None = None) -> tuple[str, str]:
+    """Messages and labels for a seed, as written to disk."""
+    messages, labels, _ = generate_all(seed, world)
+    return messages, labels
 
 
 def write_seed(seed: int, root: Path = GOLD_DIR) -> dict[str, str]:
     import hashlib
 
-    messages, labels = generate(seed)
+    messages, labels, twins = generate_all(seed)
     folder = root / f"seed-{seed}"
     folder.mkdir(parents=True, exist_ok=True)
     hashes: dict[str, str] = {}
-    for name, text in (("messages.jsonl", messages), ("labels.jsonl", labels)):
+    files = (("messages.jsonl", messages), ("labels.jsonl", labels), (TWINS, twins))
+    for name, text in files:
         (folder / name).write_text(text)
         hashes[name] = hashlib.sha256(text.encode()).hexdigest()
     return hashes

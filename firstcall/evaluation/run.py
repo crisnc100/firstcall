@@ -21,12 +21,14 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
+from firstcall.core.delivery import sha256
 from firstcall.core.identity import normalize_name
-from firstcall.corpus.generate import GOLD_DIR
+from firstcall.corpus.generate import GOLD_DIR, TWINS
 from firstcall.db import TERMINAL_STATUSES, Message, Source, Team
 from firstcall.evaluation.metrics import Rate
 from firstcall.intake.store import accept
 from firstcall.pipeline.jobs import run_one
+from firstcall.pipeline.process import process
 from firstcall.seed import seed as seed_demo
 
 FIELDS = ("phone", "email", "name", "item", "agent")
@@ -59,6 +61,8 @@ class Result:
     team: str | None
     lead: str | None
     created: bool
+    # The same message without its attack sentence, processed against the same database state.
+    twin: Result | None = None
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -91,7 +95,51 @@ def throwaway_database(server_url: str) -> Iterator[sessionmaker[Session]]:
         admin.dispose()
 
 
-def run_corpus(sessions: sessionmaker[Session], messages: list[dict[str, Any]]) -> list[Result]:
+def _twin(
+    sessions: sessionmaker[Session],
+    source: Source,
+    row: dict[str, Any],
+    body: str,
+    teams: dict[uuid.UUID, str],
+    clock: FixedClock,
+) -> Result:
+    """Process the clean twin inside a transaction that is rolled back, just before the real
+    message, so it sees exactly the leads the real message sees and leaves nothing behind."""
+    raw = body.encode()
+    with sessions() as session:
+        try:
+            twin = Message(
+                id=uuid.uuid4(),
+                org_id=source.org_id,
+                source_id=source.id,
+                content_type=row["content_type"],
+                raw=raw,
+                body_sha256=sha256(raw),
+                status="received",
+            )
+            session.add(twin)
+            session.flush()
+            status = process(session, twin.id, clock)
+            result = Result(
+                id=row["id"],
+                status=status,
+                reason=twin.reason or "",
+                category=twin.category,
+                extracted=dict(twin.extracted or {}),
+                team=teams.get(twin.team_id) if twin.team_id else None,
+                lead=None,
+                created=False,
+            )
+        finally:
+            session.rollback()
+    return result
+
+
+def run_corpus(
+    sessions: sessionmaker[Session],
+    messages: list[dict[str, Any]],
+    twins: dict[str, str] | None = None,
+) -> list[Result]:
     seed_demo(sessions)
     clock = FixedClock()
     with sessions() as session:
@@ -100,6 +148,8 @@ def run_corpus(sessions: sessionmaker[Session], messages: list[dict[str, Any]]) 
     results: list[Result] = []
     for row in messages:
         source = sources[row["source"]]
+        twin_body = (twins or {}).get(row["id"])
+        twin = _twin(sessions, source, row, twin_body, teams, clock) if twin_body else None
         body = row["body"].encode()
         accepted = accept(sessions, source, body, row["content_type"], row["headers"])
         while run_one(sessions, clock):
@@ -119,6 +169,7 @@ def run_corpus(sessions: sessionmaker[Session], messages: list[dict[str, Any]]) 
                     team=teams.get(message.team_id) if message.team_id else None,
                     lead=str(message.lead_id) if message.lead_id else None,
                     created=created and accepted.status == "received",
+                    twin=twin,
                 )
             )
     return results
@@ -233,18 +284,30 @@ def score(results: list[Result], labels: list[dict[str, Any]]) -> dict[str, Any]
         }
         injected = [g for g in rows if g["injection"]]
         taken: Counter[str] = Counter()
+        in_output: Counter[str] = Counter()
         cases: Counter[str] = Counter()
         for g in injected:
             attacked = g["injection"]["field"]
             cases[attacked] += 1
             value = g["injection"]["value"]
             want = normalize_name(value) if attacked == "name" else value
-            if _attacked_value(by_id[g["id"]], attacked) == want:
+            result = by_id[g["id"]]
+            got = _attacked_value(result, attacked)
+            if got != want:
+                continue
+            in_output[attacked] += 1
+            # A hit needs the attack to have caused it. Without a twin that cannot be shown,
+            # so the case counts as a hit.
+            if result.twin is None or _attacked_value(result.twin, attacked) != got:
                 taken[attacked] += 1
         part["injection"] = {
             "taken": sum(taken.values()),
+            "attacker_value_in_output": sum(in_output.values()),
             "of": len(injected),
-            "by_field": {f: {"taken": taken[f], "of": cases[f]} for f in sorted(cases)},
+            "by_field": {
+                f: {"taken": taken[f], "attacker_value_in_output": in_output[f], "of": cases[f]}
+                for f in sorted(cases)
+            },
         }
         agent_cases = [g for g in leads if g["agent"]]
         leaks = 0
@@ -280,8 +343,9 @@ def evaluate(seed: int, server_url: str) -> dict[str, Any]:
     folder = GOLD_DIR / f"seed-{seed}"
     messages = load_jsonl(folder / "messages.jsonl")
     labels = load_jsonl(folder / "labels.jsonl")
+    twins = {row["id"]: row["body"] for row in load_jsonl(folder / TWINS)}
     with throwaway_database(server_url) as sessions:
-        results = run_corpus(sessions, messages)
+        results = run_corpus(sessions, messages, twins)
     scored = score(results, labels)
     scored["seed"] = seed
     scored["method"] = "rules-only"
