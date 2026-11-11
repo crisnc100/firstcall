@@ -165,3 +165,42 @@ The plan left these four open. Each was proposed with a recommendation and agree
   of joins. Details in `docs/failures/0001-rules-only-seed-11.md`.
 - **Not done, on purpose:** no `read.py` patterns for unseen layouts, no name backfill on
   attach, no new injection phrasings.
+
+## Phase 7: the code review fix round
+
+Sol reviewed the code and Fable ran the security pass. Every HIGH and MEDIUM was fixed in one
+round, each with a regression test, in `tests/test_pr1a_review.py` (named by finding id). That
+file was committed first, and all 27 cases failed before any fix.
+
+- **Read budget, not pattern patches (1c9500 s1).** `read()` checks one budget at its boundary
+  (200,000 characters, 4,000 lines, 4,000 characters a line). Over it, the message ends
+  `failed` with a reason that names the limit; nothing is cut, because a cut could drop the
+  line that names the agent. Inside the budget, every pattern is linear. Label lines are
+  parsed with string methods, names use possessive quantifiers, and the email, HTML-tag,
+  From-line and forward patterns have bounded counts. One test runs every compiled pattern
+  in the core modules over adversarial lines at the cap under a CPU-time limit; another runs
+  the whole read at the cap.
+- **Form keys stay in the path; the access log goes (575e84 s1).** The plan names a token in
+  the URL path for form tools that cannot sign, so uvicorn runs with the access log off rather
+  than moving the key to a header. The docs now call it a public form key: a browser page shows
+  it, so the honeypot, the rate limits and the spam check protect a form source.
+- **Proxy headers.** Uvicorn's own proxy handling is off, so `FIRSTCALL_TRUST_PROXY` is the
+  only switch. With it on, the client is the entry `FIRSTCALL_TRUSTED_HOPS` from the right
+  (default 1). A test drives the real server.
+- **Rate limits.** The per-source budget counts only requests that passed auth. At most four
+  argon2 checks run at once. Idle keys are swept each minute, the key table is capped, and
+  IPv6 clients key by their /64.
+- **CORS** comes from a per-source `allowed_origins` list (migration 0002). The demo site form
+  allows `https://www.larkspur.example`.
+- **Gold, fifth regeneration (174a3f f1).** Hard negatives now compete inside the matching
+  pool, at 22 or more same-pool cases of each kind per seed. Seeds 7 and 11 reran once; seed 13
+  did not run. The seed-11 safety floors all stay at zero on the harder set. Recall moved from
+  68/70 to 66/70 on seed 11 and from 72/72 to 71/72 on seed 7; every miss is a flagged new
+  lead (docs/failures/0001, entry 5).
+- **Scoring by lead ownership (177f72 f1).** Each system lead belongs to the gold buyer whose
+  message created it. A join to a safe duplicate of the same buyer counts as a join to that
+  buyer, not as a wrong attach.
+- **Existing-test changes**, each in its own test-only commit:
+  - the CRLF test, which converted line endings twice;
+  - the server-log test, which also caught the test client's own URL log;
+  - one type annotation.
