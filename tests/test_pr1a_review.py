@@ -85,7 +85,7 @@ def _same_pool_peers(seed_: int) -> dict[str, int]:
     labels = [json.loads(x) for x in (GOLD_DIR / f"seed-{seed_}" / "labels.jsonl").open()]
     messages = [json.loads(x) for x in (GOLD_DIR / f"seed-{seed_}" / "messages.jsonl").open()]
     earlier: list[tuple[dict[str, Any], dict[str, Any]]] = []
-    counts = dict.fromkeys(
+    counts: dict[str, int] = dict.fromkeys(
         ("household_phone", "shared_agent_phone", "portal_relay_sender", "call_tracking_number"), 0
     )
     unqualified: list[str] = []
