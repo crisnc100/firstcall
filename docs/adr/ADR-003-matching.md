@@ -71,3 +71,7 @@ gold repeats whose earlier lead had no readable name.
 Seed 11 found this rule. The result above is from before the change. The seed-11 report was
 then rerun once with the new rule, so it now shows the rule's effect on a run that has already
 been looked at. It is not a fresh held-out test. Seed 13 stays untouched and is that test.
+
+After the change, seed 11 shows 0 wrong attaches of 70 and 0 wrong merges of 115, with recall
+still 68/70. The two remaining misses are now flagged new leads, not joins. Seed 7 is unchanged.
+[docs/failures/0001](../failures/0001-rules-only-seed-11.md) has the details.
