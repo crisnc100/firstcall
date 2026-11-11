@@ -155,3 +155,22 @@ def test_gold_and_predictions_were_committed_before_any_extraction_code() -> Non
                 ["git", "merge-base", "--is-ancestor", commit, code_commit], cwd=ROOT
             )
             assert ancestor.returncode == 0, f"{path} was committed after {code}"
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_every_gold_value_is_present_in_its_message(seed: int) -> None:
+    """Gold never claims a contact, name or item that the message does not contain."""
+    problems: list[str] = []
+    for message, label in zip(messages(seed), labels(seed), strict=True):
+        body = message["body"]
+        folded = body.casefold()
+        digits = "".join(ch for ch in body if ch.isdigit())
+        if label["phone"] and label["phone"][2:] not in digits:
+            problems.append(f"{label['id']} phone")
+        if label["email"] and label["email"] not in folded:
+            problems.append(f"{label['id']} email")
+        if label["name"] and any(w not in folded for w in label["name"].casefold().split()):
+            problems.append(f"{label['id']} name")
+        if label["item"] and label["item"].casefold() not in folded:
+            problems.append(f"{label['id']} item")
+    assert problems == []

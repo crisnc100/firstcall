@@ -347,6 +347,9 @@ class Generator:
             person = Person(first, source.person.last, source.person.phone, email)
             item, team = self.item_team_pick()
             layout = rng.choice(("call", "site-form", "direct-email" if email else "call"))
+            if layout == "call":
+                # A call carries a number and maybe a name, never an email.
+                person.email = None
             return Intent("household", "lead", person, item, team, lead_id, "household", layout,
                           hard_negatives=["household_phone"])  # fmt: skip
         if kind == "conflict":
