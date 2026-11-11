@@ -1,0 +1,51 @@
+<!doctype html>
+<!--
+  A plain lead form that posts to a Firstcall form source.
+
+  Replace INTAKE_URL with your source's URL, which ends in its secret token:
+    https://your-firstcall-host/intake/site-form/<token>
+  `firstcall rotate-secret site-form` prints a new token.
+
+  The "website" field is a honeypot: it is hidden from people, so only bots fill it in, and
+  Firstcall files any post with it filled as spam. Keep its name equal to the source's
+  honeypot_field. Firstcall takes JSON, so the script below sends the fields as JSON.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ask about a home</title>
+    <style>
+      .honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <form id="lead-form">
+      <label>Name <input name="name" autocomplete="name" required /></label>
+      <label>Phone <input name="phone" type="tel" autocomplete="tel" /></label>
+      <label>Email <input name="email" type="email" autocomplete="email" /></label>
+      <label>Listing <input name="listing" /></label>
+      <label>Message <textarea name="message"></textarea></label>
+      <div class="honeypot" aria-hidden="true">
+        <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <button type="submit">Send</button>
+      <p id="result" role="status"></p>
+    </form>
+    <script>
+      const INTAKE_URL = "https://your-firstcall-host/intake/site-form/REPLACE-WITH-TOKEN";
+      const form = document.getElementById("lead-form");
+      const result = document.getElementById("result");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const fields = Object.fromEntries(new FormData(form).entries());
+        const response = await fetch(INTAKE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fields),
+        });
+        result.textContent = response.ok ? "Thanks, we'll be in touch." : "Please try again.";
+      });
+    </script>
+  </body>
+</html>

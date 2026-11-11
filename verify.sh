@@ -36,4 +36,7 @@ uv run pytest --cov=firstcall --cov-branch --cov-report=json:coverage.json \
 step "per-module branch coverage floors"
 uv run python -m scripts.check_coverage coverage.json
 
+step "the rules-only eval reproduces the committed reports"
+uv run python -m scripts.check_replay_report
+
 printf '\nverify.sh: all checks passed\n'

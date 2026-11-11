@@ -89,6 +89,24 @@ def health(kind: str = typer.Argument(..., help="worker or scheduler")) -> None:
     raise typer.Exit(0 if healthy(_sessions(), kind) else 1)
 
 
+@app.command("eval")
+def eval_command(
+    seed: int = typer.Option(..., help="7 (tune) or 11 (held out); 13 is refused until PR1b"),
+    date: str = typer.Option("", help="The report date, YYYY-MM-DD; today when empty"),
+) -> None:
+    """Run the rules-only eval and write evals/reports/<date>-rules-seed-<N>.md and .json."""
+    from datetime import UTC, datetime
+
+    from firstcall.evaluation.report import write
+    from firstcall.evaluation.run import evaluate
+    from firstcall.settings import Settings
+
+    report = evaluate(seed, Settings().database_url)
+    day = date or datetime.now(UTC).date().isoformat()
+    for path in write(report, day):
+        typer.echo(f"wrote {path}")
+
+
 corpus_app = typer.Typer(no_args_is_help=True, help="The synthetic corpus.")
 app.add_typer(corpus_app, name="corpus")
 

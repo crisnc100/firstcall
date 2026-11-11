@@ -101,3 +101,31 @@ Deliberate choices made while building PR1a, with the reason for each.
   Postgres and asserts the exit code 137 and the failpoint's log line.
 - **`find_phones`** relies on the phone matcher's default leniency, which already drops
   invalid numbers, so the module has no dead check to cover.
+
+## Phase 5: the rules-only eval and report
+
+- **A second gold fix, found on seed 7.** Conflict messages could point to two leads in
+  different teams, where matching (which looks inside the placed team) correctly joins the
+  one lead it can see. Conflicts now draw both leads and the item from one team. Fixed and
+  regenerated with a changelog entry before seed 11 ever ran.
+- **Seed 11 ran once, with the rules frozen.** After it, only the report itself changed: the
+  hard-negative total now counts a message once even when it carries two kinds, and the
+  kinds print in a fixed order. Neither touches the rules.
+- **Report names** are `evals/reports/<date>-rules-seed-<N>.md` and `.json`, since one date
+  holds reports for two seeds. The date is an argument, so CI can rerun a report and compare
+  bytes (`scripts/check_replay_report.py`, a verify step).
+- **The eval runs the real pipeline** on a throwaway database: each message is stored through
+  the intake store and processed by the job runner, one at a time in corpus order. A fixed
+  clock keeps event ids and leases out of the report.
+- **Seed 13 is refused** until `config/field_methods.yaml` exists, and a test checks no
+  seed-13 report is committed.
+- **Rules-only safety misses on seed 11, and their cause.** One household phone merge and the
+  wrong attach that follows from it trace to one chain: the first lead came from an unseen
+  portal layout, so the rules read no name; "one side blank" then counts as a compatible
+  name. The same chain causes one of the two recall misses. The five injection hits are all
+  category attacks on non-leads: the rules never read text for category and fail open, so
+  spam without a listed sender or honeypot is "lead" with or without the attack.
+- **The example form** (`examples/form.html`) posts JSON with a hidden `website` honeypot; a
+  test pins its fields to the site-form source.
+- **Left for PR1b:** the `--mode` and `--budget` flags, `docs/rerecord.md` (there is nothing
+  recorded to re-record yet), cost and latency figures (no model calls).
