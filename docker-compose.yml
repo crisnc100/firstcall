@@ -38,6 +38,32 @@ services:
       timeout: 3s
       retries: 40
 
+  worker:
+    image: firstcall-v01-app
+    command: ["firstcall", "worker"]
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "firstcall", "health", "worker"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  scheduler:
+    image: firstcall-v01-app
+    command: ["firstcall", "scheduler"]
+    environment: *app-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "firstcall", "health", "scheduler"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   # Catches local email; alerts start using it in PR2.
   mailpit:
     image: axllent/mailpit:v1.27

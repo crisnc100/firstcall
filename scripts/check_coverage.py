@@ -18,10 +18,16 @@ CORE = 95.0
 EDGE = 85.0
 FLOORS: dict[str, float] = {
     "firstcall/core/delivery.py": CORE,
+    "firstcall/core/read.py": CORE,
+    "firstcall/core/place.py": CORE,
+    "firstcall/core/match.py": CORE,
+    "firstcall/core/identity.py": CORE,
     "firstcall/api.py": EDGE,
     "firstcall/intake/auth.py": EDGE,
     "firstcall/intake/limits.py": EDGE,
     "firstcall/intake/store.py": EDGE,
+    "firstcall/pipeline/process.py": EDGE,
+    "firstcall/pipeline/jobs.py": EDGE,
 }
 
 

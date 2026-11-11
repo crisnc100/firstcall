@@ -51,6 +51,44 @@ def rotate_secret(slug: str) -> None:
     typer.echo(set_secret(_sessions(), slug))
 
 
+@app.command()
+def worker(until_idle: bool = typer.Option(False, help="Stop when the queue is empty.")) -> None:
+    """Process stored messages."""
+    from firstcall.pipeline.worker import work
+    from firstcall.runtime import SystemClock
+    from firstcall.settings import Settings
+
+    work(_sessions(), SystemClock(), Settings(), until_idle=until_idle)
+
+
+@app.command()
+def scheduler() -> None:
+    """Run `tick` every 30 seconds."""
+    from firstcall.pipeline.worker import schedule
+    from firstcall.runtime import SystemClock
+    from firstcall.settings import Settings
+
+    schedule(_sessions(), SystemClock(), Settings())
+
+
+@app.command()
+def tick() -> None:
+    """One scheduler pass: return jobs whose lease ran out."""
+    from firstcall.pipeline.worker import tick as run_tick
+    from firstcall.runtime import SystemClock
+    from firstcall.settings import Settings
+
+    typer.echo(run_tick(_sessions(), SystemClock(), Settings()))
+
+
+@app.command()
+def health(kind: str = typer.Argument(..., help="worker or scheduler")) -> None:
+    """Exit 0 when this host's process beat in the last 60 seconds."""
+    from firstcall.pipeline.worker import healthy
+
+    raise typer.Exit(0 if healthy(_sessions(), kind) else 1)
+
+
 corpus_app = typer.Typer(no_args_is_help=True, help="The synthetic corpus.")
 app.add_typer(corpus_app, name="corpus")
 
