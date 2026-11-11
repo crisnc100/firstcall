@@ -12,6 +12,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from firstcall.core.identity import (
+    find_emails,
     find_phones,
     first_name,
     normalize_email,
@@ -403,3 +404,8 @@ def test_the_rules_read_never_raises_on_arbitrary_text(text: str) -> None:
     read(email("A <a@b.example>", text), INBOX, REFERENCE)
     with contextlib.suppress(UnparseableError):
         read(text.encode(), SITE, REFERENCE)
+
+
+def test_an_opening_quote_is_not_part_of_an_address() -> None:
+    assert find_emails("write to 'ana@inbox.example' today") == ["ana@inbox.example"]
+    assert normalize_email("`ana@inbox.example`") == "ana@inbox.example"
