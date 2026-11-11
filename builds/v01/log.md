@@ -281,5 +281,9 @@ so the approach was set by all four model families, not by another patch.
   | 1,000 nested message layers | 2.8 ms | refused (part count) |
 
   The caps did not need lowering.
-- **Known limit.** A References header over 4,000 characters, about 75 message ids in a long
-  thread, makes the message fail as over budget. New leads rarely carry long threads.
+- **Long unread headers are allowed.** The 4,000-character cap applies only to the headers
+  that get read or parsed: From, To, Reply-To, Sender, Subject, Date, Message-ID, Content-Type,
+  Content-Disposition, Content-Transfer-Encoding and MIME-Version. Others, such as a long reply
+  chain's References, count only toward the 64,000 total and the part limit. Losing a real lead
+  over its thread history would be the worse error. A 20,000-character References header is
+  read with its buyer, inside the 2-CPU-second test limit.
