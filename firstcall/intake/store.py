@@ -13,6 +13,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core import delivery
+from firstcall.core.read import OverBudgetError, check_header_budget
 from firstcall.db import Job, Message, Source
 from firstcall.locks import lock_all
 
@@ -25,7 +26,13 @@ class Accepted:
 
 def delivery_key(source: Source, raw: bytes, headers: Mapping[str, str]) -> delivery.DeliveryKey:
     if source.kind == "email":
-        parsed = BytesHeaderParser(policy=policy.default).parsebytes(raw)
+        try:
+            check_header_budget(raw)
+        except OverBudgetError:
+            # Keyed by its bytes; the worker then fails it as over budget, with its reason.
+            return delivery.for_email(raw, None)
+        # compat32 reads Message-ID as plain text, so a malformed one never raises here.
+        parsed = BytesHeaderParser(policy=policy.compat32).parsebytes(raw)
         message_id = parsed.get("Message-ID")
         return delivery.for_email(raw, str(message_id) if message_id else None)
     lowered = {name.lower(): value for name, value in headers.items()}

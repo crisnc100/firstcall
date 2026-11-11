@@ -16,7 +16,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, tzinfo
 from email import policy
-from email.message import EmailMessage
+from email.header import decode_header, make_header
+from email.message import Message
 from email.parser import BytesParser
 from email.utils import getaddresses, parsedate_to_datetime
 from typing import Any, cast
@@ -45,6 +46,7 @@ class OverBudgetError(UnparseableError):
 MAX_TEXT_CHARS = 200_000
 MAX_LINES = 4_000
 MAX_LINE_CHARS = 4_000
+MAX_HEADER_BYTES = 64_000
 
 
 @dataclass(frozen=True)
@@ -122,6 +124,7 @@ LABELS = {
 }
 SENTENCE_LEAD = re.compile(rf"^(?P<name>{NAME}) \((?P<contacts>[^\n]*)\) is interested in", re.M)
 FROM_LINE = re.compile(r"^From:[ \t]*(?P<value>[^\n]+)$", re.M)
+REPLY_TO_LINE = re.compile(r"^Reply-To:[ \t]*(?P<value>[^\n]+)$", re.M | re.IGNORECASE)
 
 AGENT_PHRASES = (
     re.compile(rf"on behalf of (?:my|our) client,?[ \t]+(?P<name>{NAME})"),
@@ -164,10 +167,54 @@ def _lines_of(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+def check_header_budget(raw: bytes) -> None:
+    """Refuse a message whose header block, or any one header, is over the budget, before
+    any header is parsed. Header parsing time grows faster than a header's length."""
+    ends = [at for at in (raw.find(b"\n\n"), raw.find(b"\r\n\r\n")) if at >= 0]
+    head = raw[: min(ends)] if ends else raw
+    if len(head) > MAX_HEADER_BYTES:
+        raise OverBudgetError(
+            f"over the read budget: {len(head)} bytes of headers (limit {MAX_HEADER_BYTES})"
+        )
+    longest = 0
+    current = 0
+    for line in head.split(b"\n"):
+        # A line that starts with a space or tab continues the header above it.
+        current = current + len(line) if line[:1] in (b" ", b"\t") else len(line)
+        longest = max(longest, current)
+    if longest > MAX_LINE_CHARS:
+        raise OverBudgetError(
+            f"over the read budget: a header of {longest} bytes (limit {MAX_LINE_CHARS})"
+        )
+
+
+def _tag_end(html: str, opens: int) -> int:
+    """Where the tag starting at `opens` ends, or -1 if it never does. A ">" inside a quoted
+    attribute value, or inside a comment, does not end it. One pass over the tag."""
+    if html.startswith("<!--", opens):
+        closes = html.find("-->", opens + 4)
+        return closes + 2 if closes >= 0 else -1
+    quote = ""
+    last = ""
+    for at in range(opens + 1, len(html)):
+        char = html[at]
+        if quote:
+            if char == quote:
+                quote = ""
+            continue
+        if char in "\"'" and last == "=":
+            quote = char
+        elif char == ">":
+            return at
+        if not char.isspace():
+            last = char
+    return -1
+
+
 def _strip_tags(html: str) -> str:
-    """HTML with every tag replaced by a space, however long the tag. Each search starts
-    where the last one stopped, so the cost is linear in the text. Text after a "<" that
-    never closes is kept, as a browser would show it."""
+    """HTML with every tag and comment replaced by a space, however long. Each tag is scanned
+    once and the next search starts after it, so the cost is linear in the text. Text after a
+    "<" that never closes is kept, as a browser would show it."""
     parts: list[str] = []
     at = 0
     while True:
@@ -175,7 +222,7 @@ def _strip_tags(html: str) -> str:
         if opens < 0:
             parts.append(html[at:])
             break
-        closes = html.find(">", opens + 1)
+        closes = _tag_end(html, opens)
         if closes < 0:
             parts.append(html[at:])
             break
@@ -275,15 +322,26 @@ def _first(values: list[str], excluded: set[str]) -> str | None:
 # Email
 
 
-def _body_text(message: EmailMessage) -> str:
-    part = message.get_body(preferencelist=("plain", "html"))
+def _text_part(message: Message) -> Message | None:
+    """The first plain-text part that is not an attachment, else the first HTML one."""
+    found: dict[str, Message] = {}
+    for part in message.walk():
+        if part.get_content_maintype() != "text" or part.get_content_disposition() == "attachment":
+            continue
+        found.setdefault(part.get_content_subtype(), part)
+    return found.get("plain") or found.get("html")
+
+
+def _body_text(message: Message) -> str:
+    part = _text_part(message)
     if part is None:
         return ""
+    payload = part.get_payload(decode=True)
+    data = payload if isinstance(payload, bytes) else b""
     try:
-        content = str(cast(Any, part).get_content())
-    except (LookupError, ValueError):
-        payload = part.get_payload(decode=True)
-        content = payload.decode("utf-8", "replace") if isinstance(payload, bytes) else ""
+        content = data.decode(part.get_content_charset() or "utf-8", "replace")
+    except LookupError:
+        content = data.decode("utf-8", "replace")
     content = _lines_of(content)
     _check_budget(content)
     if part.get_content_subtype() == "html":
@@ -309,17 +367,22 @@ def _date(value: object) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
-def _forward(body: str, zone: tzinfo) -> tuple[str, str | None, str | None, datetime | None]:
-    """The forwarded part, its sender's display name and address, and its sent time."""
+def _forward(
+    body: str, zone: tzinfo
+) -> tuple[str, str | None, str | None, datetime | None, str | None]:
+    """The forwarded part, its sender's display name and address, its sent time, and its
+    Reply-To address."""
     markers = list(FORWARD_MARKER.finditer(body))
     if not markers:
-        return body, None, None, None
+        return body, None, None, None, None
     # The marker pattern stops at its own line end; blank lines between the marker and the
     # forwarded headers belong to neither.
     inner = body[markers[-1].end() :].lstrip()
     head = inner.split("\n\n", 1)[0]
     sender = FROM_LINE.search(head)
     display, address = _address(sender.group("value")) if sender else (None, None)
+    reply = REPLY_TO_LINE.search(head)
+    reply_to = _address(reply.group("value"))[1] if reply else None
     sent: datetime | None = None
     for pattern in FORWARD_TIMES:
         match = pattern.search(head)
@@ -331,21 +394,38 @@ def _forward(body: str, zone: tzinfo) -> tuple[str, str | None, str | None, date
                 except ValueError:
                     continue
     rest = inner.split("\n\n", 1)
-    return (rest[1] if len(rest) > 1 else ""), display, address, sent
+    return (rest[1] if len(rest) > 1 else ""), display, address, sent, reply_to
+
+
+def _header(message: Message, name: str) -> str:
+    """A header as text, with encoded words decoded. Raw 8-bit bytes are read as UTF-8."""
+    value = message.get(name)
+    if value is None:
+        return ""
+    text = str(value).encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+    try:
+        return str(make_header(decode_header(text)))
+    except (LookupError, ValueError, UnicodeDecodeError):
+        return text
 
 
 def _read_email(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
-    message = BytesParser(policy=policy.default).parsebytes(raw)
-    display, sender = _address(message.get("From"))
+    check_header_budget(raw)
+    # compat32 keeps every header a plain string. The structured header parser costs time
+    # quadratic in a header's length, so it never sees message text.
+    message = BytesParser(policy=policy.compat32).parsebytes(raw)
+    display, sender = _address(_header(message, "From"))
     body = _body_text(message)
     if not sender and not body.strip():
         raise UnparseableError("no sender and no text")
-    subject = str(message.get("Subject") or "")[:MAX_LINE_CHARS]
-    header_time = _date(message.get("Date"))
+    subject = _header(message, "Subject")
+    header_time = _date(_header(message, "Date"))
     zone = header_time.tzinfo if header_time and header_time.tzinfo else UTC
-    content, inner_display, inner_sender, forwarded_at = _forward(body, zone)
+    content, inner_display, inner_sender, forwarded_at, inner_reply = _forward(body, zone)
+    reply_to = _address(_header(message, "Reply-To"))[1]
     if inner_sender:
-        display, sender = inner_display, inner_sender
+        # The forwarded message is the lead; the forwarder's own headers say nothing of it.
+        display, sender, reply_to = inner_display, inner_sender, inner_reply
     source_time = forwarded_at or header_time
     excluded_phones, excluded_emails = _excluded(rules, reference)
     relays = {s.lower() for s in rules.relay_senders}
@@ -358,7 +438,6 @@ def _read_email(raw: bytes, rules: SourceRules, reference: Reference) -> Reading
     unsure: list[str] = []
 
     if sender in relays:
-        reply_to = _address(message.get("Reply-To"))[1]
         name = labels.get("name")
         email = normalize_email(labels.get("email"))
         phone = normalize_phone(labels.get("phone"))

@@ -6,15 +6,18 @@ import re
 
 import phonenumbers
 
-# The local part allows every character RFC 5322 allows unquoted, so o'connor@ and
-# buyer!sales@ are read whole. The look-behind stops a match from starting inside a longer
-# local part, which would shorten one person's address into another's. Bounded counts keep
-# each attempt short, so a scan is linear in the text.
+# An address is read whole or not at all, never shortened into another person's. The local
+# part allows every character RFC 5322 allows unquoted, so o'connor@ and buyer!sales@ are
+# read whole, and the look-behind stops a match from starting inside a longer local part.
+# The domain takes every label it can and never gives one back (possessive counts); if more
+# labels follow than the bound allows, nothing matches. Bounded counts keep each attempt
+# short, so a scan is linear in the text.
 LOCAL = r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]"
 EMAIL = re.compile(
-    rf"(?<!{LOCAL}){LOCAL}{{1,64}}@[A-Za-z0-9-]{{1,63}}(?:\.[A-Za-z0-9-]{{1,63}}){{0,8}}"
-    r"\.[A-Za-z]{2,24}(?![A-Za-z0-9-])"
+    rf"(?<!{LOCAL}){LOCAL}{{1,64}}@[A-Za-z0-9-]{{1,63}}+(?:\.[A-Za-z0-9-]{{1,63}}+){{1,9}}+"
+    r"(?![A-Za-z0-9-]|\.[A-Za-z0-9])"
 )
+TOP_LEVEL = re.compile(r"[A-Za-z]{2,24}|xn--[A-Za-z0-9-]{1,59}")
 QUOTES = "'`"
 
 
@@ -58,8 +61,8 @@ def find_emails(text: str) -> list[str]:
         first, after = address[0], text[match.end() : match.end() + 1]
         if first in QUOTES and after == first:
             address = address[1:]
-        local = address.split("@", 1)[0]
-        if local.strip(QUOTES):
+        local, domain = address.split("@", 1)
+        if local.strip(QUOTES) and TOP_LEVEL.fullmatch(domain.rsplit(".", 1)[-1]):
             found.append(address.lower())
     return found
 
