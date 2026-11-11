@@ -20,7 +20,7 @@ SOURCE_FIELDS = (
     "delivery_id_header",
     "honeypot_field",
 )
-SOURCE_LISTS = ("relay_senders", "tracking_numbers", "spam_senders")
+SOURCE_LISTS = ("relay_senders", "tracking_numbers", "spam_senders", "allowed_origins")
 
 
 def seed(sessions: sessionmaker[Any], world: World | None = None) -> uuid.UUID:

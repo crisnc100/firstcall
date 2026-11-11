@@ -23,7 +23,9 @@ uv run firstcall rotate-secret inbox   # prints a password for the email source,
 Then post a raw email to `http://127.0.0.1:8020/intake/inbox` with basic auth (user `inbox`)
 and `Content-Type: message/rfc822`. The worker reads it and creates or updates a lead within
 a second. Form sources take JSON; [examples/form.html](examples/form.html) is a web form with
-a spam trap.
+a spam trap. A form source's URL ends in a form key. The key is public, since any visitor can
+read it in the page, so a form source is protected by its honeypot, its rate limits and the
+spam check, not by the key. Sources that must refuse strangers use basic auth or a signature.
 
 ## How good are the rules?
 

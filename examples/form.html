@@ -2,13 +2,19 @@
 <!--
   A plain lead form that posts to a Firstcall form source.
 
-  Replace INTAKE_URL with your source's URL, which ends in its secret token:
-    https://your-firstcall-host/intake/site-form/<token>
-  `firstcall rotate-secret site-form` prints a new token.
+  Replace INTAKE_URL with your source's URL, which ends in its form key:
+    https://your-firstcall-host/intake/site-form/<form key>
+  `firstcall rotate-secret site-form` prints a new key.
+
+  The form key is public, not a secret: anyone who opens this page can read it. It only
+  says which form source a post belongs to. What protects the source is the honeypot, the
+  rate limits and the spam check every message passes. A source that must refuse strangers
+  should use basic auth or a signature, which a browser page cannot hold.
 
   The "website" field is a honeypot: it is hidden from people, so only bots fill it in, and
   Firstcall files any post with it filled as spam. Keep its name equal to the source's
-  honeypot_field. Firstcall takes JSON, so the script below sends the fields as JSON.
+  honeypot_field. Firstcall takes JSON, so the script below sends the fields as JSON. The
+  page's origin must be in the source's allowed_origins, or the browser refuses the post.
 -->
 <html lang="en">
   <head>

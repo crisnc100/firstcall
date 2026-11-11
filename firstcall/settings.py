@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     failpoint: str = ""
     # X-Forwarded-For is attacker-controlled unless a trusted proxy sets it.
     trust_proxy: bool = False
+    # How many proxies in front of the api append to X-Forwarded-For. The client address is
+    # that many entries from the right; entries further left are whatever the client sent.
+    trusted_hops: int = 1
     job_lease_seconds: int = 60
     max_attempts: int = 5
     source_rate_per_minute: int = 60

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import typer
 
 if TYPE_CHECKING:
+    import uvicorn
     from sqlalchemy.orm import Session, sessionmaker
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
@@ -17,6 +18,15 @@ def main() -> None:
     """Firstcall: one queue, a fast alert and one owner for every lead."""
 
 
+def server_config(asgi: Any, host: str, port: int) -> uvicorn.Config:
+    """The server settings. Proxy headers are off, so FIRSTCALL_TRUST_PROXY is the only
+    switch that makes the app read X-Forwarded-For. The access log is off because a form
+    source's key sits in its URL path, and an access log would print it on every post."""
+    import uvicorn
+
+    return uvicorn.Config(asgi, host=host, port=port, proxy_headers=False, access_log=False)
+
+
 @app.command()
 def api(host: str = "127.0.0.1", port: int = 8000) -> None:
     """Serve the HTTP app."""
@@ -24,7 +34,7 @@ def api(host: str = "127.0.0.1", port: int = 8000) -> None:
 
     from firstcall.api import create_app
 
-    uvicorn.run(create_app(), host=host, port=port)
+    uvicorn.Server(server_config(create_app(), host, port)).run()
 
 
 def _sessions() -> sessionmaker[Session]:
@@ -45,7 +55,7 @@ def seed_command() -> None:
 
 @app.command("rotate-secret")
 def rotate_secret(slug: str) -> None:
-    """Issue a new token or password for a source. It is shown once."""
+    """Issue a new form key or password for a source. It is shown once."""
     from firstcall.seed import set_secret
 
     typer.echo(set_secret(_sessions(), slug))

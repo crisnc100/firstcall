@@ -1,8 +1,10 @@
-"""Per-source intake auth: basic auth, a secret path token, or an HMAC signature.
+"""Per-source intake auth: basic auth, a form key in the URL path, or an HMAC signature.
 
-Tokens are 128-bit random values stored as SHA-256 hashes; a fast hash is enough because
-the token is random, not a password. Basic-auth passwords are stored as argon2id hashes.
-HMAC secrets are read from the environment variable the source names.
+A form key is a 128-bit random value stored as a SHA-256 hash; a fast hash is enough because
+the key is random, not a password. A form key sits in a public web page, so it names the
+source rather than proving who posted; the honeypot, rate limits and spam check protect form
+sources. Basic-auth passwords are stored as argon2id hashes. HMAC secrets are read from the
+environment variable the source names.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ import hashlib
 import hmac
 import os
 import secrets
+import threading
 from datetime import datetime
 
 from argon2 import PasswordHasher
@@ -24,6 +27,7 @@ TIMESTAMP_HEADER = "Firstcall-Timestamp"
 MAX_SKEW_SECONDS = 300
 
 _hasher = PasswordHasher()
+_verifying = threading.BoundedSemaphore(4)
 
 
 def new_token() -> str:
@@ -54,12 +58,14 @@ def check_basic(source: Source, authorization: str | None) -> bool:
         user, _, password = base64.b64decode(encoded, validate=True).decode().partition(":")
     except (ValueError, UnicodeDecodeError):
         return False
-    if not hmac.compare_digest(user, source.basic_user or ""):
+    if not hmac.compare_digest(user.encode(), (source.basic_user or "").encode()):
         return False
-    try:
-        return _hasher.verify(source.basic_password_hash, password)
-    except (Argon2Error, InvalidHashError):
-        return False
+    # Each argon2 check costs tens of milliseconds of CPU, so only a few run at once.
+    with _verifying:
+        try:
+            return _hasher.verify(source.basic_password_hash, password)
+        except (Argon2Error, InvalidHashError):
+            return False
 
 
 def sign(secret: str, timestamp: int, body: bytes) -> str:
@@ -82,4 +88,4 @@ def check_hmac(
     if abs(now.timestamp() - sent) > MAX_SKEW_SECONDS:
         return False
     expected = sign(secret, sent, body)
-    return hmac.compare_digest(expected, signature.removeprefix("sha256="))
+    return hmac.compare_digest(expected.encode(), signature.removeprefix("sha256=").encode())

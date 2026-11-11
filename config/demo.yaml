@@ -71,6 +71,8 @@ sources:
     kind: form
     auth_method: token
     honeypot_field: website
+    # Pages on these origins may post this form from a browser.
+    allowed_origins: ["https://www.larkspur.example"]
     field_mapping:
       name: name
       phone: phone

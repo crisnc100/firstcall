@@ -118,6 +118,8 @@ class Source(Base):
     tracking_numbers: Mapped[list[Any]] = mapped_column(JSON, default=list)
     spam_senders: Mapped[list[Any]] = mapped_column(JSON, default=list)
     honeypot_field: Mapped[str | None] = mapped_column(String(100))
+    # Web origins whose pages may post to this source from a browser (CORS).
+    allowed_origins: Mapped[list[Any]] = mapped_column(JSON, default=list)
 
 
 class Message(Base):
