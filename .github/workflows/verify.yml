@@ -1,0 +1,36 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_DB: firstcall
+          POSTGRES_USER: firstcall
+          POSTGRES_PASSWORD: firstcall  # pragma: allowlist secret (CI-only database)
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U firstcall -d firstcall"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      # Tests use the service database; compose runs its own stack for the fault suite.
+      FIRSTCALL_DATABASE_URL: postgresql+psycopg://firstcall:firstcall@localhost:5432/firstcall  # pragma: allowlist secret (CI-only database)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: verify.sh
+        run: ./verify.sh

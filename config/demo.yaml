@@ -1,0 +1,108 @@
+# The demo company that `firstcall seed` loads. Every name, address and number is made up.
+# Phone numbers use the 555-01xx range, which is reserved for fiction.
+org:
+  slug: larkspur
+  name: Larkspur Realty
+
+business_hours: &hours
+  days: [mon, tue, wed, thu, fri, sat]
+  open: "09:00"
+  close: "18:00"
+
+teams:
+  - slug: north
+    name: North
+    timezone: America/New_York
+    business_hours: *hours
+    items: [Cedar Point Lofts, Birchwood Commons, Alder Ridge, Foxglove Row, Highmeadow Flats]
+  - slug: south
+    name: South
+    timezone: America/New_York
+    business_hours: *hours
+    items: [Saltmarsh Terrace, Palmetto Yard, Heron Bay, Live Oak Landing, Sandpiper Court]
+  - slug: east
+    name: East
+    timezone: America/New_York
+    business_hours: *hours
+    items: [Harborlight Towers, Beacon Square, Quayside Lofts, Tidewater Mews, Lantern Wharf]
+  - slug: west
+    name: West
+    timezone: America/Denver
+    business_hours: *hours
+    items: [Juniper Mesa, Red Canyon Homes, Sagebrush Ranch, Pinon Heights, Copperleaf]
+  - slug: central
+    name: Central
+    timezone: America/Chicago
+    business_hours: *hours
+    items: [Prairie Gate, Millstone Park, Union Depot Flats, Bluestem Village, Larkin Square]
+
+# Third parties who write for a buyer. Their contacts are never a buyer's identity.
+agents:
+  - {name: Dana Whitcomb, email: dana@keyhavenagents.example, phone: "+12025550101"}
+  - {name: Marcus Oyelaran, email: marcus@keyhavenagents.example, phone: "+12025550102"}
+  - {name: Priya Natarajan, email: priya@hearthstoneadvisors.example, phone: "+13125550103"}
+  - {name: Tomas Ferreira, email: tomas@hearthstoneadvisors.example, phone: "+13125550104"}
+  - {name: Grace Albright, email: grace@bluedooragency.example, phone: "+14155550105"}
+  - {name: Owen McCarthy, email: owen@bluedooragency.example, phone: "+14155550106"}
+  - {name: Lena Kowalski, email: lena@northstarbuyers.example, phone: "+16175550107"}
+  - {name: Victor Huang, email: victor@northstarbuyers.example, phone: "+16175550108"}
+  - {name: Amara Okafor, email: amara@crestlinerep.example, phone: "+17135550109"}
+  - {name: Felix Brandt, email: felix@crestlinerep.example, phone: "+17135550110"}
+  - {name: Rosa Delgado, email: rosa@meridianhomeagents.example, phone: "+13055550111"}
+  - {name: Henry Lockwood, email: henry@meridianhomeagents.example, phone: "+13055550112"}
+
+sources:
+  - slug: inbox
+    kind: email
+    auth_method: basic
+    basic_user: inbox
+    # Portal relay addresses: the portal's own sender, shared by every buyer it forwards.
+    relay_senders:
+      - leads@hearthly.example
+      - notify@dwellr.example
+      - inquiries@porchlight-listings.example
+      - alerts@moveline.example
+      - contact@abode-atlas.example
+      - leads@gablework.example
+      - hello@lattice-lane.example
+    spam_senders: [promo-blast.example, seo-rocket.example, prize-center.example, cheap-meds.example]
+
+  - slug: site-form
+    kind: form
+    auth_method: token
+    honeypot_field: website
+    field_mapping:
+      name: name
+      phone: phone
+      email: email
+      item: listing
+      message: message
+    spam_senders: [promo-blast.example, seo-rocket.example, prize-center.example, cheap-meds.example]
+
+  - slug: partner-form
+    kind: form
+    auth_method: hmac
+    hmac_secret_env: FIRSTCALL_PARTNER_FORM_SECRET # pragma: allowlist secret (a variable name)
+    delivery_id_header: X-Delivery-Id
+    field_mapping:
+      first_name: contact.first
+      last_name: contact.last
+      phone: contact.phone
+      email: contact.email
+      item: interest.listing
+      team: interest.team
+      message: notes
+    spam_senders: [promo-blast.example, seo-rocket.example, prize-center.example, cheap-meds.example]
+
+  - slug: calls
+    kind: call
+    auth_method: basic
+    basic_user: calls
+    delivery_id_header: X-Call-Id
+    field_mapping:
+      name: caller.name
+      phone: caller.number
+      item: listing
+      message: transcript
+    # The numbers buyers dial. They belong to the call service, never to a buyer.
+    tracking_numbers: ["+18005550120", "+18005550121", "+18005550122", "+18005550123"]

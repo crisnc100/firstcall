@@ -1,0 +1,68 @@
+[project]
+name = "firstcall"
+version = "0.1.0"
+description = "An open-source lead hub: one queue, a fast alert and one owner for every lead."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2",
+    "pydantic-settings",
+    "pyyaml",
+    "sqlalchemy>=2",
+    "alembic",
+    "psycopg[binary]",
+    "phonenumbers",
+    "argon2-cffi",
+    "typer",
+    "httpx",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "hypothesis",
+    "ruff",
+    "pyright",
+    "detect-secrets",
+    "faker",
+]
+
+[project.scripts]
+firstcall = "firstcall.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.9.11,<0.10"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "firstcall"
+module-root = ""
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S", "PT", "N", "C4"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S608", "S603", "S607", "S311"]
+"firstcall/corpus/**" = ["S311"]
+"migrations/versions/**" = ["E501"]
+
+[tool.pyright]
+include = ["firstcall", "tests", "scripts", "migrations"]
+exclude = [".venv", "web"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+strict = ["firstcall/core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+xfail_strict = true

@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: firstcall
+      POSTGRES_PASSWORD: firstcall # pragma: allowlist secret (local-only credential)
+      POSTGRES_DB: firstcall
+    ports: ["127.0.0.1:57432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U firstcall -d firstcall"]
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrate:
+    build: .
+    image: firstcall-v01-app
+    command: ["alembic", "upgrade", "head"]
+    environment: &app-environment
+      FIRSTCALL_DATABASE_URL: postgresql+psycopg://firstcall:firstcall@postgres:5432/firstcall # pragma: allowlist secret (local-only credential)
+      FIRSTCALL_ENV: local
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    image: firstcall-v01-app
+    command: ["firstcall", "api", "--host", "0.0.0.0", "--port", "8000"]
+    environment: *app-environment
+    ports: ["127.0.0.1:8020:8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  # Catches local email; alerts start using it in PR2.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:8025:8025"]
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+volumes:
+  postgres-data:
