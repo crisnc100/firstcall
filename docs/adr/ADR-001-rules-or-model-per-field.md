@@ -1,8 +1,8 @@
 # ADR-001: Rules or model, per field
 
 - **Status:** Prediction committed 2026-11-11, before any rules code or eval result exists.
-- **Result:** pending. The rules-only numbers arrive with the first rules eval; the model and
-  combined numbers arrive with the model pass.
+- **Result:** rules-only part recorded 2026-11-11 (see Result). The model and combined parts
+  are pending until the model pass.
 
 ## Context
 Each message needs a buyer's phone, email and name, the item of interest, whether an agent
@@ -42,3 +42,23 @@ Rules-only, seed 11, unseen layouts:
 Per-field choice after the model pass:
 8. Rules ship for phone and email; combined ships for name and item; the model ships for
    category; team follows from the item and form fields and ships as rules.
+
+## Result
+Rules-only, from the [seed-11 rules-only report](../../evals/reports/2026-11-11-rules-seed-11.md) (rules frozen before it ran). Seen layouts have 289 lead messages and
+unseen layouts have 66.
+
+1. **Phone at least 0.97, email at least 0.98 (seen):** held. Both are 289/289 = 1.000.
+2. **Name between 0.85 and 0.95 (seen):** falsified. Name is 289/289 = 1.000, above the range.
+3. **Item at least 0.93 (seen):** held, 289/289 = 1.000.
+4. **Agent present between 0.90 and 0.98 (seen):** falsified. It is 289/289 = 1.000, above the
+   range.
+5. **Category between 0.75 and 0.85 (seen):** held, 334/434 = 0.770. Every vendor and support
+   message is classed as a lead, by design.
+6. **Unseen: name below 0.60, phone and email each at least 5 points lower:** half held. Name
+   is 0/66. Phone and email are 66/66 = 1.000 on unseen layouts, so they did not fall.
+7. **Unseen item within 5 points of seen:** held, 66/66 = 1.000.
+8. **The per-field choice:** pending until the model pass.
+
+The seen layouts are labelled, and the rules were written for exactly those labels, so the
+seen scores say little about real mail. Unseen names show where rules stop: they know the
+shape of a phone, an email and a listed item, but not where a new layout puts the name.

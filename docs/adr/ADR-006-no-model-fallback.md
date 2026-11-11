@@ -1,7 +1,7 @@
 # ADR-006: The no-model fallback
 
 - **Status:** Prediction committed 2026-11-11, before the pipeline or the model read exists.
-- **Result:** pending.
+- **Result:** recorded 2026-11-11 for the rules-only eval (see Result).
 
 ## Context
 The model can be down, over budget, switched off or missing its key. A lead that waits for
@@ -21,3 +21,11 @@ Rules-only path, seed 11, seen layouts:
    honeypot hits is caught, the rest is not.
 3. Every message ends in a terminal status with a reason.
 4. Intake commit to push request on the rules path is under 2 seconds at p95 on compose.
+
+## Result
+From the [seed-11 rules-only report](../../evals/reports/2026-11-11-rules-seed-11.md) (rules frozen before it ran), seen layouts.
+
+1. **Zero leads classed as not a lead:** held (0 of 289).
+2. **Spam classed as lead between 15% and 35%:** held, 13/58 = 22.4%.
+3. **Every message terminal with a reason:** held: 0 of 500 not terminal, 0 without a reason.
+4. **Alert latency under 2 seconds at p95:** not measured. There are no alerts yet.

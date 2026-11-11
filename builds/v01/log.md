@@ -119,10 +119,12 @@ Deliberate choices made while building PR1a, with the reason for each.
   clock keeps event ids and leases out of the report.
 - **Seed 13 is refused** until `config/field_methods.yaml` exists, and a test checks no
   seed-13 report is committed.
-- **Rules-only safety misses on seed 11, and their cause.** One household phone merge and the
-  wrong attach that follows from it trace to one chain: the first lead came from an unseen
-  portal layout, so the rules read no name; "one side blank" then counts as a compatible
-  name. The same chain causes one of the two recall misses. The five injection hits are all
+- **Rules-only safety misses on seed 11, and their cause.** The blank-name rule misfired in two
+  separate households. In one, a household phone merge and the wrong attach after it came from
+  a lead on an unseen portal layout, where the rules read no name; "one side blank" then
+  counted as a compatible name. In the other, a repeat was refused because a second nameless
+  lead on the same phone counted as a compatible hit. The advisor's replay found the second
+  household; the first version of this entry named only one. The five injection hits are all
   category attacks on non-leads: the rules never read text for category and fail open, so
   spam without a listed sender or honeypot is "lead" with or without the attack.
 - **The example form** (`examples/form.html`) posts JSON with a hidden `website` honeypot; a
