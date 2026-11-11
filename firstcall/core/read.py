@@ -122,7 +122,7 @@ LABELS = {
 }
 SENTENCE_LEAD = re.compile(rf"^(?P<name>{NAME}) \((?P<contacts>[^\n]*)\) is interested in", re.M)
 FROM_LINE = re.compile(r"^From:[ \t]*(?P<value>[^\n]+)$", re.M)
-HTML_TAG = re.compile(r"<[^<>]{0,2000}>")
+
 AGENT_PHRASES = (
     re.compile(rf"on behalf of (?:my|our) client,?[ \t]+(?P<name>{NAME})"),
     re.compile(rf"\b[Mm]y client,?[ \t]+(?P<name>{NAME})"),
@@ -162,6 +162,27 @@ def read(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
 def _lines_of(text: str) -> str:
     """Line endings as LF, so CRLF mail splits on the same blank lines as LF mail."""
     return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _strip_tags(html: str) -> str:
+    """HTML with every tag replaced by a space, however long the tag. Each search starts
+    where the last one stopped, so the cost is linear in the text. Text after a "<" that
+    never closes is kept, as a browser would show it."""
+    parts: list[str] = []
+    at = 0
+    while True:
+        opens = html.find("<", at)
+        if opens < 0:
+            parts.append(html[at:])
+            break
+        closes = html.find(">", opens + 1)
+        if closes < 0:
+            parts.append(html[at:])
+            break
+        parts.append(html[at:opens])
+        parts.append(" ")
+        at = closes + 1
+    return "".join(parts)
 
 
 def _check_budget(text: str) -> None:
@@ -266,7 +287,7 @@ def _body_text(message: EmailMessage) -> str:
     content = _lines_of(content)
     _check_budget(content)
     if part.get_content_subtype() == "html":
-        content = HTML_TAG.sub(" ", content)
+        content = _strip_tags(content)
     return content
 
 
@@ -293,7 +314,9 @@ def _forward(body: str, zone: tzinfo) -> tuple[str, str | None, str | None, date
     markers = list(FORWARD_MARKER.finditer(body))
     if not markers:
         return body, None, None, None
-    inner = body[markers[-1].end() :]
+    # The marker pattern stops at its own line end; blank lines between the marker and the
+    # forwarded headers belong to neither.
+    inner = body[markers[-1].end() :].lstrip()
     head = inner.split("\n\n", 1)[0]
     sender = FROM_LINE.search(head)
     display, address = _address(sender.group("value")) if sender else (None, None)

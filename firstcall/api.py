@@ -74,9 +74,30 @@ def create_app(
             return {}
         return {"Access-Control-Allow-Origin": origin, "Vary": "Origin"}
 
+    # Allowed origins per source, refreshed at most once a minute with one query. A per-IP
+    # 429 reads this instead of the database, so a flood never costs a query per request,
+    # yet the browser can still show the form's "try again".
+    origins_cache: dict[str, Any] = {"at": None, "by_slug": {}}
+
+    def origins_for(slug: str) -> list[str]:
+        now = monotonic()
+        if origins_cache["at"] is None or now - origins_cache["at"] >= 60:
+            with sessions() as session:
+                rows = session.execute(select(Source.slug, Source.allowed_origins)).all()
+            origins_cache["by_slug"] = {s: list(o) for s, o in rows}
+            origins_cache["at"] = now
+        return origins_cache["by_slug"].get(slug, [])
+
+    async def limited(request: Request, slug: str) -> JSONResponse:
+        response = _error(429, "too many requests from this address")
+        origin = request.headers.get("origin")
+        if origin and origin in await run_in_threadpool(origins_for, slug):
+            response.headers.update({"Access-Control-Allow-Origin": origin, "Vary": "Origin"})
+        return response
+
     async def intake(request: Request, slug: str, token: str | None) -> JSONResponse:
         if not per_ip.allow(client_ip(request)):
-            return _error(429, "too many requests from this address")
+            return await limited(request, slug)
         source = await run_in_threadpool(load_source, slug)
         if source is None:
             return _error(404, "unknown source")
@@ -135,7 +156,7 @@ def create_app(
         """The browser's CORS check before a cross-origin form post. It carries no credential,
         so it reveals only whether this origin may post to the source."""
         if not per_ip.allow(client_ip(request)):
-            return _error(429, "too many requests from this address")
+            return await limited(request, slug)
         source = await run_in_threadpool(load_source, slug)
         headers = cors(source, request)
         if headers:

@@ -45,12 +45,17 @@
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const fields = Object.fromEntries(new FormData(form).entries());
-        const response = await fetch(INTAKE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(fields),
-        });
-        result.textContent = response.ok ? "Thanks, we'll be in touch." : "Please try again.";
+        try {
+          const response = await fetch(INTAKE_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(fields),
+          });
+          result.textContent = response.ok ? "Thanks, we'll be in touch." : "Please try again.";
+        } catch {
+          // The browser refuses a response it may not read, or the network failed.
+          result.textContent = "Please try again.";
+        }
       });
     </script>
   </body>

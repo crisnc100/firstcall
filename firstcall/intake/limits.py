@@ -45,10 +45,12 @@ class RateLimiter:
         current = self.now()
         if current - self.last_sweep >= WINDOW_SECONDS or len(self.hits) >= MAX_KEYS:
             self._sweep(current)
-        while len(self.hits) >= MAX_KEYS:
-            # Still full after the sweep: drop the key first seen longest ago.
+        key = key[:MAX_KEY_CHARS]
+        while key not in self.hits and len(self.hits) >= MAX_KEYS:
+            # Still full after the sweep: make room for a new key by dropping the key first
+            # seen longest ago. A key already in the table keeps its history.
             del self.hits[next(iter(self.hits))]
-        hits = self.hits.setdefault(key[:MAX_KEY_CHARS], deque())
+        hits = self.hits.setdefault(key, deque())
         while hits and current - hits[0] >= WINDOW_SECONDS:
             hits.popleft()
         if len(hits) >= self.per_minute:

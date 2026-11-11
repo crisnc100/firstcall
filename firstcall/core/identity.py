@@ -48,13 +48,19 @@ def normalize_email(text: str | None) -> str | None:
 
 
 def find_emails(text: str) -> list[str]:
-    """Every address in the text, lowercased, in order. A quote that opens an address, as in
-    'ana@example.com', is not part of it."""
+    """Every address in the text, lowercased, in order. An address is kept exactly as
+    written, leading quote included, because 'ana@ and ana@ can be two people's addresses.
+    The one exception is an address wrapped in a matching pair, as in 'ana@example.com',
+    where the quotes are punctuation around it."""
     found: list[str] = []
     for match in EMAIL.finditer(text):
-        address = match.group(0).lstrip(QUOTES).lower()
-        if address and not address.startswith("@"):
-            found.append(address)
+        address = match.group(0)
+        first, after = address[0], text[match.end() : match.end() + 1]
+        if first in QUOTES and after == first:
+            address = address[1:]
+        local = address.split("@", 1)[0]
+        if local.strip(QUOTES):
+            found.append(address.lower())
     return found
 
 
