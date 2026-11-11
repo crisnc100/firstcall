@@ -41,7 +41,8 @@ HARD_NEGATIVE_KINDS = (
     "phone_email_conflict",
 )
 CONFIRM_SEED = 13
-FIELD_METHODS = Path(__file__).resolve().parents[2] / "config" / "field_methods.yaml"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FIELD_METHODS = REPO_ROOT / "config" / "field_methods.yaml"
 
 
 class FixedClock:
@@ -194,11 +195,14 @@ def _field_ok(result: Result, gold: dict[str, Any], field: str) -> bool:
 
 def score(results: list[Result], labels: list[dict[str, Any]]) -> dict[str, Any]:
     by_id = {r.id: r for r in results}
-    gold_lead_to_system: dict[str, str] = {}
+    # Which gold buyer each system lead belongs to: the buyer of the message that created it.
+    # A repeat can create a second lead for the same buyer (a safe split, flagged as a
+    # possible duplicate), and a later message joining that lead joins the right person.
+    owner: dict[str, str | None] = {}
     for label in labels:
         result = by_id[label["id"]]
-        if label["lead"] and label["case"] != "repeat" and result.created and result.lead:
-            gold_lead_to_system.setdefault(label["lead"], result.lead)
+        if result.created and result.lead:
+            owner[result.lead] = label["lead"]
 
     def subset(split: str) -> list[dict[str, Any]]:
         if split == "all":
@@ -250,9 +254,8 @@ def score(results: list[Result], labels: list[dict[str, Any]]) -> dict[str, Any]
         attached_wrong = 0
         for g in repeats:
             result = by_id[g["id"]]
-            expected = gold_lead_to_system.get(g["lead"])
             if result.lead and not result.created:
-                if result.lead == expected:
+                if owner.get(result.lead) == g["lead"]:
                     attached_right += 1
                 else:
                     attached_wrong += 1
@@ -335,8 +338,27 @@ def score(results: list[Result], labels: list[dict[str, Any]]) -> dict[str, Any]
     return report
 
 
+def field_methods_frozen(path: Path, repo: Path) -> bool:
+    """Whether the per-field choice is committed and the working copy matches HEAD. Only then
+    is the choice fixed before the confirm run can be seen."""
+    import subprocess
+
+    if not path.exists():
+        return False
+    relative = str(path.resolve().relative_to(repo.resolve()))
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", relative], cwd=repo, capture_output=True
+    )
+    if tracked.returncode != 0:
+        return False
+    unchanged = subprocess.run(
+        ["git", "diff", "--quiet", "HEAD", "--", relative], cwd=repo, capture_output=True
+    )
+    return unchanged.returncode == 0
+
+
 def evaluate(seed: int, server_url: str) -> dict[str, Any]:
-    if seed == CONFIRM_SEED and not FIELD_METHODS.exists():
+    if seed == CONFIRM_SEED and not field_methods_frozen(FIELD_METHODS, REPO_ROOT):
         raise RuntimeError(
             "seed 13 is the confirm run; it runs once, after config/field_methods.yaml is committed"
         )

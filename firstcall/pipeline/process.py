@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select, text
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from firstcall import failpoints
@@ -159,16 +159,16 @@ def _add_identities(session: Session, lead: Lead, keys: list[tuple[str, str]]) -
 
 
 def _is_reforward(session: Session, message: Message, lead_id: uuid.UUID) -> bool:
-    window = f"{int(delivery.REFORWARD_WINDOW.total_seconds())} seconds"
+    # Within the window on either side: after a backlog, the later copy can be processed first.
     match = session.scalar(
         select(Message.id)
         .where(
             Message.lead_id == lead_id,
             Message.id != message.id,
             Message.clean_body_sha256 == message.clean_body_sha256,
-            Message.received_at > text("CAST(:arrived AS timestamptz) - CAST(:window AS interval)"),
+            Message.received_at > message.received_at - delivery.REFORWARD_WINDOW,
+            Message.received_at < message.received_at + delivery.REFORWARD_WINDOW,
         )
-        .params(arrived=message.received_at.isoformat(), window=window)
         .limit(1)
     )
     return match is not None
@@ -217,6 +217,10 @@ def process(session: Session, message_id: uuid.UUID, clock: Clock) -> str:
         lead = session.get_one(Lead, uuid.UUID(decision.attach_to), with_for_update=True)
         message.lead_id = lead.id
         message.team_id = lead.team_id
+        # A message that waited in a retry can attach after a later one made the lead; the
+        # lead's timers start at the buyer's earliest message either way.
+        if message.received_at < lead.arrival_at:
+            lead.arrival_at = message.received_at
         if source.kind == "email" and _is_reforward(session, message, lead.id):
             message.status, message.reason = (
                 "duplicate_content",

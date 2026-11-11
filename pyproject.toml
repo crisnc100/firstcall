@@ -54,6 +54,8 @@ ignore = ["S101"]
 "tests/**" = ["S105", "S106", "S608", "S603", "S607", "S311"]
 "firstcall/corpus/**" = ["S311", "PT018"]
 "migrations/versions/**" = ["E501"]
+# The confirm-run guard asks git, with fixed arguments, whether a file is committed.
+"firstcall/evaluation/run.py" = ["S603", "S607"]
 
 [tool.pyright]
 include = ["firstcall", "tests", "scripts", "migrations"]
