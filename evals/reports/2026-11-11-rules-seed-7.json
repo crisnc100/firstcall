@@ -22,7 +22,7 @@
       "kind": "Quality",
       "measure": "Recall (repeat messages attached)",
       "met": true,
-      "value": 1.0
+      "value": 0.9861
     },
     {
       "area": "Injection",
@@ -86,7 +86,7 @@
       "kind": "Quality",
       "measure": "Overall accuracy",
       "met": false,
-      "value": 0.806
+      "value": 0.8
     },
     {
       "area": "Category",
@@ -102,7 +102,7 @@
       "kind": "Quality",
       "measure": "Spam classed as lead",
       "met": false,
-      "value": 0.1724
+      "value": 0.2241
     },
     {
       "area": "Placement",
@@ -110,7 +110,7 @@
       "kind": "Quality",
       "measure": "Correct team, when the team is knowable",
       "met": true,
-      "value": 1.0
+      "value": 0.9969
     },
     {
       "area": "Placement",
@@ -140,29 +140,29 @@
       },
       "category": {
         "accuracy": {
-          "hits": 403,
+          "hits": 400,
           "interval": [
-            0.7691,
-            0.8383
+            0.7627,
+            0.8327
           ],
-          "rate": 0.806,
+          "rate": 0.8,
           "total": 500
         },
         "confusion": {
           "lead->lead": 355,
-          "spam->lead": 10,
-          "spam->spam": 48,
+          "spam->lead": 13,
+          "spam->spam": 45,
           "support->lead": 43,
           "vendor->lead": 44
         },
         "lead_as_not_lead": 0,
         "spam_as_lead": {
-          "hits": 10,
+          "hits": 13,
           "interval": [
-            0.0964,
-            0.2891
+            0.1359,
+            0.3466
           ],
-          "rate": 0.1724,
+          "rate": 0.2241,
           "total": 58
         }
       },
@@ -218,22 +218,22 @@
         "by_field": {
           "category": {
             "attacker_value_in_output": 8,
-            "of": 13,
+            "of": 16,
             "taken": 0
           },
           "email": {
             "attacker_value_in_output": 0,
-            "of": 4,
+            "of": 3,
             "taken": 0
           },
           "name": {
             "attacker_value_in_output": 0,
-            "of": 7,
+            "of": 3,
             "taken": 0
           },
           "phone": {
             "attacker_value_in_output": 0,
-            "of": 1,
+            "of": 3,
             "taken": 0
           },
           "team": {
@@ -248,12 +248,12 @@
       "lead_messages": 355,
       "matching": {
         "hard_negative_total": {
-          "of": 154,
+          "of": 131,
           "wrong_merges": 0
         },
         "hard_negatives": {
           "call_tracking_number": {
-            "of": 44,
+            "of": 31,
             "wrong_merges": 0
           },
           "household_phone": {
@@ -265,25 +265,25 @@
             "wrong_merges": 0
           },
           "portal_relay_sender": {
-            "of": 57,
+            "of": 38,
             "wrong_merges": 0
           },
           "shared_agent_phone": {
-            "of": 32,
+            "of": 27,
             "wrong_merges": 0
           }
         },
         "other_new_leads_merged": {
           "count": 0,
-          "of": 129
+          "of": 152
         },
         "recall": {
-          "hits": 72,
+          "hits": 71,
           "interval": [
-            0.9493,
-            1.0
+            0.9254,
+            0.9975
           ],
-          "rate": 1.0,
+          "rate": 0.9861,
           "total": 72
         },
         "wrong_attaches": {
@@ -300,21 +300,21 @@
           "of": 30
         },
         "correct": {
-          "hits": 325,
+          "hits": 324,
           "interval": [
-            0.9883,
-            1.0
+            0.9828,
+            0.9995
           ],
-          "rate": 1.0,
+          "rate": 0.9969,
           "total": 325
         },
         "unassigned": {
-          "hits": 0,
+          "hits": 1,
           "interval": [
-            0.0,
-            0.0117
+            0.0005,
+            0.0172
           ],
-          "rate": 0.0,
+          "rate": 0.0031,
           "total": 325
         },
         "wrong_team": {
@@ -328,11 +328,10 @@
         }
       },
       "statuses": {
-        "attached": 73,
+        "attached": 74,
         "duplicate_content": 1,
-        "duplicate_delivery": 1,
-        "lead_created": 377,
-        "not_a_lead": 48
+        "lead_created": 380,
+        "not_a_lead": 45
       }
     },
     "seen": {
@@ -342,29 +341,29 @@
       },
       "category": {
         "accuracy": {
-          "hits": 403,
+          "hits": 400,
           "interval": [
-            0.7691,
-            0.8383
+            0.7627,
+            0.8327
           ],
-          "rate": 0.806,
+          "rate": 0.8,
           "total": 500
         },
         "confusion": {
           "lead->lead": 355,
-          "spam->lead": 10,
-          "spam->spam": 48,
+          "spam->lead": 13,
+          "spam->spam": 45,
           "support->lead": 43,
           "vendor->lead": 44
         },
         "lead_as_not_lead": 0,
         "spam_as_lead": {
-          "hits": 10,
+          "hits": 13,
           "interval": [
-            0.0964,
-            0.2891
+            0.1359,
+            0.3466
           ],
-          "rate": 0.1724,
+          "rate": 0.2241,
           "total": 58
         }
       },
@@ -420,22 +419,22 @@
         "by_field": {
           "category": {
             "attacker_value_in_output": 8,
-            "of": 13,
+            "of": 16,
             "taken": 0
           },
           "email": {
             "attacker_value_in_output": 0,
-            "of": 4,
+            "of": 3,
             "taken": 0
           },
           "name": {
             "attacker_value_in_output": 0,
-            "of": 7,
+            "of": 3,
             "taken": 0
           },
           "phone": {
             "attacker_value_in_output": 0,
-            "of": 1,
+            "of": 3,
             "taken": 0
           },
           "team": {
@@ -450,12 +449,12 @@
       "lead_messages": 355,
       "matching": {
         "hard_negative_total": {
-          "of": 154,
+          "of": 131,
           "wrong_merges": 0
         },
         "hard_negatives": {
           "call_tracking_number": {
-            "of": 44,
+            "of": 31,
             "wrong_merges": 0
           },
           "household_phone": {
@@ -467,25 +466,25 @@
             "wrong_merges": 0
           },
           "portal_relay_sender": {
-            "of": 57,
+            "of": 38,
             "wrong_merges": 0
           },
           "shared_agent_phone": {
-            "of": 32,
+            "of": 27,
             "wrong_merges": 0
           }
         },
         "other_new_leads_merged": {
           "count": 0,
-          "of": 129
+          "of": 152
         },
         "recall": {
-          "hits": 72,
+          "hits": 71,
           "interval": [
-            0.9493,
-            1.0
+            0.9254,
+            0.9975
           ],
-          "rate": 1.0,
+          "rate": 0.9861,
           "total": 72
         },
         "wrong_attaches": {
@@ -502,21 +501,21 @@
           "of": 30
         },
         "correct": {
-          "hits": 325,
+          "hits": 324,
           "interval": [
-            0.9883,
-            1.0
+            0.9828,
+            0.9995
           ],
-          "rate": 1.0,
+          "rate": 0.9969,
           "total": 325
         },
         "unassigned": {
-          "hits": 0,
+          "hits": 1,
           "interval": [
-            0.0,
-            0.0117
+            0.0005,
+            0.0172
           ],
-          "rate": 0.0,
+          "rate": 0.0031,
           "total": 325
         },
         "wrong_team": {
@@ -530,11 +529,10 @@
         }
       },
       "statuses": {
-        "attached": 73,
+        "attached": 74,
         "duplicate_content": 1,
-        "duplicate_delivery": 1,
-        "lead_created": 377,
-        "not_a_lead": 48
+        "lead_created": 380,
+        "not_a_lead": 45
       }
     },
     "unseen": {
