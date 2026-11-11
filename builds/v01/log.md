@@ -204,3 +204,23 @@ file was committed first, and all 27 cases failed before any fix.
   - the CRLF test, which converted line endings twice;
   - the server-log test, which also caught the test client's own URL log;
   - one type annotation.
+
+## Phase 8: the fix-check round (last round)
+
+The fix check found five regressions from the review round. Their tests are in
+`tests/test_fix_check.py`, committed before the fix, and all failed first.
+
+- **Forward marker, blank line after it.** The marker pattern stops at its own line end, so
+  `_forward` skips leading blank lines before reading the forwarded headers.
+- **HTML tags.** The bounded tag pattern left tags over 2,000 characters in the text. A scan
+  that resumes where the last search stopped replaces every tag whatever its length, and stays
+  linear. A guard test times it at the full read budget.
+- **Quote-led addresses** are kept as written, because 'ana@ and ana@ can be different people.
+  Only an address wrapped in a matching pair of quotes loses them.
+- **The rate-limit key cap** evicts only to make room for a new key; a key already in the table
+  keeps its history.
+- **CORS on a per-IP 429** comes from a per-minute cache of every source's allowed origins, so
+  a flood costs at most one query a minute. The example form catches a refused request and
+  shows "Please try again."
+
+Whatever the review of this round finds is deferred, not fixed in another round.
