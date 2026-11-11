@@ -192,16 +192,20 @@ def test_1c9500_s1_the_rules_read_is_fast_on_adversarial_text_at_the_cap() -> No
     width = getattr(read, "MAX_LINE_CHARS", 2_000)
     lines = getattr(read, "MAX_LINES", 3_000)
     text_cap = getattr(read, "MAX_TEXT_CHARS", 100_000)
+    # Each fixture adds a few characters and lines of its own, so the body leaves room for
+    # them: every read must run to the end, inside the budget.
+    room = 100
     for filler in _fillers(width):
-        body = "\n".join([filler] * lines)[:text_cap]
+        body = "\n".join([filler] * (lines - 5))[: text_cap - room]
         for raw, rules in (
             (email("A <a@b.example>", body), INBOX),
             (email("Hearthly <leads@hearthly.example>", body), INBOX),
             (email("A <a@b.example>", "My client Ana Ruiz\n" + body), INBOX),
             (json.dumps({"name": "x", "message": body}).encode(), SourceRules("form")),
         ):
-            with cpu_limit(2.0), contextlib.suppress(read.UnparseableError):
-                read.read(raw, rules, REFERENCE)
+            with cpu_limit(2.0):
+                reading = read.read(raw, rules, REFERENCE)
+            assert reading.category in ("lead", "spam")
 
 
 def test_1c9500_s1_an_over_budget_message_fails_with_a_reason(pipe: Pipeline) -> None:
