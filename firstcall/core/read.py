@@ -15,10 +15,9 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, tzinfo
-from email import policy
-from email.header import decode_header, make_header
-from email.message import Message
+from email.message import EmailMessage
 from email.parser import BytesParser
+from email.policy import EmailPolicy
 from email.utils import getaddresses, parsedate_to_datetime
 from typing import Any, cast
 
@@ -47,6 +46,8 @@ MAX_TEXT_CHARS = 200_000
 MAX_LINES = 4_000
 MAX_LINE_CHARS = 4_000
 MAX_HEADER_BYTES = 64_000
+MAX_PARTS = 100
+MAX_DEPTH = 10
 
 
 @dataclass(frozen=True)
@@ -322,26 +323,15 @@ def _first(values: list[str], excluded: set[str]) -> str | None:
 # Email
 
 
-def _text_part(message: Message) -> Message | None:
-    """The first plain-text part that is not an attachment, else the first HTML one."""
-    found: dict[str, Message] = {}
-    for part in message.walk():
-        if part.get_content_maintype() != "text" or part.get_content_disposition() == "attachment":
-            continue
-        found.setdefault(part.get_content_subtype(), part)
-    return found.get("plain") or found.get("html")
-
-
-def _body_text(message: Message) -> str:
-    part = _text_part(message)
+def _body_text(message: EmailMessage) -> str:
+    part = message.get_body(preferencelist=("plain", "html"))
     if part is None:
         return ""
-    payload = part.get_payload(decode=True)
-    data = payload if isinstance(payload, bytes) else b""
     try:
-        content = data.decode(part.get_content_charset() or "utf-8", "replace")
-    except LookupError:
-        content = data.decode("utf-8", "replace")
+        content = str(cast(Any, part).get_content())
+    except (LookupError, ValueError):
+        payload = part.get_payload(decode=True)
+        content = payload.decode("utf-8", "replace") if isinstance(payload, bytes) else ""
     content = _lines_of(content)
     _check_budget(content)
     if part.get_content_subtype() == "html":
@@ -397,32 +387,85 @@ def _forward(
     return (rest[1] if len(rest) > 1 else ""), display, address, sent, reply_to
 
 
-def _header(message: Message, name: str) -> str:
-    """A header as text, with encoded words decoded. Raw 8-bit bytes are read as UTF-8."""
-    value = message.get(name)
-    if value is None:
-        return ""
-    text = str(value).encode("utf-8", "surrogateescape").decode("utf-8", "replace")
+class _Budget:
+    """Header and part counts for one message, filled while the parser reads it."""
+
+    def __init__(self) -> None:
+        self.header_bytes = 0
+        self.parts = 0
+
+
+class _BudgetPolicy(EmailPolicy):
+    """The default email policy, with every header of every part, nested ones included,
+    checked against the read budget as the parser meets it. A header is refused before any
+    structured parse of it, whose time grows faster than the header's length."""
+
+    budget: _Budget | None = None
+
+    def header_source_parse(self, sourcelines: list[str]) -> tuple[str, str]:
+        budget = self.budget
+        assert budget is not None
+        size = sum(len(line) for line in sourcelines)
+        if size > MAX_LINE_CHARS:
+            raise OverBudgetError(
+                f"over the read budget: a header of {size} characters (limit {MAX_LINE_CHARS})"
+            )
+        budget.header_bytes += size
+        if budget.header_bytes > MAX_HEADER_BYTES:
+            raise OverBudgetError(
+                f"over the read budget: {budget.header_bytes} characters of headers "
+                f"(limit {MAX_HEADER_BYTES})"
+            )
+        name, value = super().header_source_parse(sourcelines)
+        if name.strip().lower() == "content-type":
+            budget.parts += 1
+            if budget.parts > MAX_PARTS:
+                raise OverBudgetError(f"over the read budget: more than {MAX_PARTS} parts")
+        return name, value
+
+
+def _depth(message: EmailMessage) -> int:
+    """How deeply parts nest, walked without recursion."""
+    deepest = 0
+    stack: list[tuple[Any, int]] = [(message, 1)]
+    while stack:
+        part, level = stack.pop()
+        deepest = max(deepest, level)
+        payload = part.get_payload()
+        if isinstance(payload, list):
+            stack.extend((child, level + 1) for child in cast(list[Any], payload))
+    return deepest
+
+
+def _parse(raw: bytes) -> EmailMessage:
+    """The message under the default policy, inside the read budget. Each message gets a fresh
+    budget. Nesting deep enough to exhaust Python's stack is refused the same way."""
+    budget = _Budget()
     try:
-        return str(make_header(decode_header(text)))
-    except (LookupError, ValueError, UnicodeDecodeError):
-        return text
+        options: dict[str, Any] = {"budget": budget}
+        parse_policy: EmailPolicy = _BudgetPolicy(**options)
+        message = BytesParser(policy=parse_policy).parsebytes(raw)
+        depth = _depth(cast(EmailMessage, message))
+    except RecursionError as error:
+        raise OverBudgetError("over the read budget: parts nested too deeply") from error
+    if depth > MAX_DEPTH:
+        raise OverBudgetError(
+            f"over the read budget: parts nested {depth} deep (limit {MAX_DEPTH})"
+        )
+    return cast(EmailMessage, message)
 
 
 def _read_email(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
-    check_header_budget(raw)
-    # compat32 keeps every header a plain string. The structured header parser costs time
-    # quadratic in a header's length, so it never sees message text.
-    message = BytesParser(policy=policy.compat32).parsebytes(raw)
-    display, sender = _address(_header(message, "From"))
+    message = _parse(raw)
+    display, sender = _address(message.get("From"))
     body = _body_text(message)
     if not sender and not body.strip():
         raise UnparseableError("no sender and no text")
-    subject = _header(message, "Subject")
-    header_time = _date(_header(message, "Date"))
+    subject = str(message.get("Subject") or "")
+    header_time = _date(message.get("Date"))
     zone = header_time.tzinfo if header_time and header_time.tzinfo else UTC
     content, inner_display, inner_sender, forwarded_at, inner_reply = _forward(body, zone)
-    reply_to = _address(_header(message, "Reply-To"))[1]
+    reply_to = _address(message.get("Reply-To"))[1]
     if inner_sender:
         # The forwarded message is the lead; the forwarder's own headers say nothing of it.
         display, sender, reply_to = inner_display, inner_sender, inner_reply
