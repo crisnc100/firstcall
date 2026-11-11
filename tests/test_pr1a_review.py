@@ -227,8 +227,10 @@ def test_1c9500_s1_an_over_budget_message_fails_with_a_reason(pipe: Pipeline) ->
     ],
 )
 def test_1c9500_f1_a_crlf_forward_keeps_its_buyer_fields(marker: str) -> None:
-    body = "FYI\r\n\r\n" + marker + "\r\n" + PORTAL.replace("\n", "\r\n")
+    body = "FYI\n\n" + marker.replace("\r\n", "\n") + "\n" + PORTAL
     raw = email("Sam <sam@larkspur.example>", body, "Fwd: x").replace(b"\n", b"\r\n")
+    assert b"\r\r" not in raw
+    assert raw.count(b"\r\n") == raw.count(b"\n")
     reading = read.read(raw, INBOX, REFERENCE)
     assert (reading.name, reading.phone, reading.email, reading.item) == (
         "Ana Ruiz",
