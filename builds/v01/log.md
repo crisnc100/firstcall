@@ -287,3 +287,25 @@ so the approach was set by all four model families, not by another patch.
   chain's References, count only toward the 64,000 total and the part limit. Losing a real lead
   over its thread history would be the worse error. A 20,000-character References header is
   read with its buyer, inside the 2-CPU-second test limit.
+
+## Phase 11: the last review slice
+
+The review of the email reset found 4 MEDIUM and 4 LOW findings. Their tests are in
+`tests/test_last_slice.py`, committed first, and all 13 cases failed before the fix.
+
+- **HTML keeps its lines.** Block tags become line breaks, so HTML-only portal fields in
+  paragraphs, br lines or table rows are labelled lines again. Table cells are the one
+  deliberate exception to the list I was given: they stay spaces, because a label cell and its
+  value cell share a row, and a line break between them would separate "Name:" from the name.
+  The row tag still ends the line.
+- **Parts are counted where the parser makes them**, in the policy's message factory, so parts
+  with no headers count too.
+- **Intake and the worker share one header rule.** Only read or parsed headers are capped at
+  4,000 characters; every header counts toward the 64 KB total.
+- **Long Message-IDs** (over 200 characters, or with unprintable characters) are keyed by their
+  hash, so the message is stored and a redelivery still matches.
+- **Recursion.** A stack overflow anywhere in a read, including headers the library parses
+  only when fetched and deeply nested JSON, ends the message `failed` with a reason on its
+  first attempt.
+
+Both reports still reproduce byte for byte.
