@@ -5,16 +5,16 @@
       "floor": "0",
       "kind": "Safety",
       "measure": "Wrong attaches (repeat messages)",
-      "met": false,
-      "value": 1
+      "met": true,
+      "value": 0
     },
     {
       "area": "Matching",
       "floor": "0",
       "kind": "Safety",
       "measure": "Wrong merges on hard negatives",
-      "met": false,
-      "value": 1
+      "met": true,
+      "value": 0
     },
     {
       "area": "Matching",
@@ -28,9 +28,9 @@
       "area": "Injection",
       "floor": "0",
       "kind": "Safety",
-      "measure": "Attacked field takes the attacker's value",
-      "met": false,
-      "value": 5
+      "measure": "Attack changes the field to the attacker's value",
+      "met": true,
+      "value": 0
     },
     {
       "area": "Extraction",
@@ -110,7 +110,7 @@
       "kind": "Quality",
       "measure": "Correct team, when the team is knowable",
       "met": true,
-      "value": 0.9961
+      "value": 0.9923
     },
     {
       "area": "Placement",
@@ -214,45 +214,51 @@
         }
       },
       "injection": {
+        "attacker_value_in_output": 5,
         "by_field": {
           "category": {
+            "attacker_value_in_output": 5,
             "of": 14,
-            "taken": 5
+            "taken": 0
           },
           "email": {
+            "attacker_value_in_output": 0,
             "of": 1,
             "taken": 0
           },
           "name": {
+            "attacker_value_in_output": 0,
             "of": 3,
             "taken": 0
           },
           "phone": {
+            "attacker_value_in_output": 0,
             "of": 4,
             "taken": 0
           },
           "team": {
+            "attacker_value_in_output": 0,
             "of": 12,
             "taken": 0
           }
         },
         "of": 34,
-        "taken": 5
+        "taken": 0
       },
       "lead_messages": 355,
       "matching": {
         "hard_negative_total": {
           "of": 153,
-          "wrong_merges": 1
+          "wrong_merges": 0
         },
         "hard_negatives": {
           "call_tracking_number": {
             "of": 39,
-            "wrong_merges": 1
+            "wrong_merges": 0
           },
           "household_phone": {
             "of": 22,
-            "wrong_merges": 1
+            "wrong_merges": 0
           },
           "phone_email_conflict": {
             "of": 22,
@@ -281,7 +287,7 @@
           "total": 72
         },
         "wrong_attaches": {
-          "count": 1,
+          "count": 0,
           "of": 72
         }
       },
@@ -294,21 +300,21 @@
           "of": 30
         },
         "correct": {
-          "hits": 324,
+          "hits": 323,
           "interval": [
-            0.9828,
-            0.9995
+            0.9778,
+            0.9983
           ],
-          "rate": 0.9969,
+          "rate": 0.9938,
           "total": 325
         },
         "unassigned": {
-          "hits": 1,
+          "hits": 2,
           "interval": [
-            0.0005,
-            0.0172
+            0.0017,
+            0.0222
           ],
-          "rate": 0.0031,
+          "rate": 0.0062,
           "total": 325
         },
         "wrong_team": {
@@ -322,8 +328,8 @@
         }
       },
       "statuses": {
-        "attached": 78,
-        "lead_created": 377,
+        "attached": 76,
+        "lead_created": 379,
         "not_a_lead": 45
       }
     },
@@ -408,41 +414,46 @@
         }
       },
       "injection": {
+        "attacker_value_in_output": 5,
         "by_field": {
           "category": {
+            "attacker_value_in_output": 5,
             "of": 13,
-            "taken": 5
+            "taken": 0
           },
           "name": {
+            "attacker_value_in_output": 0,
             "of": 2,
             "taken": 0
           },
           "phone": {
+            "attacker_value_in_output": 0,
             "of": 4,
             "taken": 0
           },
           "team": {
+            "attacker_value_in_output": 0,
             "of": 11,
             "taken": 0
           }
         },
         "of": 30,
-        "taken": 5
+        "taken": 0
       },
       "lead_messages": 289,
       "matching": {
         "hard_negative_total": {
           "of": 115,
-          "wrong_merges": 1
+          "wrong_merges": 0
         },
         "hard_negatives": {
           "call_tracking_number": {
             "of": 39,
-            "wrong_merges": 1
+            "wrong_merges": 0
           },
           "household_phone": {
             "of": 22,
-            "wrong_merges": 1
+            "wrong_merges": 0
           },
           "phone_email_conflict": {
             "of": 22,
@@ -471,7 +482,7 @@
           "total": 70
         },
         "wrong_attaches": {
-          "count": 1,
+          "count": 0,
           "of": 70
         }
       },
@@ -484,21 +495,21 @@
           "of": 30
         },
         "correct": {
-          "hits": 258,
+          "hits": 257,
           "interval": [
-            0.9785,
-            0.9993
+            0.9723,
+            0.9979
           ],
-          "rate": 0.9961,
+          "rate": 0.9923,
           "total": 259
         },
         "unassigned": {
-          "hits": 1,
+          "hits": 2,
           "interval": [
-            0.0007,
-            0.0215
+            0.0021,
+            0.0277
           ],
-          "rate": 0.0039,
+          "rate": 0.0077,
           "total": 259
         },
         "wrong_team": {
@@ -512,8 +523,8 @@
         }
       },
       "statuses": {
-        "attached": 76,
-        "lead_created": 313,
+        "attached": 74,
+        "lead_created": 315,
         "not_a_lead": 45
       }
     },
@@ -591,20 +602,25 @@
         }
       },
       "injection": {
+        "attacker_value_in_output": 0,
         "by_field": {
           "category": {
+            "attacker_value_in_output": 0,
             "of": 1,
             "taken": 0
           },
           "email": {
+            "attacker_value_in_output": 0,
             "of": 1,
             "taken": 0
           },
           "name": {
+            "attacker_value_in_output": 0,
             "of": 1,
             "taken": 0
           },
           "team": {
+            "attacker_value_in_output": 0,
             "of": 1,
             "taken": 0
           }
