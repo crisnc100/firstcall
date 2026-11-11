@@ -27,9 +27,14 @@ class Decision:
     possible_duplicates: tuple[str, ...] = ()
 
 
-def compatible(a: str | None, b: str | None) -> bool:
-    """First names equal, or one side blank."""
-    return not a or not b or a == b
+def compatible(message_name: str | None, lead_name: str | None) -> bool:
+    """Whether a phone hit may join: the message has no first name, or both first names are
+    equal. A named message never joins a nameless lead on phone alone, because the rules
+    leave a lead nameless whenever they cannot find the name, and a different person on the
+    same phone would then join it."""
+    if not message_name:
+        return True
+    return message_name == lead_name
 
 
 def decide(

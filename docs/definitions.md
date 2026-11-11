@@ -57,7 +57,11 @@ These terms are fixed. Code, tests and docs use them with exactly these meanings
 - **Lead:** one person interested in buying, inside one team or the Unassigned pool. The first
   message creates it. Later messages from the same person attach to it as activity.
 - **Identity:** the buyer's normalised phone (E.164) and lowercased email. Agent contacts, portal
-  relay senders and call-tracking numbers are never identities (see Matching).
+  relay senders and call-tracking numbers are never identities.
+- **Compatible name:** a phone match may join a lead when both first names are equal, or when
+  the message has no name. A message that has a name never joins a nameless lead on phone
+  alone. Rules leave a lead nameless when they cannot find the name, so a nameless lead says
+  nothing about who it is.
 - **Pool:** the unclaimed leads of one team. **Unassigned** is the pool for leads with no team; the
   monitor watches it.
 - **Claim:** a salesperson takes a pool lead. The first claim wins.

@@ -372,3 +372,42 @@ def test_every_processed_message_ends_terminal_with_a_reason(pipe: Pipeline) -> 
         rows = session.query(Message.status, Message.reason).all()
     assert {status for status, _ in rows} == {"lead_created", "not_a_lead", "failed"}
     assert all(reason for _, reason in rows)
+
+
+# The two seed-11 patterns behind the compatible-name amendment
+
+UNLABELLED = "Lead details:\n  full_name => {name}\n  mobile => {phone}\n  home => {item}\n"
+
+
+def test_a_household_member_never_joins_a_lead_whose_name_was_not_read(pipe: Pipeline) -> None:
+    nameless = pipe.deliver(
+        "inbox",
+        portal(UNLABELLED.format(name="Gregory Wood", phone="2125550163", item="Heron Bay")),
+    )
+    assert pipe.lead(nameless.lead_id).name is None
+    call = {"caller": {"name": "Tina Wood", "number": "+12125550163"}, "listing": "Heron Bay"}
+    household = pipe.deliver_form("calls", call)
+    assert household.status == "lead_created"
+    assert pipe.lead(household.lead_id).possible_duplicates == [str(nameless.lead_id)]
+    repeat = pipe.deliver_form("calls", {**call, "call_id": "again"})
+    assert repeat.status == "attached"
+    assert repeat.lead_id == household.lead_id
+
+
+def test_a_named_repeat_joins_its_lead_despite_a_nameless_lead_on_the_same_phone(
+    pipe: Pipeline,
+) -> None:
+    pipe.deliver(
+        "inbox",
+        portal(UNLABELLED.format(name="Laura Herman", phone="2255550166", item="Copperleaf")),
+    )
+    own = pipe.deliver_form(
+        "site-form",
+        site("Lindsay Herman", "225-555-0166", "lherman@letterbox.example", "Alder Ridge"),
+    )
+    repeat = pipe.deliver_form(
+        "site-form",
+        site("Lindsay Herman", "225-555-0166", "lherman@letterbox.example", message="Hi again"),
+    )
+    assert repeat.status == "attached"
+    assert repeat.lead_id == own.lead_id

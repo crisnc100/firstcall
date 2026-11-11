@@ -11,7 +11,7 @@ matching must stay strict about what counts as the same person.
 ## Decision
 - An **identity** is the buyer's normalised phone (E.164) or lowercased email.
 - Inside the placed team, a message joins a lead with the same email, or the same phone and a
-  compatible name (first names equal, or one side blank). With no team, the same lookup runs
+  compatible name (first names equal, or one side blank; amended below). With no team, the same lookup runs
   across the org: exactly one hit joins that lead and its team; more than one makes a new lead
   in Unassigned, flagged with the possible matches.
 - **Never an identity:** agent phones and emails, portal relay senders listed on the source,
@@ -58,3 +58,16 @@ nameless. Seed 11 showed it in two households:
   nameless lead from `s11-0091` on the same phone counted as a second compatible hit.
 
 Seed 7 has no unseen layouts, so the tuning run could not show this.
+
+## Amendment (2026-11-11, approved by Cristian)
+The compatible-name rule is now one-directional: a phone match joins when both first names are
+equal, or when the message has no name. A message that has a name never joins a nameless lead
+on phone alone. A nameless message still joins, because calls without caller ID are common and
+the phone is all they carry.
+
+The stricter variant, "both names present and equal", was rejected: on seed 7 it loses two
+gold repeats whose earlier lead had no readable name.
+
+Seed 11 found this rule. The result above is from before the change. The seed-11 report was
+then rerun once with the new rule, so it now shows the rule's effect on a run that has already
+been looked at. It is not a fresh held-out test. Seed 13 stays untouched and is that test.

@@ -98,3 +98,23 @@ def test_place_uses_item_then_team_field_then_default() -> None:
     assert place(None, "Atlantis", "north", ITEMS, NAMES) == "north"
     assert place("Unknown Item", None, None, ITEMS, NAMES) is None
     assert place(None, None, None, ITEMS, NAMES) is None
+
+
+def test_a_named_message_never_joins_a_nameless_lead_on_phone_alone() -> None:
+    nameless = lead("N", name=None, phone=True)
+    assert decide("west", "luis", [nameless]) == Decision(None, "west", ("N",))
+    assert decide(None, "luis", [nameless]) == Decision(None, None, ("N",))
+    assert not compatible("luis", None)
+
+
+def test_a_nameless_message_still_joins_on_phone() -> None:
+    assert decide("west", None, [lead("A", phone=True)]) == Decision("A", "west")
+    assert decide("west", None, [lead("N", name=None, phone=True)]) == Decision("N", "west")
+    assert compatible(None, None)
+    assert compatible("", "ana")
+
+
+def test_a_named_repeat_is_not_blocked_by_a_nameless_lead_on_the_same_phone() -> None:
+    own = lead("L", name="lindsay", email=True, phone=True)
+    other = lead("N", team="north", name=None, phone=True)
+    assert decide(None, "lindsay", [own, other]) == Decision("L", "west")

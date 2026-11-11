@@ -128,6 +128,10 @@ Background jobs live in Postgres. There is no extra queue service.
   message creates it. Later messages from the same person attach to it as activity.
 - **Identity:** the buyer's normalised phone (E.164) and lowercased email. Agent contacts, portal
   relay senders and call-tracking numbers are never identities (see Matching).
+- **Compatible name** (amended 2026-11-11, approved by Cristian): a phone match may join a lead
+  when both first names are equal, or when the message has no name. A message that has a name
+  never joins a nameless lead on phone alone. The first rule, "one side blank", let a household
+  member join a lead whose name the rules could not read; the held-out seed-11 run found it.
 - **Pool:** the unclaimed leads of one team. **Unassigned** is the pool for leads with no team; the
   monitor watches it.
 - **Claim:** a salesperson takes a pool lead. The first claim wins.
@@ -246,7 +250,8 @@ simulated answers in this project.
 4. **Place:** the item or the form's team field maps to a team through config. No match goes to Unassigned.
 5. **Match**, before any category gate:
    - Inside the placed team, look for an open or closed lead with the same email, or the same phone
-     with a compatible name (first names equal, or one side blank).
+     with a compatible name: first names equal, or the message has no name. A message that has a
+     name never joins a nameless lead on phone alone (amended 2026-11-11, see Definitions).
    - With no team, look across the org. Exactly one hit attaches to that lead and its team. More than
      one goes to Unassigned, flagged with the possible matches.
    - **Never an identity:** agent phones and emails (agents are listed per org and detected by the read),
