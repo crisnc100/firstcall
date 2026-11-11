@@ -17,6 +17,8 @@ from datetime import timedelta
 
 WINDOW = timedelta(minutes=10)
 REFORWARD_WINDOW = timedelta(hours=24)
+# Longer Message-IDs are stored hashed; the key column holds 1,000 characters.
+MAX_MESSAGE_ID_CHARS = 200
 
 
 @dataclass(frozen=True)
@@ -37,7 +39,12 @@ def sha256(data: bytes) -> str:
 def for_email(raw: bytes, message_id: str | None) -> DeliveryKey:
     digest = sha256(raw)
     cleaned = (message_id or "").strip()
-    return DeliveryKey(f"mid:{cleaned}" if cleaned else f"sha:{digest}", digest)
+    if not cleaned:
+        return DeliveryKey(f"sha:{digest}", digest)
+    if len(cleaned) > MAX_MESSAGE_ID_CHARS or not cleaned.isprintable():
+        # Hashing keeps the key short enough to store while a redelivery still matches.
+        return DeliveryKey(f"midh:{sha256(cleaned.encode())}", digest)
+    return DeliveryKey(f"mid:{cleaned}", digest)
 
 
 def for_json(body: bytes, delivery_id: str | None) -> DeliveryKey:

@@ -164,9 +164,14 @@ FORWARD_FORMATS = ("%a, %b %d, %Y at %I:%M %p", "%A, %B %d, %Y %I:%M %p")
 def read(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
     """The rules read. Raises UnparseableError, or OverBudgetError for text over the read
     budget, which the pipeline records as a failed message with its reason."""
-    if rules.kind == "email":
-        return _read_email(raw, rules, reference)
-    return _read_json(raw, rules, reference)
+    try:
+        if rules.kind == "email":
+            return _read_email(raw, rules, reference)
+        return _read_json(raw, rules, reference)
+    except RecursionError as error:
+        # The email library parses some headers only when they are fetched, and a header
+        # or JSON value nested deeply enough overflows the stack there.
+        raise OverBudgetError("over the read budget: nested too deeply") from error
 
 
 # Shared helpers
@@ -186,16 +191,36 @@ def check_header_budget(raw: bytes) -> None:
         raise OverBudgetError(
             f"over the read budget: {len(head)} bytes of headers (limit {MAX_HEADER_BYTES})"
         )
+    # Only headers that get read or parsed have a length cap, as in the worker's parse;
+    # a long unread header such as References counts only toward the total.
     longest = 0
     current = 0
+    name = b""
     for line in head.split(b"\n"):
-        # A line that starts with a space or tab continues the header above it.
-        current = current + len(line) if line[:1] in (b" ", b"\t") else len(line)
-        longest = max(longest, current)
+        if line[:1] in (b" ", b"\t"):
+            # A line that starts with a space or tab continues the header above it.
+            current += len(line)
+        else:
+            current = len(line)
+            name = line.split(b":", 1)[0].strip().lower()
+        if name.decode("latin-1") in PARSED_HEADERS:
+            longest = max(longest, current)
     if longest > MAX_LINE_CHARS:
         raise OverBudgetError(
             f"over the read budget: a header of {longest} bytes (limit {MAX_LINE_CHARS})"
         )
+
+
+TAG_NAME = re.compile(r"</?([A-Za-z][A-Za-z0-9]{0,9})")
+# Tags that start a new line on the page. Table cells are left out: a label cell and its
+# value cell share a row, and the row's own tag already ends the line.
+BLOCK_TAGS = frozenset(
+    {
+        "p", "div", "br", "tr", "li", "ul", "ol", "table", "tbody", "thead", "tfoot",
+        "h1", "h2", "h3", "h4", "h5", "h6", "hr", "section", "article", "header", "footer",
+        "blockquote", "pre", "dl", "dt", "dd", "address",
+    }
+)  # fmt: skip
 
 
 def _tag_end(html: str, opens: int) -> int:
@@ -222,9 +247,10 @@ def _tag_end(html: str, opens: int) -> int:
 
 
 def _strip_tags(html: str) -> str:
-    """HTML with every tag and comment replaced by a space, however long. Each tag is scanned
-    once and the next search starts after it, so the cost is linear in the text. Text after a
-    "<" that never closes is kept, as a browser would show it."""
+    """HTML with each block tag replaced by a line break and every other tag or comment by a
+    space, so labelled fields in paragraphs, rows or br lines stay on their own lines. Each
+    tag is scanned once and the next search starts after it, so the cost is linear in the
+    text. Text after a "<" that never closes is kept, as a browser would show it."""
     parts: list[str] = []
     at = 0
     while True:
@@ -237,7 +263,8 @@ def _strip_tags(html: str) -> str:
             parts.append(html[at:])
             break
         parts.append(html[at:opens])
-        parts.append(" ")
+        tag = TAG_NAME.match(html, opens)
+        parts.append("\n" if tag and tag.group(1).lower() in BLOCK_TAGS else " ")
         at = closes + 1
     return "".join(parts)
 
@@ -426,12 +453,7 @@ class _BudgetPolicy(EmailPolicy):
                 f"over the read budget: {budget.header_bytes} characters of headers "
                 f"(limit {MAX_HEADER_BYTES})"
             )
-        field, value = super().header_source_parse(sourcelines)
-        if name == "content-type":
-            budget.parts += 1
-            if budget.parts > MAX_PARTS:
-                raise OverBudgetError(f"over the read budget: more than {MAX_PARTS} parts")
-        return field, value
+        return super().header_source_parse(sourcelines)
 
 
 def _depth(message: EmailMessage) -> int:
@@ -452,7 +474,16 @@ def _parse(raw: bytes) -> EmailMessage:
     budget. Nesting deep enough to exhaust Python's stack is refused the same way."""
     budget = _Budget()
     try:
-        options: dict[str, Any] = {"budget": budget}
+
+        def new_part(policy: Any = None) -> EmailMessage:
+            # The parser calls this for the message and for every part, with or without
+            # headers, so the count is of real parts.
+            budget.parts += 1
+            if budget.parts > MAX_PARTS:
+                raise OverBudgetError(f"over the read budget: more than {MAX_PARTS} parts")
+            return EmailMessage(policy=policy)
+
+        options: dict[str, Any] = {"budget": budget, "message_factory": new_part}
         parse_policy: EmailPolicy = _BudgetPolicy(**options)
         message = BytesParser(policy=parse_policy).parsebytes(raw)
         depth = _depth(cast(EmailMessage, message))
