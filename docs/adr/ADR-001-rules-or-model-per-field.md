@@ -62,3 +62,22 @@ unseen layouts have 66.
 The seen layouts are labelled, and the rules were written for exactly those labels, so the
 seen scores say little about real mail. Unseen names show where rules stop: they know the
 shape of a phone, an email and a listed item, but not where a new layout puts the name.
+
+## Reading email inside the budget
+Decided 2026-11-11, after the prediction and the result above; it changes no score.
+
+The rules read email with the Python standard library's default policy. The policy unfolds
+long headers, decodes encoded names, and picks the plain or HTML body out of the parts. A hook
+on that policy checks every header of every part against the
+[read budget](../definitions.md#what-comes-in) before the library parses it, and the parser's
+part factory counts parts as it makes them. A message over the budget ends `failed` with its
+reason.
+
+Rejected:
+- A hand-written walk over the parts, and a scan of the raw bytes in place of the parser. Both
+  would redo work the library already does, with new ways to get it wrong.
+- The library's older `compat32` policy, which was tried. It read an attached message as the
+  body, split an encoded display name at a comma, and left folded headers folded.
+
+Intake still runs a raw-byte header check and a headers-only `compat32` parse, but only to find
+the `Message-ID` for the delivery key.

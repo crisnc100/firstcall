@@ -27,7 +27,10 @@ These terms are fixed. Code, tests and docs use them with exactly these meanings
   method, a field mapping and an optional default team.
 - **Message:** one delivery from one source, stored raw before anything else runs.
 - **Delivery key:** how a repeat delivery is spotted.
-  - Email: the source plus the `Message-ID` header. With no `Message-ID`, the SHA-256 of the raw message.
+  - Email: the source plus the `Message-ID` header. A `Message-ID` over 200 characters, or with
+    characters that cannot be printed, is replaced by its SHA-256, so it fits the key and a
+    redelivery still matches. With no `Message-ID`, or with headers over the read budget, the
+    key is the SHA-256 of the raw message.
   - Form and call service: the source plus the provider's delivery id header, when the source names one.
     Otherwise the SHA-256 of the body, but only within 10 minutes. The same body after 10 minutes is a
     new message, because a buyer can genuinely send the same form twice.
@@ -35,12 +38,55 @@ These terms are fixed. Code, tests and docs use them with exactly these meanings
   - **Re-forwards:** a message with a new `Message-ID` whose cleaned body (forward headers stripped)
     matches a message already on the same lead within 24 hours ends as `duplicate_content`. It adds no
     activity and sends no alert.
+- **Read budget:** the most a message may hold before the rules read it. Over any limit, the
+  message ends `failed` with the limit in its reason, and its raw bytes stay stored. Nothing is
+  cut short to fit, because a cut could drop the line that names the buyer.
+  - Text: 200,000 characters, 4,000 lines, and 4,000 characters in one line.
+  - Email headers: 64,000 characters in all. The headers the rules read or parse (From, To,
+    Reply-To, Sender, Subject, Date, Message-ID, MIME-Version, Content-Type,
+    Content-Disposition and Content-Transfer-Encoding) are also capped at 4,000 characters
+    each. Other headers, such as a long References chain, count only toward the total.
+  - Email structure: at most 100 parts, the message itself included, and at most 10 levels of
+    nesting, the message itself being the first.
+  - Nesting deep enough to overflow Python's stack, in email or JSON, is refused the same way.
+  - Email is parsed with the standard library's default policy. A policy hook checks each
+    header against the budget before the library parses it.
 - **Arrival time:** the moment Firstcall commits the raw message, from the database clock in UTC.
   Every timer starts here.
 - **Source time:** the time the message claims for itself: the email `Date` header, or for forwarded
   portal mail the original send time found in the body. It is stored and shown on the lead. It never
   starts a timer, so a wrong sender clock can never make a negative wait.
 - **Category:** lead, vendor, support or spam. Every message gets one, forms included.
+
+## Intake
+
+- **Auth method:** how a source proves a post is its own. One of three:
+  - Basic auth: a user and a password. The password is stored as an argon2id hash.
+  - Form key: a random value at the end of the source's URL, stored as a SHA-256 hash. It sits
+    in a public web page, so it names the source rather than proving who posted. A form source
+    is protected by its honeypot, its rate limits and the spam check. The api runs with its
+    access log off, so the key never reaches a log.
+  - Signature (HMAC): the sender signs the timestamp and body with a shared secret, sent in the
+    `Firstcall-Timestamp` and `Firstcall-Signature` headers. A timestamp more than 5 minutes
+    off is refused. The secret lives in an environment variable the source names.
+- **Honeypot:** a form field hidden from people. Only bots fill it, so a post with it filled is spam.
+- **Intake answers:**
+  - 202: stored. 200: a repeat delivery (see Delivery key).
+  - 401: bad credentials. 404: unknown source.
+  - 413: the body is over 10 MB for email or 1 MB for a form or call service, checked while the
+    body streams in, so a chunked upload without a length is cut off too.
+  - 415: the wrong content type: `message/rfc822` for email, `application/json` otherwise.
+  - 429: too many posts. Each client address may post 30 times a minute, before anything else
+    is checked. Each source may take 60 posts a minute, counted only after auth passes, so a
+    stranger cannot use up a real sender's allowance.
+  - 503: the database refused the write; nothing was stored and the sender should retry.
+- **Client address:** the connection's peer address. An IPv6 client is counted by its /64.
+  `X-Forwarded-For` is read only when `FIRSTCALL_TRUST_PROXY` is set. Then the client is the
+  entry `FIRSTCALL_TRUSTED_HOPS` places from the right (default 1), because each trusted proxy
+  appends the address it saw and anything further left came from the client.
+- **Allowed origins:** the web pages, per source, that may post to it from a browser (CORS). An
+  answer to a listed origin carries `Access-Control-Allow-Origin`; any other origin gets none,
+  so the browser hides the answer.
 
 ## Message statuses
 

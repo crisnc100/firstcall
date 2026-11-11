@@ -1,7 +1,8 @@
 # ADR-003: Matching rules and hard negatives
 
 - **Status:** Prediction committed 2026-11-11, before any matching code or result.
-- **Result:** recorded 2026-11-11 for the rules-only eval; prediction 1 was falsified.
+- **Result:** recorded 2026-11-11 for the rules-only eval; prediction 1 was falsified, and the
+  compatible-name rule was amended (see Amendment).
 
 ## Context
 A later message from a known buyer must join that buyer's lead, or the team works the same

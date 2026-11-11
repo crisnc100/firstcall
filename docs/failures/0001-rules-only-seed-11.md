@@ -60,7 +60,7 @@ message, against the same leads, then rolls it back. New count: 0 of 30 on seed 
 on seed 7. The old count is kept on a second line of each report.
 
 **Limit.** Every seed uses the same six attack sentences
-(`firstcall/corpus/generate.py:472-486`), one per attacked field and value, with only the team
+(`injection_text` in `firstcall/corpus/generate.py`), one per attacked field and value, with only the team
 name and the phone's formatting varying. Zero hits shows the rules ignore these six. It says
 nothing about other phrasings, and a model in PR1b may react to wording these do not cover.
 
