@@ -46,7 +46,8 @@ def for_json(body: bytes, delivery_id: str | None) -> DeliveryKey:
 
 
 _FORWARD_MARKER = re.compile(
-    r"^-{2,}\s*(forwarded message|original message)\s*-{2,}\s*$", re.IGNORECASE | re.MULTILINE
+    r"^-{2,}[ \t]*(forwarded message|original message)[ \t]*-{2,}[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
 )
 _HEADER_LINE = re.compile(r"^(from|date|sent|to|cc|subject):", re.IGNORECASE)
 
@@ -54,12 +55,16 @@ _HEADER_LINE = re.compile(r"^(from|date|sent|to|cc|subject):", re.IGNORECASE)
 def clean_body(text: str) -> str:
     """The text a re-forward shares with the original: everything after the last forward
     header block, with quoting and spacing removed."""
-    body = text
+    body = text.replace("\r\n", "\n").replace("\r", "\n")
     markers = list(_FORWARD_MARKER.finditer(body))
     if markers:
-        rest = body[markers[-1].end() :].splitlines()
+        rest = body[markers[-1].end() :].split("\n")
         index = 0
-        while index < len(rest) and (not rest[index].strip() or _HEADER_LINE.match(rest[index])):
+        while index < len(rest) and not rest[index].strip():
+            index += 1
+        # The header block ends at its first blank line; a "From:" line after that belongs
+        # to the forwarded message itself.
+        while index < len(rest) and _HEADER_LINE.match(rest[index]):
             index += 1
         body = "\n".join(rest[index:])
     lines = [line.lstrip("> ").strip() for line in body.splitlines()]

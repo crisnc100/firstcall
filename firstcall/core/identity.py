@@ -6,7 +6,16 @@ import re
 
 import phonenumbers
 
-EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+# The local part allows every character RFC 5322 allows unquoted, so o'connor@ and
+# buyer!sales@ are read whole. The look-behind stops a match from starting inside a longer
+# local part, which would shorten one person's address into another's. Bounded counts keep
+# each attempt short, so a scan is linear in the text.
+LOCAL = r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]"
+EMAIL = re.compile(
+    rf"(?<!{LOCAL}){LOCAL}{{1,64}}@[A-Za-z0-9-]{{1,63}}(?:\.[A-Za-z0-9-]{{1,63}}){{0,8}}"
+    r"\.[A-Za-z]{2,24}(?![A-Za-z0-9-])"
+)
+QUOTES = "'`"
 
 
 def normalize_phone(text: str | None, region: str = "US") -> str | None:
@@ -34,12 +43,19 @@ def find_phones(text: str, region: str = "US") -> list[str]:
 def normalize_email(text: str | None) -> str | None:
     if not text:
         return None
-    match = EMAIL.search(text)
-    return match.group(0).lower() if match else None
+    found = find_emails(text)
+    return found[0] if found else None
 
 
 def find_emails(text: str) -> list[str]:
-    return [m.lower() for m in EMAIL.findall(text)]
+    """Every address in the text, lowercased, in order. A quote that opens an address, as in
+    'ana@example.com', is not part of it."""
+    found: list[str] = []
+    for match in EMAIL.finditer(text):
+        address = match.group(0).lstrip(QUOTES).lower()
+        if address and not address.startswith("@"):
+            found.append(address)
+    return found
 
 
 def email_domain(email: str) -> str:

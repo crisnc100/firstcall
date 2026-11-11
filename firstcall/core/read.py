@@ -34,6 +34,19 @@ class UnparseableError(Exception):
     """The message has nothing a rule can read."""
 
 
+class OverBudgetError(UnparseableError):
+    """The message is larger than the read budget. It is never cut short to fit, because a
+    cut could drop the very line that names the buyer or the agent."""
+
+
+# The read budget. Every pattern below runs in time linear in its input, and this budget
+# bounds that input, so one message cannot hold a worker for long. Real leads are far
+# smaller: the largest message in the synthetic corpus is under 2,000 characters.
+MAX_TEXT_CHARS = 200_000
+MAX_LINES = 4_000
+MAX_LINE_CHARS = 4_000
+
+
 @dataclass(frozen=True)
 class AgentRef:
     name: str | None
@@ -91,50 +104,79 @@ class Reading:
         }
 
 
-NAME = r"[A-Z][A-Za-z'\-]+(?:[ \t]+[A-Z][A-Za-z'\-]+)+"
+# Possessive quantifiers never give back what they took, so a run of capitalised words
+# cannot make the match retry every split.
+NAME = r"[A-Z][A-Za-z'\-]++(?:[ \t]++[A-Z][A-Za-z'\-]++)++"
 INSTRUCTION = re.compile(
     r"ignore (?:all |your |the |any )?(?:previous |prior |earlier )?(?:instructions|rules)"
     r"|note (?:to|for) the ai|\bassistant\b|^\s*system\s*:|\bthe ai\b",
     re.IGNORECASE,
 )
-LABEL_LINE = re.compile(
-    r"^[ \t]*\|?[ \t]*(?P<label>[A-Za-z][A-Za-z \-]*?)[ \t]*(?::|\.{2,}|\|)"
-    r"[ \t]*(?P<value>.*?)[ \t|]*$",
-    re.MULTILINE,
-)
+LABEL_NAME = re.compile(r"[A-Za-z][A-Za-z \-]{0,40}")
+LABEL_SEPARATORS = (":", "..", "|")
 LABELS = {
     "name": {"name", "contact name", "buyer"},
     "phone": {"phone", "tel", "contact phone"},
     "email": {"email", "e-mail", "contact email"},
     "item": {"listing", "property", "home"},
 }
-SENTENCE_LEAD = re.compile(rf"^(?P<name>{NAME}) \((?P<contacts>.*)\) is interested in", re.M)
+SENTENCE_LEAD = re.compile(rf"^(?P<name>{NAME}) \((?P<contacts>[^\n]*)\) is interested in", re.M)
+FROM_LINE = re.compile(r"^From:[ \t]*(?P<value>[^\n]+)$", re.M)
+HTML_TAG = re.compile(r"<[^<>]{0,2000}>")
 AGENT_PHRASES = (
     re.compile(rf"on behalf of (?:my|our) client,?[ \t]+(?P<name>{NAME})"),
     re.compile(rf"\b[Mm]y client,?[ \t]+(?P<name>{NAME})"),
     re.compile(rf"\brepresent (?:a|the) buyer,?[ \t]+(?P<name>{NAME})"),
 )
 CALLER_INTRO = re.compile(rf"\b(?:this is|my name is)[ \t]+(?P<name>{NAME})")
+# A closing word or a "--" signature separator starts the sender's signature.
 CLOSING = re.compile(
-    r"^(best regards|kind regards|regards|thanks|thank you|sincerely|cheers|best),?$"
+    r"^(?:(?:best regards|kind regards|regards|thanks|thank you|sincerely|cheers|best),?|--)$"
 )
 FORWARD_MARKER = re.compile(
-    r"^-{2,}\s*(?:forwarded message|original message)\s*-{2,}\s*$", re.IGNORECASE | re.MULTILINE
+    r"^-{2,}[ \t]*(?:forwarded message|original message)[ \t]*-{2,}[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
 )
 FORWARD_TIMES = (
-    re.compile(r"^Date:\s*(?P<when>\w{3}, \w{3} \d{1,2}, \d{4} at \d{1,2}:\d{2} [AP]M)\s*$", re.M),
-    re.compile(r"^Sent:\s*(?P<when>\w+, \w+ \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M)\s*$", re.M),
+    re.compile(
+        r"^Date:[ \t]*(?P<when>\w{3}, \w{3} \d{1,2}, \d{4} at \d{1,2}:\d{2} [AP]M)[ \t]*$", re.M
+    ),
+    re.compile(
+        r"^Sent:[ \t]*(?P<when>\w{1,9}, \w{1,9} \d{1,2}, \d{4} \d{1,2}:\d{2} [AP]M)[ \t]*$", re.M
+    ),
 )
 FORWARD_FORMATS = ("%a, %b %d, %Y at %I:%M %p", "%A, %B %d, %Y %I:%M %p")
 
 
 def read(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
+    """The rules read. Raises UnparseableError, or OverBudgetError for text over the read
+    budget, which the pipeline records as a failed message with its reason."""
     if rules.kind == "email":
         return _read_email(raw, rules, reference)
     return _read_json(raw, rules, reference)
 
 
 # Shared helpers
+
+
+def _lines_of(text: str) -> str:
+    """Line endings as LF, so CRLF mail splits on the same blank lines as LF mail."""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _check_budget(text: str) -> None:
+    if len(text) > MAX_TEXT_CHARS:
+        raise OverBudgetError(
+            f"over the read budget: {len(text)} characters (limit {MAX_TEXT_CHARS})"
+        )
+    lines = text.split("\n")
+    if len(lines) > MAX_LINES:
+        raise OverBudgetError(f"over the read budget: {len(lines)} lines (limit {MAX_LINES})")
+    longest = max(len(line) for line in lines)
+    if longest > MAX_LINE_CHARS:
+        raise OverBudgetError(
+            f"over the read budget: a line of {longest} characters (limit {MAX_LINE_CHARS})"
+        )
 
 
 def _plain_lines(text: str) -> str:
@@ -151,11 +193,29 @@ def _find_item(text: str, items: tuple[str, ...]) -> str | None:
     return best[1] if best else None
 
 
+def _label_line(line: str) -> tuple[str, str] | None:
+    """A "Label: value" line, also with dotted leaders or table pipes, read with string
+    methods so the cost stays linear in the line."""
+    text = line.strip().lstrip("|").strip()
+    cuts = [(text.find(sep), sep) for sep in LABEL_SEPARATORS if text.find(sep) > 0]
+    if not cuts:
+        return None
+    at, sep = min(cuts)
+    label = text[:at].strip()
+    if not LABEL_NAME.fullmatch(label):
+        return None
+    rest = text[at + len(sep) :]
+    value = (rest.lstrip(".") if sep == ".." else rest).strip().rstrip(" \t|").strip()
+    return label.casefold(), value
+
+
 def _labels(text: str) -> dict[str, str]:
     found: dict[str, str] = {}
-    for match in LABEL_LINE.finditer(text):
-        label = match.group("label").strip().casefold()
-        value = match.group("value").strip()
+    for line in text.split("\n"):
+        parsed = _label_line(line)
+        if parsed is None:
+            continue
+        label, value = parsed
         for field_name, names in LABELS.items():
             if label in names and value and field_name not in found:
                 found[field_name] = value
@@ -203,8 +263,10 @@ def _body_text(message: EmailMessage) -> str:
     except (LookupError, ValueError):
         payload = part.get_payload(decode=True)
         content = payload.decode("utf-8", "replace") if isinstance(payload, bytes) else ""
+    content = _lines_of(content)
+    _check_budget(content)
     if part.get_content_subtype() == "html":
-        content = re.sub(r"<[^>]+>", " ", content)
+        content = HTML_TAG.sub(" ", content)
     return content
 
 
@@ -233,7 +295,7 @@ def _forward(body: str, zone: tzinfo) -> tuple[str, str | None, str | None, date
         return body, None, None, None
     inner = body[markers[-1].end() :]
     head = inner.split("\n\n", 1)[0]
-    sender = re.search(r"^From:\s*(?P<value>.+)$", head, re.M)
+    sender = FROM_LINE.search(head)
     display, address = _address(sender.group("value")) if sender else (None, None)
     sent: datetime | None = None
     for pattern in FORWARD_TIMES:
@@ -255,7 +317,7 @@ def _read_email(raw: bytes, rules: SourceRules, reference: Reference) -> Reading
     body = _body_text(message)
     if not sender and not body.strip():
         raise UnparseableError("no sender and no text")
-    subject = str(message.get("Subject") or "")
+    subject = str(message.get("Subject") or "")[:MAX_LINE_CHARS]
     header_time = _date(message.get("Date"))
     zone = header_time.tzinfo if header_time and header_time.tzinfo else UTC
     content, inner_display, inner_sender, forwarded_at = _forward(body, zone)
@@ -278,7 +340,7 @@ def _read_email(raw: bytes, rules: SourceRules, reference: Reference) -> Reading
         email = normalize_email(labels.get("email"))
         phone = normalize_phone(labels.get("phone"))
         sentence = SENTENCE_LEAD.search(plain)
-        from_line = re.search(r"^From:\s*(?P<value>.+)$", plain, re.M)
+        from_line = FROM_LINE.search(plain)
         if not name and sentence:
             name = sentence.group("name")
             contacts = sentence.group("contacts")
@@ -391,7 +453,7 @@ def _text(value: Any) -> str | None:
 def _read_json(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
     try:
         payload = json.loads(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as error:
         raise UnparseableError("not JSON") from error
     if not isinstance(payload, dict):
         raise UnparseableError("JSON is not an object")
@@ -402,13 +464,15 @@ def _read_json(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
         return _text(_path(payload, mapping[name])) if name in mapping else None
 
     excluded_phones, excluded_emails = _excluded(rules, reference)
-    leaves = _plain_lines("\n".join(_strings(payload)))
+    all_text = _lines_of("\n".join(_strings(payload)))
+    _check_budget(all_text)
+    leaves = _plain_lines(all_text)
     unsure: list[str] = []
     name = mapped("name")
     if not name:
         parts = [p for p in (mapped("first_name"), mapped("last_name")) if p]
         name = " ".join(parts) or None
-    message = mapped("message") or ""
+    message = _lines_of(mapped("message") or "")
     if not name and rules.kind == "call":
         intro = CALLER_INTRO.search(_plain_lines(message))
         name = intro.group("name") if intro else None
