@@ -24,3 +24,29 @@ Deliberate choices made while building PR1a, with the reason for each.
 - **Zero skips** is enforced by a pytest session hook: any skip or xfail fails the run.
 - **Clean-room scan.** A test hashes every word in committed text and fails on the hashed names
   of the inspiring tool, so the names never appear in the repo.
+
+## Phase 2: synthetic generator, gold, manifest, ADR predictions
+
+- **Committed before any extraction code.** This commit holds the generator, the three seeds,
+  the manifest and ADR-001 to ADR-006 with predictions only. `tests/test_corpus.py` checks
+  from `git log` that each of them was added in a commit that is an ancestor of, and not the
+  same as, the first commit adding `firstcall/core/read.py`, `match.py` or `place.py`. CI
+  checks out the full history for this.
+- **Note scripts are not in this manifest.** They are tagged for PR3, which adds them and
+  their hashes before the first note-reading code, the same way PR4 handles audio.
+- **The demo world is one file.** `config/demo.yaml` holds the demo company's teams, items,
+  agents and sources. The generator reads it, and the seed command will load it, so the
+  corpus and the pipeline cannot drift apart.
+- **Unseen layouts:** the Gablework and Lattice Lane portals (direct and forwarded) and the
+  partner form's version-2 shape. Seeds 11 and 13 have 65 and 66 unseen messages; seed 7 has
+  none.
+- **Gold leaves out what no rule could know.** A household member always gives a name, since
+  a nameless call from a shared phone matches the other person by the definition. Repeat
+  messages never target a lead whose phone or email a later conflict message reused.
+- **Hard-negative labels are computed, not assigned.** Every lead message from an agent,
+  relay sender or tracking number that an earlier, different lead already used carries that
+  label, so counts exceed the 20 minimum.
+- **Model candidates (ADR-002)** come from OpenRouter's public models list, read on
+  2026-11-11 without a key: models listed with structured outputs, no batch or alias ids,
+  ordered by an estimated 1,500-in, 150-out call.
+- **Re-deliveries are not in the corpus.** Delivery-key rules are tested directly (F3).

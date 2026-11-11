@@ -24,6 +24,9 @@ jobs:
       FIRSTCALL_DATABASE_URL: postgresql+psycopg://firstcall:firstcall@localhost:5432/firstcall  # pragma: allowlist secret (CI-only database)
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The gold-before-code test reads the full history.
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.9.11"

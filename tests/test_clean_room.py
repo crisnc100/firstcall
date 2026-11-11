@@ -12,13 +12,13 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FORBIDDEN_SHA256 = frozenset(
-    [
-        "78242caade0d98605142646c4d4e686bd996e3316d5425ded1f798a60632bef0",
-        "0ff614693e4319a9493ea82d2fe1c244ec451163a105d0943fad73816fe5905a",
-        "45a784969241aad961edd982384eb77eff4c1c905c101660966b38b33c1283b7",
-    ]
+# Word hashes, not secrets.
+WORD_HASHES = (
+    "78242caade0d98605142646c4d4e686bd996e3316d5425ded1f798a60632bef0",  # pragma: allowlist secret
+    "0ff614693e4319a9493ea82d2fe1c244ec451163a105d0943fad73816fe5905a",  # pragma: allowlist secret
+    "45a784969241aad961edd982384eb77eff4c1c905c101660966b38b33c1283b7",  # pragma: allowlist secret
 )
+FORBIDDEN_SHA256 = frozenset(WORD_HASHES)
 WORD = re.compile(r"[a-z0-9]+\+?")
 TEXT_SUFFIXES = {
     ".py",
