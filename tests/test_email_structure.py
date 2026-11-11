@@ -14,9 +14,12 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core import read
 from firstcall.core.read import Reference, SourceRules
+from tests.conftest import FakeClock
+from tests.helpers import Pipeline
 
 REFERENCE = Reference(("Juniper Mesa", "Copperleaf"), ())
 INBOX = SourceRules("email", relay_senders=frozenset({"leads@hearthly.example"}))
@@ -178,3 +181,24 @@ def test_a_nested_content_type_just_under_the_cap_is_read_in_time() -> None:
 def test_a_nested_content_type_just_over_the_cap_is_refused_fast() -> None:
     with cpu_limit(2.0), pytest.raises(read.OverBudgetError):
         read.read(_nested_content_type(read.MAX_LINE_CHARS + 10).encode(), INBOX, REFERENCE)
+
+
+def test_parts_nested_past_the_depth_limit_are_refused() -> None:
+    layers = read.MAX_DEPTH + 5
+    opening = "Content-Type: message/rfc822\n\n" * layers
+    raw = HEAD + "MIME-Version: 1.0\n" + opening + "From: x@y.example\n\nhi\n"
+    assert layers < read.MAX_PARTS
+    with pytest.raises(read.OverBudgetError, match="nested"):
+        read.read(raw.encode(), INBOX, REFERENCE)
+
+
+def test_an_over_limit_email_ends_failed_with_its_reason_and_stays_stored(
+    sessions: sessionmaker[Session], clock: FakeClock
+) -> None:
+    pipe = Pipeline(sessions, clock)
+    raw = _nested_content_type(100_000).encode()
+    message = pipe.deliver("inbox", raw)
+    assert message.status == "failed"
+    assert message.reason is not None
+    assert "a header of" in message.reason
+    assert message.raw == raw
