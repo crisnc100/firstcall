@@ -146,3 +146,22 @@ The plan left these four open. Each was proposed with a recommendation and agree
    `{"status": "duplicate_delivery", "message_id": <original>}`, and no new row is stored.
 4. **`firstcall eval --seed N` is rules-only.** It refuses seed 13 until
    `config/field_methods.yaml` exists. `--mode` and `--budget` come with the model gateway.
+
+## Phase 6: two approved amendments after the advisor's review
+
+- **Results recorded first.** ADR-001, ADR-003 and ADR-006 got their rules-only results from
+  the frozen-rules seed-11 run before any fix. ADR-003's zero-merge prediction is marked
+  falsified. The seen hard-negative count is 115, not the 98 I first reported.
+- **Matching amendment.** A named message never joins a nameless lead on phone alone; a nameless
+  message still joins. The stricter "both names present" variant was not taken. The two changed
+  existing assertions sit in their own test-only commit.
+- **Injection amendment.** The clean twins are built by cutting the exact rendered attack
+  sentence out of each message, which draws no random numbers, so existing gold bytes and
+  hashes stay the same. Each twin is processed inside a rolled-back transaction just before its
+  message, so both see the same leads. A case with no twin still counts as a hit. The manifest
+  test's exact file set was changed in a test-only commit.
+- **Seed 11 reran once** with both amendments; seed 7 reran too; seed 13 did not run. The fix
+  swaps the two recall misses for two different ones, both flagged possible duplicates instead
+  of joins. Details in `docs/failures/0001-rules-only-seed-11.md`.
+- **Not done, on purpose:** no `read.py` patterns for unseen layouts, no name backfill on
+  attach, no new injection phrasings.
