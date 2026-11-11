@@ -27,3 +27,12 @@ any change to a gold file that the manifest does not record.
   from the rendered messages without drawing random numbers, so `messages.jsonl` and
   `labels.jsonl` are byte for byte unchanged in all three seeds, and so are their manifest
   hashes. The manifest gains one entry per seed.
+
+## 2026-11-11, fifth entry
+- The PR1a code review found that hard negatives ignored the team boundary. Matching looks
+  inside the placed team, so a household phone, agent, relay sender or tracking number shared
+  with a lead in another team never met that lead, yet it was labelled and counted. Households
+  now take the team of the lead whose phone they share; agents, portals and tracking numbers
+  lean towards a favourite per team; and a hard-negative label needs an earlier, different
+  lead in the same matching pool. Every seed now has at least 22 same-pool cases of each kind.
+  All three seeds were regenerated, with their clean twins. Seed 13 has still never been run.

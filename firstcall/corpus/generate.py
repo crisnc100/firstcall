@@ -243,7 +243,7 @@ class Generator:
         if kind == "repeat":
             return len(self._repeat_targets(leads, conflict_sources)) >= 1
         if kind == "household":
-            return any(lead.person and lead.person.phone for lead in leads)
+            return any(lead.person and lead.person.phone and lead.team for lead in leads)
         if kind == "conflict":
             return bool(self._conflict_groups(leads))
         return True
@@ -284,11 +284,22 @@ class Generator:
             return item, self.item_team[item]
         return None, None
 
-    def _portal_layout(self, kind: str, unseen_left: dict[str, int]) -> str:
+    def _team_index(self, team: str | None) -> int | None:
+        return sorted(TEAM_NAMES).index(team) if team else None
+
+    def _favourite(self, options: tuple[str, ...], team: str | None) -> str:
+        """Most of a team's traffic comes through one portal or tracking number, so shared
+        relays and numbers compete inside the team, where matching looks."""
+        index = self._team_index(team)
+        if index is not None and self.rng.random() < 0.6:
+            return options[index % len(options)]
+        return self.rng.choice(options)
+
+    def _portal_layout(self, kind: str, unseen_left: dict[str, int], team: str | None) -> str:
         if unseen_left.get(kind, 0) > 0:
             unseen_left[kind] -= 1
-            return self.rng.choice(UNSEEN_PORTALS)
-        return self.rng.choice(SEEN_PORTALS)
+            return self._favourite(UNSEEN_PORTALS, team)
+        return self._favourite(SEEN_PORTALS, team)
 
     def _plan_one(
         self,
@@ -303,11 +314,11 @@ class Generator:
             person = self.person(phone=0.8)
             item, team = self.item_team_pick()
             return Intent(kind, "lead", person, item, team, lead_id, "new",
-                          f"portal-{self._portal_layout('portal', unseen_left)}")  # fmt: skip
+                          f"portal-{self._portal_layout('portal', unseen_left, team)}")  # fmt: skip
         if kind == "forwarded":
             person = self.person(phone=0.8)
             item, team = self.item_team_pick()
-            portal = self._portal_layout("forwarded", unseen_left)
+            portal = self._portal_layout("forwarded", unseen_left, team)
             return Intent(kind, "lead", person, item, team, lead_id, "forwarded",
                           f"forwarded-{portal}")  # fmt: skip
         if kind == "agent":
@@ -315,11 +326,19 @@ class Generator:
             if rng.random() < 0.15:
                 person.phone, person.email = None, None
             item, team = self.item_team_pick()
-            agent = (
-                rng.choice(UNLISTED_AGENTS)
-                if rng.random() < 0.12
-                else rng.choice(self.listed_agents)
+            # Agents work an area, so most write to a team they have written to before.
+            known = sorted(
+                {lead.agent for lead in leads if lead.agent and lead.team == team},
+                key=lambda a: a.name,
             )
+            if known and rng.random() < 0.7:
+                agent = rng.choice(known)
+            else:
+                agent = (
+                    rng.choice(UNLISTED_AGENTS)
+                    if rng.random() < 0.12
+                    else rng.choice(self.listed_agents)
+                )
             return Intent(kind, "lead", person, item, team, lead_id, "agent", "agent-email",
                           agent=agent)  # fmt: skip
         if kind == "direct":
@@ -350,14 +369,19 @@ class Generator:
             item, team = self.item_team_pick()
             return Intent(kind, "lead", person, item, team, lead_id, "new", "call")
         if kind == "household":
-            source = rng.choice([lead for lead in leads if lead.person and lead.person.phone])
+            # The household lead shares the source lead's team, where matching would meet it.
+            source = rng.choice(
+                [lead for lead in leads if lead.person and lead.person.phone and lead.team]
+            )
             assert source.person is not None
+            assert source.team is not None
             first, _ = self._name()
             while first == source.person.first:
                 first, _ = self._name()
             email = self._email(first, source.person.last) if rng.random() < 0.6 else None
             person = Person(first, source.person.last, source.person.phone, email)
-            item, team = self.item_team_pick()
+            team = source.team
+            item = rng.choice(sorted(i for i, t in self.item_team.items() if t == team))
             layout = rng.choice(("call", "site-form", "direct-email" if email else "call"))
             if layout == "call":
                 # A call carries a number and maybe a name, never an email.
@@ -492,9 +516,21 @@ class Generator:
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         messages: list[dict[str, Any]] = []
         labels: list[dict[str, Any]] = []
-        first_agent_lead: dict[str, str] = {}
-        first_relay_lead: dict[str, str] = {}
-        first_tracking_lead: dict[str, str] = {}
+        # Earlier leads per shared contact, with their teams. A hard negative counts only when
+        # an earlier, different lead sits in the same matching pool: the same team, or any
+        # team when the message itself has none, since matching then looks org-wide.
+        peers: dict[tuple[str, str], list[tuple[str, str | None]]] = {}
+
+        def shared(intent: Intent, kind: str, key: str) -> bool:
+            earlier = peers.setdefault((kind, key), [])
+            hit = any(
+                lead != intent.lead and (intent.team is None or team == intent.team)
+                for lead, team in earlier
+            )
+            assert intent.lead is not None
+            earlier.append((intent.lead, intent.team))
+            return hit
+
         for index, intent in enumerate(intents):
             message_id = f"s{self.seed:02d}-{index + 1:04d}"
             sent = BASE_TIME + timedelta(minutes=index * 9 + self.rng.randint(0, 6))
@@ -502,20 +538,18 @@ class Generator:
             messages.append(message)
             hard = list(intent.hard_negatives)
             if intent.category == "lead" and intent.lead:
-                if intent.agent and intent.agent.phone:
-                    seen_lead = first_agent_lead.setdefault(intent.agent.phone, intent.lead)
-                    if seen_lead != intent.lead:
-                        hard.append("shared_agent_phone")
+                if (
+                    intent.agent
+                    and intent.agent.phone
+                    and shared(intent, "agent", intent.agent.phone)
+                ):
+                    hard.append("shared_agent_phone")
                 relay = extra.get("relay")
-                if relay:
-                    seen_lead = first_relay_lead.setdefault(relay, intent.lead)
-                    if seen_lead != intent.lead:
-                        hard.append("portal_relay_sender")
+                if relay and shared(intent, "relay", relay):
+                    hard.append("portal_relay_sender")
                 tracking = extra.get("tracking")
-                if tracking:
-                    seen_lead = first_tracking_lead.setdefault(tracking, intent.lead)
-                    if seen_lead != intent.lead:
-                        hard.append("call_tracking_number")
+                if tracking and shared(intent, "tracking", tracking):
+                    hard.append("call_tracking_number")
             if intent.kind == "repeat":
                 hard = []
             labels.append(self.label(intent, message_id, extra, sorted(set(hard))))
@@ -878,7 +912,9 @@ class Generator:
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         person = intent.person
         assert person is not None and person.phone is not None
-        tracking = self.rng.choice(self.world.source("calls")["tracking_numbers"])
+        tracking = self._favourite(
+            tuple(self.world.source("calls")["tracking_numbers"]), intent.team
+        )
         # A household member always gives a name; without one no rule could tell them apart.
         roll = self.rng.random() * (0.7 if intent.kind == "household" else 1.0)
         caller_name = person.full if roll < 0.7 else ""
