@@ -131,3 +131,27 @@ def test_a0840f_s1_intake_keys_a_huge_header_message_quickly() -> None:
         key = delivery_key(source, raw, {})
     assert key.key is not None
     assert key.key.startswith("sha:")
+
+
+def test_a0840f_f1_a_domain_with_too_many_labels_is_rejected_not_cut() -> None:
+    domain = ".".join(["a"] * 12) + ".example"
+    assert find_emails(f"ana@{domain}") == []
+
+
+@pytest.mark.parametrize("filler", ['<a x="', "<!--", "<a x='>", '<a x=">"> '])
+def test_a0840f_f2_the_quote_aware_scan_stays_fast_at_the_budget(filler: str) -> None:
+    line = (filler * read.MAX_LINE_CHARS)[: read.MAX_LINE_CHARS]
+    body = "\n".join([line] * (read.MAX_LINES - 1))[: read.MAX_TEXT_CHARS - 100]
+    raw = ("From: A <a@b.example>\nSubject: x\nContent-Type: text/html\n\n" + body).encode()
+    with cpu_limit(2.0):
+        read.read(raw, INBOX, REFERENCE)
+
+
+def test_a0840f_s1_ordinary_headers_still_parse() -> None:
+    raw = email("Ana Ruiz <ana@inbox.example>", "Juniper Mesa?", "=?utf-8?q?Caf=C3=A9_visit?=")
+    reading = read.read(raw, INBOX, REFERENCE)
+    assert (reading.name, reading.email, reading.item) == (
+        "Ana Ruiz",
+        "ana@inbox.example",
+        "Juniper Mesa",
+    )
