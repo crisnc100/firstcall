@@ -34,7 +34,8 @@ def test_same_email_attaches() -> None:
 def test_same_phone_needs_a_compatible_first_name() -> None:
     assert decide("west", "ana", [lead("A", phone=True)]) == Decision("A", "west")
     assert decide("west", None, [lead("A", phone=True)]) == Decision("A", "west")
-    assert decide("west", "ana", [lead("A", name=None, phone=True)]) == Decision("A", "west")
+    nameless = [lead("A", name=None, phone=True)]
+    assert decide("west", "ana", nameless) == Decision(None, "west", ("A",))
 
 
 def test_household_phone_is_a_flagged_new_lead() -> None:
@@ -69,7 +70,7 @@ def test_a_lead_in_another_team_is_not_a_match() -> None:
 def test_compatible_names() -> None:
     assert compatible("ana", "ana")
     assert compatible(None, "ana")
-    assert compatible("ana", "")
+    assert not compatible("ana", "")
     assert not compatible("ana", "luis")
 
 
