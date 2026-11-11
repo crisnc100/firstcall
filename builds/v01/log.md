@@ -224,3 +224,26 @@ The fix check found five regressions from the review round. Their tests are in
   shows "Please try again."
 
 Whatever the review of this round finds is deferred, not fixed in another round.
+
+## Phase 9: the final slice review
+
+A fresh review of the files changed in phases 7 and 8 found five MEDIUM findings. Their tests
+are in `tests/test_final_slice.py`, committed before the fix, and all failed first. The
+read-speed test change sits in its own test-only commit.
+
+- **Domains are read whole or not at all.** The domain takes every label without giving one
+  back, and nothing matches if more labels follow than the bound. The last label must be
+  alphabetic or Punycode.
+- **The tag scan knows quotes and comments.** A ">" inside a quoted attribute value, after "=",
+  does not end a tag, and a comment ends only at "-->". Each tag is still scanned once.
+- **Forwards read Reply-To from the forwarded headers.** The forwarder's own Reply-To is never
+  used once a forwarded sender is found.
+- **Headers are inside the budget.** Before any parse, the raw header block is capped at 64 KB
+  and each unfolded header at 4,000 bytes. Email is parsed with `compat32`, so the structured
+  header parser, whose time grows faster than a header's length, never sees message text.
+  Intake keys an over-budget message by its bytes, so a malformed Message-ID no longer raises.
+- **The read-speed test now reads.** It leaves room under the budget, drops the suppressed
+  error and requires a reading from every call. A sabotaged `_plain_lines` now fails it.
+
+Both reports still reproduce byte for byte, so none of these changes moves a corpus result.
+This was the last fix round; whatever the fix check finds is deferred.
