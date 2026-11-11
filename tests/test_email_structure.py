@@ -202,3 +202,28 @@ def test_an_over_limit_email_ends_failed_with_its_reason_and_stays_stored(
     assert message.reason is not None
     assert "a header of" in message.reason
     assert message.raw == raw
+
+
+# Long headers nobody reads, such as a reply chain's References, never sink a lead
+
+
+def _references(chars: int) -> str:
+    ids = " ".join(f"<{n:06d}.thread@mail.example>" for n in range(chars // 26 + 1))[:chars]
+    return "\n ".join(ids.split(" "))
+
+
+def test_a_20000_character_references_header_is_read_with_the_buyer() -> None:
+    raw = (
+        HEAD + f"References: {_references(20_000)}\n\nIs Juniper Mesa open?\n\nAna\n202-555-0142\n"
+    )
+    started = time.process_time()
+    with cpu_limit(2.0):
+        assert buyer(raw) == EXPECTED
+    assert time.process_time() - started < 2.0
+
+
+def test_long_unread_headers_still_count_toward_the_total() -> None:
+    chain = "".join(f"X-Chain-{n}: {_references(20_000)}\n" for n in range(4))
+    raw = HEAD + chain + "\nIs Juniper Mesa open?\n"
+    with cpu_limit(2.0), pytest.raises(read.OverBudgetError, match="headers"):
+        read.read(raw.encode(), INBOX, REFERENCE)
