@@ -91,7 +91,7 @@ def health(kind: str = typer.Argument(..., help="worker or scheduler")) -> None:
 
 @app.command("eval")
 def eval_command(
-    seed: int = typer.Option(..., help="7 (tune) or 11 (held out); 13 is refused until PR1b"),
+    seed: int = typer.Option(..., help="7 (tune) or 11 (held out); 13 waits for the field methods"),
     date: str = typer.Option("", help="The report date, YYYY-MM-DD; today when empty"),
 ) -> None:
     """Run the rules-only eval and write evals/reports/<date>-rules-seed-<N>.md and .json."""

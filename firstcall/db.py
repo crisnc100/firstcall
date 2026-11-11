@@ -150,7 +150,7 @@ class Message(Base):
     lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id"), index=True)
     team_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("teams.id"))
     clean_body_sha256: Mapped[str | None] = mapped_column(String(64))
-    # Set when the model read was skipped; the PR1b reread job fills the gaps.
+    # Set when the model read was skipped; a reread fills the empty fields later.
     needs_reread: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
@@ -237,7 +237,7 @@ class Job(Base):
 
 
 class ModelCall(Base):
-    """One model call with its cost. Written from PR1b; the table exists from the start."""
+    """One model call with its tokens, cost and latency."""
 
     __tablename__ = "model_calls"
     id: Mapped[uuid.UUID] = _uuid()

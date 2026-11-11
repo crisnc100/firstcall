@@ -64,7 +64,7 @@ services:
       timeout: 5s
       retries: 20
 
-  # Catches local email; alerts start using it in PR2.
+  # Catches local email, so nothing sent in development leaves the machine.
   mailpit:
     image: axllent/mailpit:v1.27
     ports: ["127.0.0.1:8025:8025"]

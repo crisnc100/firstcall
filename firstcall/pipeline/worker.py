@@ -46,7 +46,7 @@ def healthy(sessions: sessionmaker[Any], kind: str) -> bool:
 
 
 def tick(sessions: sessionmaker[Any], clock: Clock, settings: Settings) -> dict[str, int]:
-    """One scheduler pass. Escalations and follow-ups join the reaper in later versions."""
+    """One scheduler pass: return jobs whose lease ran out."""
     return {"reaped": reap(sessions, clock, settings.max_attempts)}
 
 

@@ -189,7 +189,7 @@ def process(session: Session, message_id: uuid.UUID, clock: Clock) -> str:
     except UnparseableError as error:
         message.status, message.reason = "failed", f"unparseable: {error}"
         return message.status
-    # No model read exists yet, so every message is on the rules-only path.
+    # Every message here took the rules-only path, so a model reread is owed.
     message.needs_reread = True
     message.category = reading.category
     message.extracted = reading.as_json()
