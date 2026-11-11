@@ -47,6 +47,15 @@ MAX_LINES = 4_000
 MAX_LINE_CHARS = 4_000
 MAX_HEADER_BYTES = 64_000
 MAX_PARTS = 100
+# Headers that are read or parsed field by field; each has its own length cap. Any other
+# header, such as a long thread's References, is never parsed, so it counts only toward the
+# total above.
+PARSED_HEADERS = frozenset(
+    {
+        "from", "to", "reply-to", "sender", "subject", "date", "message-id", "content-type",
+        "content-disposition", "content-transfer-encoding", "mime-version",
+    }
+)  # fmt: skip
 MAX_DEPTH = 10
 
 
@@ -397,8 +406,8 @@ class _Budget:
 
 class _BudgetPolicy(EmailPolicy):
     """The default email policy, with every header of every part, nested ones included,
-    checked against the read budget as the parser meets it. A header is refused before any
-    structured parse of it, whose time grows faster than the header's length."""
+    checked against the read budget as the parser meets it. A header that gets parsed is
+    refused before that parse, whose time grows faster than the header's length."""
 
     budget: _Budget | None = None
 
@@ -406,7 +415,8 @@ class _BudgetPolicy(EmailPolicy):
         budget = self.budget
         assert budget is not None
         size = sum(len(line) for line in sourcelines)
-        if size > MAX_LINE_CHARS:
+        name = sourcelines[0].split(":", 1)[0].strip().lower()
+        if name in PARSED_HEADERS and size > MAX_LINE_CHARS:
             raise OverBudgetError(
                 f"over the read budget: a header of {size} characters (limit {MAX_LINE_CHARS})"
             )
@@ -416,12 +426,12 @@ class _BudgetPolicy(EmailPolicy):
                 f"over the read budget: {budget.header_bytes} characters of headers "
                 f"(limit {MAX_HEADER_BYTES})"
             )
-        name, value = super().header_source_parse(sourcelines)
-        if name.strip().lower() == "content-type":
+        field, value = super().header_source_parse(sourcelines)
+        if name == "content-type":
             budget.parts += 1
             if budget.parts > MAX_PARTS:
                 raise OverBudgetError(f"over the read budget: more than {MAX_PARTS} parts")
-        return name, value
+        return field, value
 
 
 def _depth(message: EmailMessage) -> int:
