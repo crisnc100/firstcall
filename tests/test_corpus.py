@@ -58,7 +58,11 @@ def test_the_manifest_matches_every_committed_gold_file() -> None:
     assert sorted(manifest, key=int) == [str(s) for s in SEEDS]
     for seed in SEEDS:
         assert manifest[str(seed)] == file_hashes(seed)
-        assert set(manifest[str(seed)]) == {"messages.jsonl", "labels.jsonl"}
+        assert set(manifest[str(seed)]) == {
+            "messages.jsonl",
+            "labels.jsonl",
+            "injection_twins.jsonl",
+        }
 
 
 @pytest.mark.parametrize("seed", SEEDS)
