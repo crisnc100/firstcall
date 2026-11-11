@@ -50,3 +50,22 @@ Deliberate choices made while building PR1a, with the reason for each.
   2026-11-11 without a key: models listed with structured outputs, no batch or alias ids,
   ordered by an estimated 1,500-in, 150-out call.
 - **Re-deliveries are not in the corpus.** Delivery-key rules are tested directly (F3).
+
+## Phase 3: intake adapters, auth, limits, raw store
+
+- **Routes.** `POST /intake/{source}` for basic auth and HMAC, `POST /intake/{source}/{token}`
+  for path tokens. A token on a non-token source, or no token on a token source, is 401.
+- **Order of checks:** per-IP rate, unknown source (404), per-source rate (429), content type
+  (415), declared length (413), token or basic auth (401), the capped body read (413), then the
+  HMAC check (401), which needs the body. The cheap refusals come before any body is read.
+- **HMAC format:** `Firstcall-Timestamp: <unix seconds>` and `Firstcall-Signature:
+  sha256=<hex HMAC-SHA256 of "timestamp.body">`, refused when more than 5 minutes off.
+- **Rate limits** are a sliding one-minute window in process memory. That holds for one api
+  process, which is what v0.1 runs.
+- **A commit failure answers 503**, so the sender retries; nothing is half written because the
+  message and its job share one transaction.
+- **Repeat detection** takes an advisory lock on (source, key) before looking, so two copies
+  of one delivery arriving together store one message. The 10-minute window is measured on the
+  database clock, like arrival time.
+- **Secrets.** `firstcall rotate-secret <source>` prints a new token or password once and
+  stores only its hash; the old one stops working at once. Seeding never sets a secret.

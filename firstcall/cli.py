@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import typer
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
@@ -20,6 +25,30 @@ def api(host: str = "127.0.0.1", port: int = 8000) -> None:
     from firstcall.api import create_app
 
     uvicorn.run(create_app(), host=host, port=port)
+
+
+def _sessions() -> sessionmaker[Session]:
+    from firstcall.db import make_engine, make_sessions
+    from firstcall.settings import Settings
+
+    return make_sessions(make_engine(Settings().database_url))
+
+
+@app.command("seed")
+def seed_command() -> None:
+    """Load the demo company from config/demo.yaml."""
+    from firstcall.seed import seed
+
+    org_id = seed(_sessions())
+    typer.echo(f"seeded org {org_id}")
+
+
+@app.command("rotate-secret")
+def rotate_secret(slug: str) -> None:
+    """Issue a new token or password for a source. It is shown once."""
+    from firstcall.seed import set_secret
+
+    typer.echo(set_secret(_sessions(), slug))
 
 
 corpus_app = typer.Typer(no_args_is_help=True, help="The synthetic corpus.")

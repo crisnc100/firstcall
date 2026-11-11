@@ -16,7 +16,13 @@ from typing import Any
 
 CORE = 95.0
 EDGE = 85.0
-FLOORS: dict[str, float] = {}
+FLOORS: dict[str, float] = {
+    "firstcall/core/delivery.py": CORE,
+    "firstcall/api.py": EDGE,
+    "firstcall/intake/auth.py": EDGE,
+    "firstcall/intake/limits.py": EDGE,
+    "firstcall/intake/store.py": EDGE,
+}
 
 
 def check(report: dict[str, Any], floors: dict[str, float]) -> list[str]:
