@@ -574,7 +574,15 @@ def test_595516_f1_575e84_s1_the_server_ignores_forwarded_headers_and_logs_no_to
     assert codes[30] == 429
     captured = capfd.readouterr()
     assert token not in captured.out + captured.err
-    assert token not in caplog.text
+    # The test's own HTTP client logs the URLs it calls; only the server's records count.
+    server_records = [
+        record.getMessage()
+        for record in caplog.records
+        if not record.name.startswith(("httpx", "httpcore"))
+    ]
+    # The server's own log lines reach the captured output, so their absence means something.
+    assert "Application startup complete" in captured.out + captured.err
+    assert not any(token in message for message in server_records)
 
 
 # 177f72 f1: a safe split is not a wrong attach
