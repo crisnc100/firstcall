@@ -276,11 +276,12 @@ def test_push_only_to_the_recipients_own_https_device(board: Board, push: FakePu
         mine = session.scalars(
             select(PushSubscription).where(PushSubscription.user_id == seller.id)
         ).one()
+        hosts = Settings(env="test").push_hosts
         with pytest.raises(allowlist.RefusedError, match="does not belong"):
-            allowlist.check_push(session, theirs, seller.id, allow_http=True)
-        with pytest.raises(allowlist.RefusedError, match="https"):
-            allowlist.check_push(session, mine, seller.id, allow_http=False)
-        allowlist.check_push(session, mine, seller.id, allow_http=True)
+            allowlist.check_push(session, theirs, seller.id, allow_http=True, hosts=hosts)
+        with pytest.raises(allowlist.RefusedError, match="push service"):
+            allowlist.check_push(session, mine, seller.id, allow_http=False, hosts=hosts)
+        allowlist.check_push(session, mine, seller.id, allow_http=True, hosts=hosts)
 
 
 # --- edges of queueing and rendering ----------------------------------------------------

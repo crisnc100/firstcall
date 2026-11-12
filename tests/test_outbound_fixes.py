@@ -36,7 +36,7 @@ def push() -> Iterator[FakePushService]:
 def test_subscribe_refuses_keys_the_push_library_cannot_use(board: Board) -> None:
     seller = board.user("seller@larkspur.example", teams={"north": "salesperson"})
     client = board.signed_in(seller.email)
-    real = Device("https://push.example/a").keys()
+    real = Device("https://fcm.googleapis.com/fcm/send/a").keys()
     bad = [
         {"p256dh": "BKey", "auth": real["auth"]},
         {"p256dh": real["p256dh"], "auth": "c2hvcnQ"},
@@ -45,11 +45,13 @@ def test_subscribe_refuses_keys_the_push_library_cannot_use(board: Board) -> Non
     ]
     for keys in bad:
         answer = client.post(
-            "/api/push/subscriptions", json={"endpoint": "https://push.example/a", "keys": keys}
+            "/api/push/subscriptions",
+            json={"endpoint": "https://fcm.googleapis.com/fcm/send/a", "keys": keys},
         )
         assert answer.status_code == 422, keys
     ok = client.post(
-        "/api/push/subscriptions", json={"endpoint": "https://push.example/a", "keys": real}
+        "/api/push/subscriptions",
+        json={"endpoint": "https://fcm.googleapis.com/fcm/send/a", "keys": real},
     )
     assert ok.status_code == 201
 

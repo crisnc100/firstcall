@@ -137,12 +137,12 @@ def test_a_device_subscribes_moves_between_users_and_unsubscribes(
     )
     first = board.user("first@larkspur.example", teams={"north": "salesperson"})
     second = board.user("second@larkspur.example", teams={"north": "salesperson"})
-    keys = Device("https://push.example/send/abc").keys()
-    rotated = Device("https://push.example/send/abc").keys()["auth"]
-    endpoint = "https://push.example/send/abc"
+    keys = Device("https://fcm.googleapis.com/fcm/send/abc").keys()
+    rotated = Device("https://fcm.googleapis.com/fcm/send/abc").keys()["auth"]
+    endpoint = "https://fcm.googleapis.com/fcm/send/abc"
     one, two = board.signed_in(first.email), board.signed_in(second.email)
     assert one.get("/api/push/key").json() == {"public_key": "BPublicKey"}
-    plain = {"endpoint": "http://push.example/x", "keys": keys}
+    plain = {"endpoint": "http://fcm.googleapis.com/fcm/send/x", "keys": keys}
     assert one.post("/api/push/subscriptions", json=plain).status_code == 422
     assert (
         one.post("/api/push/subscriptions", json={"endpoint": endpoint, "keys": keys}).status_code
