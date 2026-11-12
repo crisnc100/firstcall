@@ -161,6 +161,11 @@ def _history_of(commit: str) -> str:
     assert found.returncode == 0, (
         f"{commit} is a squash merge; checking its order needs the tag {tag} (git fetch --tags)"
     )
+    # The tag must be the history of this squash, not any other commit: a squash merge keeps
+    # its branch tip's tree exactly.
+    assert _git("rev-parse", f"{tag}^{{tree}}") == _git("rev-parse", f"{commit}^{{tree}}"), (
+        f"{tag} does not hold the same files as the squash merge {commit}"
+    )
     return tag
 
 
