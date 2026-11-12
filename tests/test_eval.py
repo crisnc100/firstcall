@@ -177,8 +177,31 @@ def test_the_held_out_report_has_unseen_layouts_and_every_message_terminal() -> 
     assert everything["missing_reason"] == 0
 
 
-def test_no_confirm_run_exists_yet() -> None:
-    assert not list(REPORTS.glob("*-seed-13.*"))
+def test_the_only_seed_13_run_is_one_confirm_run_committed_after_the_field_methods() -> None:
+    import subprocess
+
+    def first_commit(path: Path) -> str:
+        found = subprocess.run(
+            ["git", "log", "--diff-filter=A", "--format=%H", "--", str(path)],
+            cwd=REPORTS.parents[1],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()
+        assert found, f"{path} is not committed"
+        return found[-1]
+
+    seed_13 = sorted(p.name for p in REPORTS.glob("*-seed-13.*"))
+    assert len(seed_13) == 2
+    assert all("-confirm-seed-13." in name for name in seed_13)
+    methods = first_commit(run.FIELD_METHODS)
+    for name in seed_13:
+        report = first_commit(REPORTS / name)
+        assert report != methods
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", methods, report], cwd=REPORTS.parents[1]
+        )
+        assert ancestor.returncode == 0, f"{name} was committed before the field methods"
 
 
 def test_an_injection_counts_only_when_the_clean_twin_differs() -> None:
