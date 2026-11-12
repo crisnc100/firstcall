@@ -1,0 +1,13 @@
+# The method each field ships with, from the plan's decision rule applied to the seed-11
+# model eval: the most accurate method on all messages, and within one point of the best,
+# the cheaper (rules, then combined, then model). tests/test_model_choice.py checks this file
+# against the rule applied to the report. Seed 13 runs only after this file is committed.
+source: evals/reports/2026-11-12-model-seed-11.json
+methods:
+  phone: rules
+  email: rules
+  name: combined
+  item: rules
+  agent: rules
+  category: combined
+  team: rules

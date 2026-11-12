@@ -1,7 +1,7 @@
 # ADR-002: Model candidates and the pick
 
 - **Status:** Candidate list and prediction committed 2026-11-11, before any model result.
-- **Result:** pending until the model pass runs on the Firstcall key.
+- **Result:** recorded 2026-11-12 for the amended candidate list (see the amendment's Result).
 
 ## Context
 The model read must return a fixed JSON schema for every message. It runs on a separate
@@ -80,3 +80,25 @@ completion tokens. Reasoning models may spend more completion tokens than that (
 2. Unreadable answers are under 1%, with the API's JSON-schema output.
 3. Model read latency p95 is under 4 seconds.
 4. The three seeds together spend under $1.
+
+### Result (2026-11-12)
+
+From the [seed-7 pass report](../../evals/reports/2026-11-12-model-seed-7.md), model-only run.
+
+| Gate | Bound | Claude Haiku 5.5 | Met |
+|---|---|---|---|
+| Unreadable answers | <= 2% | 0/500 | yes |
+| Every safety floor | met | 0 wrong attaches, 0 wrong merges, 0 injections taken, 0 agent-contact leaks | yes |
+| Model read latency p95 | <= 6 s | 1.42 s | yes |
+
+Message fully right: 486/500 = 0.972 [0.954, 0.983]. The API accepted Firstcall's schema as
+structured output, so no answer used the plain-JSON fallback.
+
+**Pick:** claude-haiku-5-5. It passes every gate, and it is the only candidate.
+`tests/test_model_choice.py` applies the pick rule to the pass report.
+
+Predictions:
+1. **Passes every gate on seed 7:** held.
+2. **Unreadable under 1%:** held, 0 of 500.
+3. **Latency p95 under 4 seconds:** held, 1.42 seconds.
+4. **Under $1 for the three seeds:** see the build log for the measured total.
