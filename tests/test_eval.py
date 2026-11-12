@@ -214,10 +214,57 @@ def _squash_merge_on_main(commit: str) -> bool:
     return False
 
 
-def _results(committed_json: str) -> dict[str, Any]:
-    report = json.loads(committed_json)
-    report.pop("field_methods_sha256", None)
-    return report
+# The Markdown line that carries the methods hash, and the blank line after it.
+HASH_LINE = re.compile(r"^`config/field_methods\.yaml` sha256: `([0-9a-f]{64})`\n\n", re.M)
+
+
+def _history(path: str) -> list[str]:
+    """Every commit that touched `path`, oldest first. --full-history keeps side branches
+    that a merge brought in, which the default simplification would hide."""
+    return _git(
+        "log", "--full-history", "--topo-order", "--reverse", "--format=%H", "--", path
+    ).split()
+
+
+def _blob(commit: str, path: str) -> str | None:
+    import subprocess
+
+    found = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{commit}:{path}"],
+        cwd=REPORTS.parents[1],
+        capture_output=True,
+        text=True,
+    )
+    return found.stdout.strip() if found.returncode == 0 else None
+
+
+def _parents(commit: str) -> list[str]:
+    return _git("log", "-1", "--format=%P", commit).split()
+
+
+def _changes(path: str) -> list[str]:
+    """The commits in `path`'s full history that gave it new content. A merge that only
+    carries one parent's version over makes no change of its own."""
+    return [
+        commit
+        for commit in _history(path)
+        if _blob(commit, path) not in {_blob(parent, path) for parent in _parents(commit)}
+    ]
+
+
+def _adds(path: str) -> list[str]:
+    """The commits that brought `path` into being: none of their parents has it."""
+    return [c for c in _changes(path) if all(_blob(p, path) is None for p in _parents(c))]
+
+
+def _json_version(text: str) -> tuple[dict[str, Any], str | None]:
+    report = json.loads(text)
+    return report, report.pop("field_methods_sha256", None)
+
+
+def _md_version(text: str) -> tuple[str, str | None]:
+    found = HASH_LINE.search(text)
+    return HASH_LINE.sub("", text, count=1), found.group(1) if found else None
 
 
 def test_the_only_seed_13_run_is_one_confirm_run_committed_after_the_field_methods() -> None:
@@ -239,20 +286,29 @@ def test_the_only_seed_13_run_is_one_confirm_run_committed_after_the_field_metho
     report = json.loads((REPORTS / f"{stem}.json").read_text())
     assert report["field_methods_sha256"] == hashlib.sha256(committed_methods).hexdigest()
 
-    # Each file of the pair was added once, in the same commit.
-    [added] = _git("log", "--diff-filter=A", "--format=%H", "--", report_json).split()
-    assert _git("log", "--diff-filter=A", "--format=%H", "--", report_md).split() == [added]
+    # Each file of the pair was added once, in the same commit, on any branch.
+    adds = _adds(report_json)
+    assert len(adds) == 1, (report_json, adds)
+    added = adds[0]
+    assert _adds(report_md) == [added], report_md
 
-    # Never rewritten: a later version may add the methods hash, but no result changes.
-    versions = _git("log", "--format=%H", "--", report_json).split()
-    first = _results(_git("show", f"{added}:{report_json}"))
-    for version in versions:
-        assert _results(_git("show", f"{version}:{report_json}")) == first, version
+    # Never rewritten: no version of either file changes a result. A version may add the
+    # methods hash, once; after that every version keeps the same hash.
+    for path, read in ((report_json, _json_version), (report_md, _md_version)):
+        first, _ = read(_git("show", f"{added}:{path}"))
+        seen: str | None = None
+        for version in _changes(path):
+            results, digest = read(_git("show", f"{version}:{path}"))
+            assert results == first, (path, version)
+            if seen is not None:
+                assert digest == seen, (path, version, "the methods hash changed or was dropped")
+            seen = digest
+        assert seen == report["field_methods_sha256"], path
 
-    # The methods were committed before the report and never changed after it. They may
-    # first appear in the report's own commit only when that commit is a PR squashed onto
-    # main, whose branch history CI already checked.
-    touched = _git("log", "--format=%H", "--", methods_path).split()
+    # The methods were committed before the report and never changed after it, on any
+    # branch. They may first appear in the report's own commit only when that commit is a
+    # PR squashed onto main, whose branch history CI already checked.
+    touched = _changes(methods_path)
     assert touched, f"{methods_path} is not committed"
     for commit in touched:
         if commit == added:
