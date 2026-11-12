@@ -1,9 +1,13 @@
 """The rules read: buyer contact, item, agent, team hint, spam signals and source time, pulled
 from a raw message with fixed patterns and the source's field mapping. No model is involved.
 
-Three kinds of contact are never taken as the buyer's: an agent's (listed per org, or found
-by phrasing), a portal relay sender's (listed per source), and a call-tracking number
-(listed per source). Lines that address an assistant or tell the reader to ignore its
+Three kinds of contact are kept from the buyer: an agent's (listed per org, or found by
+phrasing), a portal relay sender's (listed per source) and a call-tracking number (listed per
+source). The read leaves them out of free-text scans, the sender and Reply-To fallbacks and
+mapped form fields; an agent message also leaves out everything from the signature on. A
+value under a label in a relay body, or in its "Name (contacts)" sentence, is taken as
+written. Matching then drops any of these contacts that still arrive, so none becomes a
+buyer's identity. Lines that address an assistant or tell the reader to ignore its
 instructions are skipped when scanning free text, so text written to steer a reader cannot
 supply a contact.
 """
@@ -97,7 +101,9 @@ class Reading:
     spam_signals: tuple[str, ...] = ()
     source_time: datetime | None = None
     text: str = ""
-    # Fields filled from free text rather than a label or a mapped field.
+    # Names of fields a rule filled only from a free-text scan, not from a label or a mapped
+    # field ("phone", "email", "item"), plus "name" when no name was found at all. Only the
+    # relay and form paths set it; agent and direct emails leave it empty.
     unsure: tuple[str, ...] = ()
 
     def as_json(self) -> dict[str, Any]:
