@@ -325,3 +325,21 @@ Both reports still reproduce byte for byte.
   - the prefix tie between item names;
   - top-posted replies read as forwards;
   - the generator's label edge cases.
+
+## Phase 13: the first CI run
+
+CI failed one test: the near-cap part-limit test ran over its 2-CPU-second limit on the
+GitHub runner. Profiling showed the refusal came on time, at part 101, but the work before it
+grew with the parent header's length. The feed parser fetches the parent's Content-Type once
+per child part, and each fetch parsed the header again: 103 parses for 101 parts, about 5 ms
+each for a header near 4,000 characters.
+
+| Run of that test | Before | After |
+|---|---|---|
+| Local, plain | 0.53 s | under 0.01 s |
+| Local, under coverage | 0.91 s | 0.01 s |
+| CI runner, under coverage | over 2 s | not yet run |
+
+The per-message policy now keeps each parsed header, so a header is parsed once however many
+parts follow. A new test counts the parses (at most 3; it was 103). The existing timing test
+is unchanged: with the code fixed, it holds with a wide margin.
