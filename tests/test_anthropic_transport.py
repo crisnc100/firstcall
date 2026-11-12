@@ -8,9 +8,9 @@ from typing import Any
 
 import httpx
 import pytest
-from firstcall.model.anthropic import API_URL, AnthropicTransport
 from pydantic import SecretStr
 
+from firstcall.model.anthropic import API_URL, AnthropicTransport
 from firstcall.model.transport import (
     NoProviderError,
     TransportError,
