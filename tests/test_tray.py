@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.db import Alert, InboxEmail, Message, PushSubscription
 from firstcall.settings import Settings
-from tests.board_helpers import Board
+from tests.board_helpers import Board, Device
 from tests.conftest import FakeClock
 
 
@@ -136,7 +136,8 @@ def test_a_device_subscribes_moves_between_users_and_unsubscribes(
     )
     first = board.user("first@larkspur.example", teams={"north": "salesperson"})
     second = board.user("second@larkspur.example", teams={"north": "salesperson"})
-    keys = {"p256dh": "BKey", "auth": "secret16bytes"}
+    keys = Device("https://push.example/send/abc").keys()
+    rotated = Device("https://push.example/send/abc").keys()["auth"]
     endpoint = "https://push.example/send/abc"
     one, two = board.signed_in(first.email), board.signed_in(second.email)
     assert one.get("/api/push/key").json() == {"public_key": "BPublicKey"}
@@ -146,7 +147,7 @@ def test_a_device_subscribes_moves_between_users_and_unsubscribes(
         one.post("/api/push/subscriptions", json={"endpoint": endpoint, "keys": keys}).status_code
         == 201
     )
-    again = {"endpoint": endpoint, "keys": {**keys, "auth": "rotated"}}
+    again = {"endpoint": endpoint, "keys": {**keys, "auth": rotated}}
     assert one.post("/api/push/subscriptions", json=again).status_code == 201
     assert (
         two.post("/api/push/subscriptions", json={"endpoint": endpoint, "keys": keys}).status_code
@@ -157,8 +158,8 @@ def test_a_device_subscribes_moves_between_users_and_unsubscribes(
         with board.sessions() as session:
             return [(s.user_id, s.auth) for s in session.scalars(select(PushSubscription))]
 
-    assert owners() == [(second.id, "secret16bytes")]
+    assert owners() == [(second.id, keys["auth"])]
     one.request("DELETE", "/api/push/subscriptions", json={"endpoint": endpoint})
-    assert owners() == [(second.id, "secret16bytes")]
+    assert owners() == [(second.id, keys["auth"])]
     two.request("DELETE", "/api/push/subscriptions", json={"endpoint": endpoint})
     assert owners() == []

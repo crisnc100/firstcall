@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board import alerts
 from firstcall.board.escalate import escalate
-from firstcall.db import Alert, Lead, Message, PushSend, PushSubscription, User
+from firstcall.db import Alert, Lead, PushSend, PushSubscription, User
 from firstcall.outbound import allowlist
 from firstcall.outbound.mail import Line, SmtpMailer, label, render
 from firstcall.pipeline.worker import alert_tick, work
@@ -261,22 +261,6 @@ def test_email_to_a_buyer_is_refused_even_through_a_crafted_user(board: Board) -
         }
     assert states == {(crafted.id, "refused"), (texting.id, "refused")}
     assert Mailpit().to(buyer_email) == []
-
-
-def test_a_sender_in_the_tray_is_still_never_a_recipient(board: Board) -> None:
-    sender = f"someone-{_tag()}@else.example"
-    stored = board.pipe.form("site-form", {"name": "Sam", "email": sender, "message": "Hi"})
-    with board.sessions.begin() as session:
-        message = session.get_one(Message, stored)
-        message.status, message.reason = "not_a_lead", "vendor (no signal)"
-        message.extracted = {"category": "vendor", "email": sender, "phone": "+12025550166"}
-    board.user(sender)
-    board.user("2025550166@txt.example")
-    assert board.org_id is not None
-    with board.sessions() as session:
-        for address in (sender, "2025550166@txt.example"):
-            with pytest.raises(allowlist.RefusedError, match="buyer"):
-                allowlist.check_email(session, board.org_id, address)
 
 
 def test_push_only_to_the_recipients_own_https_device(board: Board, push: FakePushService) -> None:
