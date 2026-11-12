@@ -17,8 +17,9 @@ uv run pyright
 
 step "detect-secrets (against .secrets.baseline)"
 # Generated synthetic data and its hashes are excluded: they hold random ids, not secrets.
+# Recorded model answers are keyed by the SHA-256 of their request.
 git ls-files -z --cached --others --exclude-standard \
-  | grep -zv -E '^(evals/gold/|evals/reports/|uv\.lock$|web/package-lock\.json$)' \
+  | grep -zv -E '^(evals/gold/|evals/reports/|evals/recordings/|uv\.lock$|web/package-lock\.json$)' \
   | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
 
 step "web: npm ci and the TypeScript build"
