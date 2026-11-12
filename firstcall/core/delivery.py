@@ -1,0 +1,83 @@
+"""Delivery keys: how a repeat delivery of the same message is spotted, and the cleaned body
+that spots a re-forward.
+
+- Email: the source plus the Message-ID header, hashed when it is over MAX_MESSAGE_ID_CHARS
+  or holds characters that cannot be printed. The SHA-256 of the raw message when there is
+  no Message-ID, or when the headers are over the read budget.
+- Form and call service: the source plus the provider's delivery id header, when the source
+  names one. Otherwise the SHA-256 of the body, but only within WINDOW, because a buyer can
+  genuinely send the same form twice.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+from dataclasses import dataclass
+from datetime import timedelta
+
+WINDOW = timedelta(minutes=10)
+REFORWARD_WINDOW = timedelta(hours=24)
+# Longer Message-IDs are stored hashed; the key column holds 1,000 characters.
+MAX_MESSAGE_ID_CHARS = 200
+
+
+@dataclass(frozen=True)
+class DeliveryKey:
+    # Unique per source when set. None means "match the same body within WINDOW".
+    key: str | None
+    body_sha256: str
+
+    @property
+    def windowed(self) -> bool:
+        return self.key is None
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def for_email(raw: bytes, message_id: str | None) -> DeliveryKey:
+    digest = sha256(raw)
+    cleaned = (message_id or "").strip()
+    if not cleaned:
+        return DeliveryKey(f"sha:{digest}", digest)
+    if len(cleaned) > MAX_MESSAGE_ID_CHARS or not cleaned.isprintable():
+        # Hashing keeps the key short enough to store while a redelivery still matches.
+        return DeliveryKey(f"midh:{sha256(cleaned.encode())}", digest)
+    return DeliveryKey(f"mid:{cleaned}", digest)
+
+
+def for_json(body: bytes, delivery_id: str | None) -> DeliveryKey:
+    cleaned = (delivery_id or "").strip()
+    return DeliveryKey(f"id:{cleaned}" if cleaned else None, sha256(body))
+
+
+_FORWARD_MARKER = re.compile(
+    r"^-{2,}[ \t]*(forwarded message|original message)[ \t]*-{2,}[ \t]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+_HEADER_LINE = re.compile(r"^(from|date|sent|to|cc|subject):", re.IGNORECASE)
+
+
+def clean_body(text: str) -> str:
+    """The text a re-forward shares with the original: everything after the last forward
+    header block, with quoting and spacing removed."""
+    body = text.replace("\r\n", "\n").replace("\r", "\n")
+    markers = list(_FORWARD_MARKER.finditer(body))
+    if markers:
+        rest = body[markers[-1].end() :].split("\n")
+        index = 0
+        while index < len(rest) and not rest[index].strip():
+            index += 1
+        # The header block ends at its first blank line; a "From:" line after that belongs
+        # to the forwarded message itself.
+        while index < len(rest) and _HEADER_LINE.match(rest[index]):
+            index += 1
+        body = "\n".join(rest[index:])
+    lines = [line.lstrip("> ").strip() for line in body.splitlines()]
+    return " ".join(" ".join(line for line in lines if line).split()).casefold()
+
+
+def clean_body_sha256(text: str) -> str:
+    return sha256(clean_body(text).encode())

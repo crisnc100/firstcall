@@ -1,0 +1,54 @@
+{
+ "mode": "pr",
+ "purpose": "Firstcall PR1a, 'rules, no key': the first PR of an open-source lead hub. Every lead from every source lands in one intake, is read by rules (no AI model yet), placed in a team or Unassigned, and matched to an existing lead without ever merging two different people. A synthetic test corpus with labels committed before the rules, plus a rules-only evaluation, measures it.",
+ "mechanism": "1. Intake (firstcall/api.py, firstcall/intake/): an inbound email webhook and a generic signed webhook per source, with token, basic or HMAC auth, size limits (413, including chunked), rate limits (429 per source after auth and per IP; X-Forwarded-For only with FIRSTCALL_TRUST_PROXY, right-most trusted hop), 415, CORS with per-source allowed origins; the raw message and its job are written in one transaction before the 2xx; duplicate deliveries are keyed by Message-ID (hashed when long), a delivery-id header, or the same form body within 10 minutes; uvicorn runs with the access log and proxy headers off so path tokens never reach logs.\n2. Jobs (firstcall/pipeline/): a Postgres job queue with leases, a reaper, retries with backoff and failpoints; every message ends in a terminal status with a reason.\n3. Read (firstcall/core/read.py): one budget at the read boundary (characters, lines, line length); email parsed with the default policy plus a budget policy that caps parsed headers, total header size, part count and nesting depth before structured parsing; HTML block tags become line breaks; forwards are followed to the inner sender and Reply-To; phone, email, name, item, agent and spam (sender list, honeypot) are extracted by linear rules.\n4. Place and match (firstcall/core/place.py, match.py, identity.py): item to team or Unassigned; within a team, a normalised phone or lowercased email is the same person, except that a named message never joins a nameless lead on phone alone; hard negatives (household phone, shared agent, portal relay, tracking number, conflicting phone and email) never merge; possible duplicates are flagged.\n5. Eval (firstcall/evaluation/, firstcall/corpus/): seeds 7 (tuning), 11 (selection) and 13 (confirm, locked until a committed field-methods file exists); unseen portal layouts only in 11 and 13; floors split into safety and quality; injection hits count only when the answer differs from a clean twin; reports replay byte for byte.",
+ "decisions": "Rules only in this PR so the baseline exists before any model (rejected: building model read first). Safety floors (wrong merges, wrong attaches, injection, agent contact leak) gate the shipped pipeline at PR1b's confirm run; misses in quality floors are published, not tuned away. The match rule was amended after seed 11 showed a nameless lead could absorb a different named person (rejected: the stricter both-names rule, which lost real repeats). Email parsing stays on the standard library's default policy with a budget policy hook, chosen after a four-model second opinion (rejected: a hand-rolled MIME walk and a raw-byte pre-scan). Clean room: inspired by an internal tool, with no copied code, names, data or exact rules.",
+ "readers": "README and docs/failures: users and hiring managers. docs/definitions.md and docs/adr: engineers judging the design. examples/form.html: people wiring a website form. Code comments: the next maintainer.",
+ "base": "origin/main",
+ "docMap": [
+  {
+   "behavior": "Intake auth, limits, CORS, duplicate keys",
+   "docs": [
+    "README.md",
+    "docs/definitions.md",
+    "examples/form.html"
+   ]
+  },
+  {
+   "behavior": "Read budget and email parsing",
+   "docs": [
+    "docs/definitions.md",
+    "docs/adr/ADR-001-rules-or-model-per-field.md"
+   ]
+  },
+  {
+   "behavior": "Matching rule and hard negatives",
+   "docs": [
+    "docs/definitions.md",
+    "docs/adr/ADR-003-matching.md"
+   ]
+  },
+  {
+   "behavior": "Eval seeds, floors, injection twins",
+   "docs": [
+    "README.md",
+    "docs/failures/0001-rules-only-seed-11.md",
+    "evals/gold/CHANGELOG.md"
+   ]
+  },
+  {
+   "behavior": "Jobs, reaper, terminal statuses",
+   "docs": [
+    "docs/definitions.md",
+    "docs/adr/ADR-006-no-model-fallback.md"
+   ]
+  }
+ ],
+ "untouchable": [
+  "evals/gold/**",
+  "evals/reports/**",
+  "tests/**",
+  "builds/**",
+  "LICENSE"
+ ]
+}

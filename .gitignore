@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Firstcall
+node_modules/
+web/dist/
+coverage.json

@@ -1,0 +1,264 @@
+"""Process one stored message: rules read, place, match, category gate, then create a lead or
+attach to one, all in the caller's transaction.
+
+Every effect has a unique key (a lead on the message that created it, an activity on its
+message, a lead event on its cause), so processing a message twice changes nothing.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import Session
+
+from firstcall import failpoints
+from firstcall.core import delivery
+from firstcall.core.clock import Clock
+from firstcall.core.identity import first_name
+from firstcall.core.match import Candidate, decide, gate
+from firstcall.core.place import place, team_key
+from firstcall.core.read import AgentRef, Reading, Reference, SourceRules, UnparseableError, read
+from firstcall.core.uuid7 import uuid7
+from firstcall.db import (
+    TERMINAL_STATUSES,
+    Activity,
+    Agent,
+    Identity,
+    Lead,
+    LeadEvent,
+    Message,
+    Source,
+    Team,
+)
+from firstcall.locks import lock_all
+
+FAILPOINT_AFTER_LEAD_INSERT = "after_lead_insert"
+
+
+@dataclass(frozen=True)
+class OrgView:
+    reference: Reference
+    item_teams: dict[str, str]
+    team_names: dict[str, str]
+    team_ids: dict[str, uuid.UUID]
+    team_slugs: dict[uuid.UUID, str]
+    never_phones: frozenset[str]
+    never_emails: frozenset[str]
+
+
+def org_view(session: Session, org_id: uuid.UUID, source: Source) -> OrgView:
+    teams = list(session.scalars(select(Team).where(Team.org_id == org_id)))
+    agents = list(session.scalars(select(Agent).where(Agent.org_id == org_id)))
+    items = {str(item): team.slug for team in teams for item in team.items}
+    names: dict[str, str] = {}
+    for team in teams:
+        names[team_key(team.slug)] = team.slug
+        names[team_key(team.name)] = team.slug
+    refs = tuple(AgentRef(a.name, a.email, a.phone) for a in agents)
+    return OrgView(
+        reference=Reference(tuple(sorted(items)), refs),
+        item_teams=items,
+        team_names=names,
+        team_ids={t.slug: t.id for t in teams},
+        team_slugs={t.id: t.slug for t in teams},
+        never_phones=frozenset(
+            {a.phone for a in agents if a.phone} | {str(n) for n in source.tracking_numbers}
+        ),
+        never_emails=frozenset(
+            {a.email.lower() for a in agents if a.email}
+            | {str(s).lower() for s in source.relay_senders}
+        ),
+    )
+
+
+def source_rules(source: Source) -> SourceRules:
+    return SourceRules(
+        kind=source.kind,
+        field_mapping={str(k): str(v) for k, v in source.field_mapping.items()},
+        relay_senders=frozenset(str(s) for s in source.relay_senders),
+        tracking_numbers=frozenset(str(s) for s in source.tracking_numbers),
+        spam_senders=frozenset(str(s) for s in source.spam_senders),
+        honeypot_field=source.honeypot_field,
+    )
+
+
+def identities(reading: Reading, view: OrgView) -> list[tuple[str, str]]:
+    """The message's identity keys. Agent, relay and tracking contacts never count."""
+    keys: list[tuple[str, str]] = []
+    agent = reading.agent
+    agent_phone = agent.phone if agent else None
+    agent_email = agent.email.lower() if agent and agent.email else None
+    if reading.phone and reading.phone not in view.never_phones and reading.phone != agent_phone:
+        keys.append(("phone", reading.phone))
+    if reading.email and reading.email not in view.never_emails and reading.email != agent_email:
+        keys.append(("email", reading.email))
+    return keys
+
+
+def _candidates(
+    session: Session, org_id: uuid.UUID, keys: list[tuple[str, str]], view: OrgView
+) -> list[Candidate]:
+    if not keys:
+        return []
+    clauses = [and_(Identity.kind == kind, Identity.value == value) for kind, value in keys]
+    rows = session.execute(
+        select(Identity.lead_id, Identity.kind, Lead.team_id, Lead.name)
+        .join(Lead, Lead.id == Identity.lead_id)
+        .where(Identity.org_id == org_id, or_(*clauses))
+    ).all()
+    found: dict[uuid.UUID, dict[str, Any]] = {}
+    for lead_id, kind, team_id, name in rows:
+        entry = found.setdefault(
+            lead_id,
+            {
+                "team": view.team_slugs.get(team_id) if team_id else None,
+                "name": name,
+                "kinds": set(),
+            },
+        )
+        entry["kinds"].add(kind)
+    return [
+        Candidate(
+            lead_id=str(lead_id),
+            team=entry["team"],
+            first_name=first_name(entry["name"]),
+            by_email="email" in entry["kinds"],
+            by_phone="phone" in entry["kinds"],
+        )
+        for lead_id, entry in sorted(found.items(), key=lambda kv: str(kv[0]))
+    ]
+
+
+def _event(
+    session: Session, lead: Lead, event_type: str, cause: str, payload: dict[str, Any], at: datetime
+) -> None:
+    last = session.scalar(select(func.max(LeadEvent.seq)).where(LeadEvent.lead_id == lead.id))
+    session.add(
+        LeadEvent(
+            id=uuid7(at),
+            org_id=lead.org_id,
+            lead_id=lead.id,
+            seq=(last or 0) + 1,
+            type=event_type,
+            payload=payload,
+            cause=cause,
+        )
+    )
+
+
+def _add_identities(session: Session, lead: Lead, keys: list[tuple[str, str]]) -> None:
+    rows = session.execute(select(Identity.kind, Identity.value).where(Identity.lead_id == lead.id))
+    existing = {(kind, value) for kind, value in rows}
+    for kind, value in keys:
+        if (kind, value) not in existing:
+            session.add(Identity(org_id=lead.org_id, lead_id=lead.id, kind=kind, value=value))
+
+
+def _is_reforward(session: Session, message: Message, lead_id: uuid.UUID) -> bool:
+    # Within the window on either side: after a backlog, the later copy can be processed first.
+    match = session.scalar(
+        select(Message.id)
+        .where(
+            Message.lead_id == lead_id,
+            Message.id != message.id,
+            Message.clean_body_sha256 == message.clean_body_sha256,
+            Message.received_at > message.received_at - delivery.REFORWARD_WINDOW,
+            Message.received_at < message.received_at + delivery.REFORWARD_WINDOW,
+        )
+        .limit(1)
+    )
+    return match is not None
+
+
+def process(session: Session, message_id: uuid.UUID, clock: Clock) -> str:
+    """The message's terminal status. A message already terminal is left as it is."""
+    message = session.scalar(select(Message).where(Message.id == message_id).with_for_update())
+    if message is None:
+        raise LookupError(f"no message {message_id}")
+    if message.status in TERMINAL_STATUSES:
+        return message.status
+    source = session.get_one(Source, message.source_id)
+    view = org_view(session, message.org_id, source)
+    message.status = "processing"
+    try:
+        reading = read(message.raw, source_rules(source), view.reference)
+    except UnparseableError as error:
+        message.status, message.reason = "failed", f"unparseable: {error}"
+        return message.status
+    # Every message here took the rules-only path, so a model reread is owed.
+    message.needs_reread = True
+    message.category = reading.category
+    message.extracted = reading.as_json()
+    message.source_time = reading.source_time
+    if source.kind == "email":
+        message.clean_body_sha256 = delivery.clean_body_sha256(reading.text)
+    default_team = view.team_slugs.get(source.default_team_id) if source.default_team_id else None
+    placed = place(reading.item, reading.team_hint, default_team, view.item_teams, view.team_names)
+    keys = identities(reading, view)
+    lock_all(session, [("identity", str(message.org_id), kind, value) for kind, value in keys])
+    decision = decide(
+        placed, first_name(reading.name), _candidates(session, message.org_id, keys, view)
+    )
+    outcome = gate(decision, reading.category)
+    cause = f"message:{message.id}"
+    now = clock.now()
+
+    if outcome == "not_a_lead":
+        signals = ", ".join(reading.spam_signals) or "no signal"
+        message.status, message.reason = "not_a_lead", f"{reading.category} ({signals})"
+        return message.status
+
+    if outcome == "attach":
+        assert decision.attach_to is not None
+        lead = session.get_one(Lead, uuid.UUID(decision.attach_to), with_for_update=True)
+        message.lead_id = lead.id
+        message.team_id = lead.team_id
+        # A message that waited in a retry can attach after a later one made the lead; the
+        # lead's timers start at the buyer's earliest message either way.
+        if message.received_at < lead.arrival_at:
+            lead.arrival_at = message.received_at
+        if source.kind == "email" and _is_reforward(session, message, lead.id):
+            message.status, message.reason = (
+                "duplicate_content",
+                "re-forward of a message on this lead",
+            )
+            return message.status
+        session.add(Activity(org_id=lead.org_id, lead_id=lead.id, message_id=message.id))
+        _add_identities(session, lead, keys)
+        _event(session, lead, "lead.activity", cause, {"message_id": str(message.id)}, now)
+        message.status, message.reason = "attached", "matched a known buyer"
+        return message.status
+
+    team_id = view.team_ids.get(decision.team) if decision.team else None
+    lead = Lead(
+        id=uuid.uuid4(),
+        org_id=message.org_id,
+        team_id=team_id,
+        state="pool",
+        created_by_message_id=message.id,
+        arrival_at=message.received_at,
+        name=reading.name,
+        phone=reading.phone if ("phone", reading.phone) in keys else None,
+        email=reading.email if ("email", reading.email) in keys else None,
+        item=reading.item,
+        possible_duplicates=list(decision.possible_duplicates),
+    )
+    session.add(lead)
+    session.flush()
+    failpoints.fire(FAILPOINT_AFTER_LEAD_INSERT)
+    _add_identities(session, lead, keys)
+    payload = {
+        "message_id": str(message.id),
+        "team": decision.team,
+        "possible_duplicates": list(decision.possible_duplicates),
+    }
+    _event(session, lead, "lead.created", cause, payload, now)
+    message.lead_id = lead.id
+    message.team_id = team_id
+    message.status = "lead_created"
+    message.reason = "new lead, possible duplicate" if decision.possible_duplicates else "new lead"
+    return message.status
