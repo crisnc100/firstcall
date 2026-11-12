@@ -106,7 +106,8 @@ def test_the_review_fixes_in_a_browser(compose_db: tuple[sessionmaker[Session], 
         _wait_for(processed, "the worker to process the messages")
         _wait_for(api_up, "the api container")
         _wait_for(lure_mailed, "the digest naming the hostile buyer")
-        five_ago = datetime.now(UTC) - timedelta(minutes=5)
+        # Half a minute past 5, so whole-second clock skew from the Date header cannot read 4.
+        five_ago = datetime.now(UTC) - timedelta(minutes=5, seconds=30)
         long_ago = datetime.now(UTC) - timedelta(days=2)
         with sessions.begin() as session:
             lead_id = session.get_one(Message, owned).lead_id
