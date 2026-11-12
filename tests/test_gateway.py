@@ -364,9 +364,11 @@ def test_record_then_replay_gives_the_same_answer_without_a_call(
     assert replayed.content == recorded.content
     assert (replayed.prompt_tokens, replayed.cost_usd) == (1000, Decimal("0.0012"))
     assert unused.requests == []
+    # The second record call is answered from its recording, so only one call is live.
+    assert len(recorder.requests) == 1
     assert [c.mode for c in calls(sessions)] == ["record", "record", "replay"]
     # Replay spends nothing from the day's budget.
-    assert spent(sessions) == Decimal("0.0024")
+    assert spent(sessions) == Decimal("0.0012")
 
 
 def test_a_replay_miss_raises(
