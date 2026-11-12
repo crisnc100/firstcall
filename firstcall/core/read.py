@@ -191,9 +191,11 @@ def _lines_of(text: str) -> str:
 def check_header_budget(raw: bytes) -> None:
     """Refuse a message whose header block, or any one header in PARSED_HEADERS, is over the
     budget, before any header is parsed. Header parsing time grows faster than a header's
-    length."""
-    ends = [at for at in (raw.find(b"\n\n"), raw.find(b"\r\n\r\n")) if at >= 0]
-    head = raw[: min(ends)] if ends else raw
+    length. Line ends are read as the email parser reads them: CRLF, bare CR and LF all end a
+    line, so a bare-CR message splits into the same headers here as in the worker."""
+    lines = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    end = lines.find(b"\n\n")
+    head = lines[:end] if end >= 0 else lines
     if len(head) > MAX_HEADER_BYTES:
         raise OverBudgetError(
             f"over the read budget: {len(head)} bytes of headers (limit {MAX_HEADER_BYTES})"

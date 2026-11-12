@@ -6,9 +6,13 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core import read
 from firstcall.core.read import Reference, SourceRules
+from firstcall.intake.store import delivery_key
+from tests.conftest import FakeClock
+from tests.helpers import Pipeline
 
 REFERENCE = Reference(("Juniper Mesa",), ())
 INBOX = SourceRules("email", relay_senders=frozenset({"leads@hearthly.example"}))
@@ -69,3 +73,38 @@ def test_x1_a_double_br_still_ends_the_forwarded_header_block() -> None:
 def test_x1_source_line_breaks_inside_html_text_are_spaces() -> None:
     text = read._strip_tags("<p>Name:\n  Ana Ruiz</p>\n<p>Phone: 202-555-0142</p>")
     assert read._labels(text) == {"name": "Ana Ruiz", "phone": "202-555-0142"}
+
+
+# x2: intake splits headers on a bare CR, as the email parser does
+
+
+def _bare_cr(received: str) -> bytes:
+    ids = " ".join(f"<{n:06d}.thread@mail.example>" for n in range(300))
+    folded = "\n ".join(ids.split(" "))
+    raw = (
+        "From: Ana Ruiz <ana@inbox.example>\nTo: leads@larkspur.example\nSubject: Hello\n"
+        f"Received: {received}\n"
+        "Message-ID: <x2-bare-cr@mail.example>\n"
+        f"References: {folded}\n\nIs Juniper Mesa open?\n\nAna\n202-555-0142\n"
+    )
+    return raw.replace("\n", "\r").encode()
+
+
+def test_x2_a_bare_cr_message_with_long_references_keys_by_message_id() -> None:
+    read.check_header_budget(_bare_cr("by mx1.example"))
+    with pytest.raises(read.OverBudgetError):
+        read.check_header_budget(
+            ("From: " + "a" * (read.MAX_LINE_CHARS + 1) + "\r\rbody\r").encode()
+        )
+
+
+def test_x2_a_bare_cr_redelivery_is_spotted_by_message_id(
+    sessions: sessionmaker[Session], clock: FakeClock
+) -> None:
+    pipe = Pipeline(sessions, clock)
+    source = pipe.source("inbox")
+    first = _bare_cr("by mx1.example")
+    second = _bare_cr("by mx2.example")
+    assert delivery_key(source, first, {}).key == "mid:<x2-bare-cr@mail.example>"
+    original = pipe.store("inbox", first)
+    assert pipe.store("inbox", second) == original
