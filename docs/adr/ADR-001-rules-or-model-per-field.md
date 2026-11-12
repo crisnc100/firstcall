@@ -2,7 +2,7 @@
 
 - **Status:** Prediction committed 2026-11-11, before any rules code or eval result exists.
 - **Result:** rules-only part recorded 2026-11-11 (see Result). The model and combined parts
-  are pending until the model pass.
+  are not recorded here yet.
 
 ## Context
 Each message needs a buyer's phone, email and name, the item of interest, whether an agent
@@ -57,7 +57,7 @@ unseen layouts have 66.
 6. **Unseen: name below 0.60, phone and email each at least 5 points lower:** half held. Name
    is 0/66. Phone and email are 66/66 = 1.000 on unseen layouts, so they did not fall.
 7. **Unseen item within 5 points of seen:** held, 66/66 = 1.000.
-8. **The per-field choice:** pending until the model pass.
+8. **The per-field choice:** not recorded here yet.
 
 The seen layouts are labelled, and the rules were written for exactly those labels, so the
 seen scores say little about real mail. Unseen names show where rules stop: they know the

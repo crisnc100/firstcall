@@ -55,8 +55,9 @@ ones, and commit the recordings with the reports.
 
 Each call is about 1,800 prompt tokens (the schema is counted) and 80 completion tokens, about
 $0.00022 at $0.10 and $0.50 per million. A seed is 500 messages plus its clean twins, so one
-seed costs about $0.12; seeds 7 and 11 measured $0.1147 and $0.1155 by the ledger. The measured totals are in the reports' "Calls and cost" tables and
-in the build log.
+seed costs about $0.12. By the budget ledger, seeds 7, 11 and 13 measured $0.1147, $0.1155
+and $0.1155. The reports' "Calls and cost" tables give each run's calls, tokens and spend from
+the call log.
 
 ## Replaying
 

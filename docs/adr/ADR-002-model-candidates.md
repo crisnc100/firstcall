@@ -61,7 +61,8 @@ completion tokens. Reasoning models may spend more completion tokens than that (
   about 1,500). Source: Anthropic's published price for Claude Haiku 5.5 ($0.10 input, $0.50
   output per million tokens; $0.50 and $2.50 above 100,000 prompt tokens), the same figures
   the sibling Ledgerline project charges at (`ledgerline/config.py`, read 2026-11-12) and
-  OpenRouter listed for `anthropic/claude-haiku-5.5` in the table above.
+  OpenRouter listed for `anthropic/claude-haiku-5.5` in the table above. Firstcall charges a
+  call whose prompt is over 100,000 tokens the higher rates on all of its tokens.
 - **Gates, unchanged:** unreadable answers at most 2%, every safety floor met, and model
   read latency p95 at most 6 seconds. They are judged on the model-only run on seed 7.
 - **Pick rule, unchanged:** among models that pass every gate, the cheapest that is not
@@ -101,4 +102,5 @@ Predictions:
 1. **Passes every gate on seed 7:** held.
 2. **Unreadable under 1%:** held, 0 of 500.
 3. **Latency p95 under 4 seconds:** held, 1.42 seconds.
-4. **Under $1 for the three seeds:** see the build log for the measured total.
+4. **Under $1 for the three seeds:** held, $0.3464 by the budget ledger ($0.1147, $0.1155
+   and $0.1155 for seeds 7, 11 and 13; `builds/v01/log.md`).
