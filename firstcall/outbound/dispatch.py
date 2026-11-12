@@ -2,7 +2,8 @@
 
 Rows are locked with SKIP LOCKED while they are sent, so two workers never send the same
 one. A crash between the send and the commit sends it again on the next pass: a repeat
-alert is better than a lost one.
+alert is better than a lost one. A failed send never escapes these passes: it is logged
+and counted against that send, so the worker and scheduler keep running.
 """
 
 from __future__ import annotations
@@ -65,19 +66,36 @@ class Outbound:
         """Send every pending push once. Returns how many were tried."""
         if self.pusher is None:
             return 0
-        with self.sessions.begin() as session:
-            sends = list(
-                session.scalars(
-                    select(PushSend)
-                    .where(PushSend.state == "pending")
-                    .order_by(PushSend.id)
-                    .limit(BATCH)
-                    .with_for_update(skip_locked=True)
+        try:
+            with self.sessions.begin() as session:
+                sends = list(
+                    session.scalars(
+                        select(PushSend)
+                        .where(PushSend.state == "pending")
+                        .order_by(PushSend.id)
+                        .limit(BATCH)
+                        .with_for_update(skip_locked=True)
+                    )
                 )
-            )
-            for send in sends:
+                for send in sends:
+                    self._push_contained(session, send)
+                return len(sends)
+        except Exception:
+            log.exception("the push pass failed; pending pushes wait for the next pass")
+            return 0
+
+    def _push_contained(self, session: Session, send: PushSend) -> None:
+        """One send in its own savepoint, so an error rolls back only that send's changes
+        and counts as a failed attempt."""
+        try:
+            with session.begin_nested():
                 self._push(session, send)
-            return len(sends)
+        except Exception:
+            log.exception("push send %s raised", send.id)
+            send.attempts += 1
+            send.last_status = NO_RESPONSE
+            if send.attempts > self.settings.push_retries:
+                send.state = "failed"
 
     def _push(self, session: Session, send: PushSend) -> None:
         assert self.pusher is not None
@@ -122,17 +140,25 @@ class Outbound:
         """One email per user and team once the oldest pending alert in that pair has waited
         the digest window. Returns how many emails went out."""
         cutoff = self.clock.now() - timedelta(seconds=self.settings.digest_seconds)
-        with self.sessions() as session:
-            groups = session.execute(
-                select(Alert.user_id, Alert.team_id)
-                .where(Alert.email_state == "pending")
-                .group_by(Alert.user_id, Alert.team_id)
-                .having(func.min(Alert.created_at) <= cutoff)
-            ).all()
+        try:
+            with self.sessions() as session:
+                groups = session.execute(
+                    select(Alert.user_id, Alert.team_id)
+                    .where(Alert.email_state == "pending")
+                    .group_by(Alert.user_id, Alert.team_id)
+                    .having(func.min(Alert.created_at) <= cutoff)
+                ).all()
+        except Exception:
+            log.exception("the digest pass failed; pending email waits for the next pass")
+            return 0
         sent = 0
         for user_id, team_id in groups:
-            with self.sessions.begin() as session:
-                sent += self._digest(session, user_id, team_id)
+            try:
+                with self.sessions.begin() as session:
+                    sent += self._digest(session, user_id, team_id)
+            except Exception:
+                # The alerts stay pending, so the next pass sends the digest again.
+                log.exception("digest for user %s failed; will retry", user_id)
         return sent
 
     def _digest(self, session: Session, user_id: uuid.UUID, team_id: uuid.UUID | None) -> int:

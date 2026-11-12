@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from firstcall.board import leads
 from firstcall.core.access import Viewer
 from firstcall.core.clock import Clock
+from firstcall.core.identity import bare_address
 from firstcall.db import ORG_ROLES, TEAM_ROLES, Membership, Team, User, UserSession
 
 MIN_PASSWORD = 12
@@ -67,9 +68,11 @@ def create_user(
     roles: list[str] | None = None,
     password: str | None = None,
 ) -> User:
-    address = normal_email(email)
-    if "@" not in address or not name.strip():
-        raise AccountError("a user needs a name and an email address")
+    address = bare_address(email)
+    if address is None:
+        raise AccountError("a user's email must be one plain address, like name@example.com")
+    if not name.strip():
+        raise AccountError("a user needs a name")
     taken = session.scalar(select(User.id).where(User.org_id == org_id, User.email == address))
     if taken is not None:
         raise AccountError("a user with that email already exists")

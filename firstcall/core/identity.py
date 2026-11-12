@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from email.utils import getaddresses
 
 import phonenumbers
 
@@ -65,6 +66,21 @@ def find_emails(text: str) -> list[str]:
         if local.strip(QUOTES) and TOP_LEVEL.fullmatch(domain.rsplit(".", 1)[-1]):
             found.append(address.lower())
     return found
+
+
+BARE_ADDRESS = re.compile(rf"{LOCAL}{{1,64}}@[A-Za-z0-9-]{{1,63}}(?:\.[A-Za-z0-9-]{{1,63}}){{1,9}}")
+
+
+def bare_address(text: str) -> str | None:
+    """One plain address, lowercased, or None for anything a mail server could read as more
+    or other: a display name, a list, a comment, quotes or angle brackets."""
+    stripped = text.strip()
+    if not BARE_ADDRESS.fullmatch(stripped):
+        return None
+    parsed = getaddresses([stripped])
+    if len(parsed) != 1 or parsed[0] != ("", stripped):
+        return None
+    return stripped.lower()
 
 
 def email_domain(email: str) -> str:

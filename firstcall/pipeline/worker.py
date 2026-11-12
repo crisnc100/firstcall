@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import socket
 import sys
 import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func, select
@@ -21,6 +23,7 @@ from firstcall.settings import Settings
 if TYPE_CHECKING:
     from firstcall.outbound.dispatch import Outbound
 
+log = logging.getLogger("firstcall.worker")
 HEARTBEAT_SECONDS = 5.0
 TICK_SECONDS = 30.0
 HEALTHY_WITHIN_SECONDS = 60
@@ -66,14 +69,23 @@ def tick(
 
 def alert_tick(sessions: sessionmaker[Any], clock: Clock, outbound: Outbound) -> dict[str, int]:
     """The scheduler's alert pass: fire due escalations, send what they queued, and send
-    the email digests whose window has closed."""
+    the email digests whose window has closed. A step that fails is logged and counted as
+    zero, so the others still run and the scheduler keeps ticking."""
     from firstcall.board.escalate import escalate
 
-    return {
-        "escalated": escalate(sessions, clock),
-        "pushed": outbound.push_pending(),
-        "emailed": outbound.email_digests(),
+    steps: dict[str, Callable[[], int]] = {
+        "escalated": lambda: escalate(sessions, clock),
+        "pushed": outbound.push_pending,
+        "emailed": outbound.email_digests,
     }
+    done: dict[str, int] = {}
+    for name, step in steps.items():
+        try:
+            done[name] = step()
+        except Exception:
+            log.exception("alert step %s failed", name)
+            done[name] = 0
+    return done
 
 
 def work(

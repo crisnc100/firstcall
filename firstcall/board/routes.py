@@ -7,6 +7,8 @@ not see or act on answers 404, exactly as if it did not exist.
 
 from __future__ import annotations
 
+import base64
+import binascii
 import logging
 import secrets
 import uuid
@@ -15,6 +17,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, NoReturn
 
+from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -460,6 +463,10 @@ def board_router(
             settings.push_allow_http and body.endpoint.startswith("http://")
         ):
             raise HTTPException(422, "a push endpoint must be https")
+        if not push_keys_valid(body.keys.p256dh, body.keys.auth):
+            raise HTTPException(
+                422, "the push keys are not a P-256 public key and a 16-byte secret"
+            )
         with caller(request, writes=True) as (db, who):
             existing = db.scalar(
                 select(PushSubscription).where(PushSubscription.endpoint == body.endpoint)
@@ -564,6 +571,26 @@ def board_router(
             raise account_error(error) from error
 
     return router
+
+
+def _b64url(text: str) -> bytes | None:
+    try:
+        return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+    except (ValueError, binascii.Error):
+        return None
+
+
+def push_keys_valid(p256dh: str, auth: str) -> bool:
+    """A browser's subscription keys: an uncompressed P-256 point and a 16-byte secret.
+    Checked here so a bad pair never reaches the push library."""
+    point, secret = _b64url(p256dh), _b64url(auth)
+    if point is None or len(point) != 65 or secret is None or len(secret) != 16:
+        return False
+    try:
+        ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), point)
+    except ValueError:
+        return False
+    return True
 
 
 def _conflict_detail(reason: str) -> str:
