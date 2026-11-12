@@ -28,6 +28,7 @@ FLOORS: dict[str, float] = {
     "firstcall/intake/store.py": EDGE,
     "firstcall/pipeline/process.py": EDGE,
     "firstcall/pipeline/jobs.py": EDGE,
+    "firstcall/model/gateway.py": EDGE,
 }
 
 
