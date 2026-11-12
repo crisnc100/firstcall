@@ -10,8 +10,7 @@ import { setTitle } from "../shell";
 type PushState = "unconfigured" | "unsupported" | "ios" | "blocked" | "off" | "on";
 
 const TEXT: Record<PushState, string> = {
-  unconfigured:
-    "Push alerts aren't set up on this server. You'll still get alerts by email and in the Inbox.",
+  unconfigured: "Alerts aren't set up on this server.",
   unsupported: "This browser can't show push alerts.",
   ios: "On iPhone, add Firstcall to your Home Screen first: tap Share, then Add to Home Screen. Then open it from there.",
   blocked: "Alerts are blocked for this site. Allow notifications in your browser's site settings, then come back.",
@@ -68,11 +67,10 @@ export function alertsPage(main: HTMLElement): Cleanup {
   const status = h("p", { class: "line", attrs: { role: "status" } }, "Checking this browser…");
   const control = h("div", {});
   const error = h("p", { class: "danger-text", attrs: { hidden: true } });
+  // One card in every state, so a server without push keys shows why, not an empty page.
   main.replaceChildren(
     h("h1", { text: "Alerts on this device" }),
-    status,
-    control,
-    error,
+    h("section", { class: "panel", attrs: { "aria-label": "Push alerts" } }, status, control, error),
     h("p", {
       class: "muted sm",
       text: "Email alerts are always on. They group alerts that come within a minute into one email.",
@@ -81,6 +79,11 @@ export function alertsPage(main: HTMLElement): Cleanup {
   const draw = (found: Found): void => {
     status.replaceChildren(icon(found.state === "on" ? "check" : "bell", true), TEXT[found.state]);
     control.replaceChildren();
+    if (found.state === "unconfigured") {
+      control.append(
+        h("p", { class: "muted", text: "Ask your admin to add push keys. Until then, alerts come by email and in the Inbox." }),
+      );
+    }
     if (found.state === "off") {
       const button = h("button", { class: "btn primary", text: "Turn on alerts", attrs: { type: "button" } });
       button.addEventListener("click", () => void turnOn(found, button));

@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+LOCAL_BASE_URL = "http://localhost:8020"
 LOCAL_DATABASE_URL = (
     "postgresql+psycopg://firstcall:firstcall@127.0.0.1:57432/firstcall"  # pragma: allowlist secret
 )
@@ -51,8 +52,11 @@ class Settings(BaseSettings):
     smtp_port: int = 1025
     email_from: str = "Firstcall <alerts@firstcall.localhost>"
     digest_seconds: int = 60
-    # Links in alerts point here.
-    base_url: str = "http://localhost:8020"
+    # A digest that fails waits digest_seconds, doubling each time, and after this many
+    # retries its alerts are marked failed.
+    email_retries: int = 3
+    # Links in alerts point here: the address people open the board at.
+    base_url: str = LOCAL_BASE_URL
     # Web push. With no private key, push is off and email still goes out.
     vapid_private_key: SecretStr = SecretStr("")
     vapid_public_key: str = ""
@@ -67,4 +71,6 @@ class Settings(BaseSettings):
             raise ValueError("FIRSTCALL_FAILPOINT is refused when FIRSTCALL_ENV=beta")
         if self.env == "beta" and self.push_allow_http:
             raise ValueError("FIRSTCALL_PUSH_ALLOW_HTTP is refused when FIRSTCALL_ENV=beta")
+        if self.env == "beta" and self.base_url == LOCAL_BASE_URL:
+            raise ValueError("set FIRSTCALL_BASE_URL to the board's public address in beta")
         return self

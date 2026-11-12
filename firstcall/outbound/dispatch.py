@@ -11,10 +11,10 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core.clock import Clock
@@ -138,13 +138,16 @@ class Outbound:
 
     def email_digests(self) -> int:
         """One email per user and team once the oldest pending alert in that pair has waited
-        the digest window. Returns how many emails went out."""
-        cutoff = self.clock.now() - timedelta(seconds=self.settings.digest_seconds)
+        the digest window. A failed send is counted on its alerts and tried again after a
+        doubling wait; past the retry limit they are marked failed. Returns how many emails
+        went out."""
+        now = self.clock.now()
+        cutoff = now - timedelta(seconds=self.settings.digest_seconds)
         try:
             with self.sessions() as session:
                 groups = session.execute(
                     select(Alert.user_id, Alert.team_id)
-                    .where(Alert.email_state == "pending")
+                    .where(Alert.email_state == "pending", _due(now))
                     .group_by(Alert.user_id, Alert.team_id)
                     .having(func.min(Alert.created_at) <= cutoff)
                 ).all()
@@ -157,16 +160,46 @@ class Outbound:
                 with self.sessions.begin() as session:
                     sent += self._digest(session, user_id, team_id)
             except Exception:
-                # The alerts stay pending, so the next pass sends the digest again.
-                log.exception("digest for user %s failed; will retry", user_id)
+                log.exception("digest for user %s failed", user_id)
+                self._count_failure(user_id, team_id, now)
         return sent
 
+    def _count_failure(self, user_id: uuid.UUID, team_id: uuid.UUID | None, now: datetime) -> None:
+        try:
+            with self.sessions.begin() as session:
+                alerts = list(
+                    session.scalars(
+                        select(Alert)
+                        .where(
+                            Alert.email_state == "pending",
+                            Alert.user_id == user_id,
+                            _same_team(team_id),
+                            _due(now),
+                        )
+                        .with_for_update(skip_locked=True)
+                    )
+                )
+                for alert in alerts:
+                    alert.email_attempts += 1
+                    if alert.email_attempts > self.settings.email_retries:
+                        alert.email_state, alert.email_retry_at = "failed", None
+                    else:
+                        wait = self.settings.digest_seconds * 2**alert.email_attempts
+                        alert.email_retry_at = now + timedelta(seconds=wait)
+        except Exception:
+            # Uncounted, the alerts stay pending and due, so the next pass tries again.
+            log.exception("could not count the failed digest for user %s", user_id)
+
     def _digest(self, session: Session, user_id: uuid.UUID, team_id: uuid.UUID | None) -> int:
-        same_team = Alert.team_id.is_(None) if team_id is None else Alert.team_id == team_id
         alerts = list(
             session.scalars(
                 select(Alert)
-                .where(Alert.email_state == "pending", Alert.user_id == user_id, same_team)
+                .where(
+                    Alert.email_state == "pending",
+                    Alert.user_id == user_id,
+                    _same_team(team_id),
+                    _due(self.clock.now()),
+                )
                 .order_by(Alert.created_at, Alert.id)
                 .with_for_update(skip_locked=True)
             )
@@ -191,3 +224,11 @@ class Outbound:
         for alert in alerts:
             alert.email_state, alert.email_sent_at = "sent", now
         return 1
+
+
+def _same_team(team_id: uuid.UUID | None) -> Any:
+    return Alert.team_id.is_(None) if team_id is None else Alert.team_id == team_id
+
+
+def _due(now: datetime) -> Any:
+    return or_(Alert.email_retry_at.is_(None), Alert.email_retry_at <= now)

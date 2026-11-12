@@ -20,6 +20,8 @@ services:
     environment: &app-environment
       FIRSTCALL_DATABASE_URL: postgresql+psycopg://firstcall:firstcall@postgres:5432/firstcall # pragma: allowlist secret (local-only credential)
       FIRSTCALL_ENV: local
+      # Links in alert email; set it to wherever the board is opened.
+      FIRSTCALL_BASE_URL: ${FIRSTCALL_BASE_URL:-http://localhost:8020}
     depends_on:
       postgres:
         condition: service_healthy

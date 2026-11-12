@@ -32,7 +32,7 @@ export function signInPage(root: HTMLElement): Cleanup {
   const password = h("input", {
     attrs: { id: "password", type: "password", autocomplete: "current-password", required: true },
   });
-  const show = h("button", { class: "btn secondary", text: "Show", attrs: { type: "button", "aria-pressed": "false" } });
+  const show = h("button", { class: "btn secondary reveal", text: "Show", attrs: { type: "button", "aria-pressed": "false" } });
   show.addEventListener("click", () => {
     const hidden = password.type === "password";
     password.type = hidden ? "text" : "password";

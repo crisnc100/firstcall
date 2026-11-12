@@ -69,17 +69,24 @@ function navLink(item: NavItem, withIcon: boolean): HTMLAnchorElement {
 }
 
 let unread = 0;
+let unreadShown: { badge: HTMLElement; words: HTMLElement } | null = null;
 
-async function refreshUnread(badge: HTMLElement, hidden: HTMLElement): Promise<void> {
+/** Show the unread count in the top bar; the Inbox page calls it as mail is read. */
+export function setUnread(count: number): void {
+  unread = count;
+  if (!unreadShown) return;
+  unreadShown.badge.textContent = String(count);
+  unreadShown.badge.hidden = count === 0;
+  unreadShown.words.textContent = count === 1 ? "1 unread" : `${count} unread`;
+}
+
+async function refreshUnread(): Promise<void> {
   try {
     const rows = await api<{ read: boolean }[]>("GET", "/inbox");
-    unread = rows.filter((row) => !row.read).length;
+    setUnread(rows.filter((row) => !row.read).length);
   } catch {
     return;
   }
-  badge.textContent = String(unread);
-  badge.hidden = unread === 0;
-  hidden.textContent = unread === 1 ? "1 unread" : `${unread} unread`;
 }
 
 export function setTitle(title: string): void {
@@ -155,7 +162,9 @@ export function frame(root: HTMLElement): HTMLElement {
     main,
     bottom,
   );
-  void refreshUnread(badge, unreadWords);
+  unreadShown = { badge, words: unreadWords };
+  setUnread(unread);
+  void refreshUnread();
   return main;
 }
 

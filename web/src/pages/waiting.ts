@@ -1,10 +1,11 @@
-// Waiting longest: the leads whose escalations fired and still stand, then a log of the
-// escalations that went out. "Show all unclaimed" adds every pool lead across the teams.
+// Waiting longest: every unclaimed lead whose label reads Late or Very late, then a log of
+// the escalations that went out. The list uses the same rule as the labels, so a lead is
+// listed exactly when it shows as late. "Show all unclaimed" lists every pool lead.
 
 import { api, type Lead, type Team } from "../api";
 import { h, link } from "../dom";
 import { shortTime } from "../format";
-import { LeadList, leadUrgency } from "../leadlist";
+import { LeadList, leadUrgency, stayStart } from "../leadlist";
 import { emptyState, loadFailed, poll, skeleton, staleLine } from "../poller";
 import type { Cleanup } from "../router";
 import { setTitle } from "../shell";
@@ -24,8 +25,8 @@ const LEVEL: Record<string, string> = {
   unassigned_still: "Admins told: still unassigned",
 };
 
-function byArrival(a: Lead, b: Lead): number {
-  return Date.parse(a.arrival_at) - Date.parse(b.arrival_at);
+function byStay(a: Lead, b: Lead): number {
+  return Date.parse(stayStart(a)) - Date.parse(stayStart(b));
 }
 
 export function waitingPage(main: HTMLElement): Cleanup {
@@ -52,20 +53,14 @@ export function waitingPage(main: HTMLElement): Cleanup {
   const load = async (): Promise<void> => {
     try {
       teams = teams.length ? teams : await allTeams();
-      const fired = await api<Fired[]>("GET", "/escalations");
-      let leads: Lead[];
-      if (showAll.checked) {
-        const pools = await Promise.all([
-          api<Lead[]>("GET", "/leads?view=unassigned"),
-          ...teams.map((t) => api<Lead[]>("GET", `/leads?view=pool&team_id=${t.id}`)),
-        ]);
-        leads = pools.flat();
-      } else {
-        const standing = new Map<string, Lead>();
-        for (const row of fired) if (row.current) standing.set(row.lead.id, row.lead);
-        leads = [...standing.values()];
-      }
-      leads.sort(byArrival);
+      const [fired, ...pools] = await Promise.all([
+        api<Fired[]>("GET", "/escalations"),
+        api<Lead[]>("GET", "/leads?view=unassigned"),
+        ...teams.map((t) => api<Lead[]>("GET", `/leads?view=pool&team_id=${t.id}`)),
+      ]);
+      let leads = (pools as Lead[][]).flat();
+      if (!showAll.checked) leads = leads.filter((lead) => leadUrgency(lead) !== "new" && leadUrgency(lead) !== "waiting");
+      leads.sort(byStay);
       list.update(leads);
       drawSummary(leads);
       drawLog(fired);
@@ -74,7 +69,7 @@ export function waitingPage(main: HTMLElement): Cleanup {
         body.replaceChildren(
           showAll.checked
             ? emptyState("No one is waiting.", "Every pool is empty right now.")
-            : emptyState("No one has waited too long.", "Leads show here once their team is told they are late."),
+            : emptyState("No one has waited too long.", "Leads show here once they read Late."),
         );
       } else if (body.firstChild !== list.element) {
         body.replaceChildren(list.element);

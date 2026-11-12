@@ -248,7 +248,10 @@ def board_router(
             user = accounts.verify(db, email, body.password)
             if user is None:
                 raise HTTPException(401, "wrong email or password")
-            started = accounts.start_session(db, user, clock, settings.session_days)
+            try:
+                started = accounts.start_session(db, user, clock, settings.session_days)
+            except accounts.AccountError as changed:
+                raise HTTPException(401, "wrong email or password") from changed
             viewer = accounts.viewer(db, user)
         set_cookie(
             response, SESSION_COOKIE, started.token, settings.session_days * 86400, http_only=True
@@ -318,7 +321,7 @@ def board_router(
                 elif not (viewer.admin or viewer.monitor or viewer.leads_team(str(team_id))):
                     _not_found()
                 else:
-                    query = query.where(Lead.state.in_(("pool", "owned", "nurture")))
+                    query = query.where(Lead.state.in_(("owned", "nurture")))
             else:
                 raise HTTPException(422, "view is mine, unassigned, or pool or team with a team_id")
             rows = db.scalars(query.order_by(Lead.arrival_at).limit(LIST_LIMIT))

@@ -285,12 +285,25 @@ label {
   font-weight: 400;
 }
 .pw {
-  display: flex;
-  gap: var(--s2);
+  position: relative;
 }
 .pw input {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
+  padding-right: 80px;
+}
+/* Inside the field, and more specific than `.signin .btn`, which would stretch it. */
+.signin .pw .reveal,
+.pw .reveal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  min-height: 0;
+  padding: 0 var(--s3);
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
 }
 .panel {
   background: var(--surface);

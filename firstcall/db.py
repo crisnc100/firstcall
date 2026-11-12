@@ -47,7 +47,7 @@ LEAD_STATES = ("pool", "owned", "nurture", "won", "lost", "not_real")
 TEAM_ROLES = ("salesperson", "team_lead")
 ORG_ROLES = ("monitor", "admin")
 PUSH_STATES = ("pending", "sent", "failed", "gone")
-EMAIL_STATES = ("pending", "sent", "refused")
+EMAIL_STATES = ("pending", "sent", "refused", "failed")
 # duplicate_delivery is a terminal answer, not a row: a repeat delivery stores nothing new.
 MESSAGE_STATUSES = WORKING_STATUSES + TERMINAL_STATUSES
 
@@ -354,6 +354,9 @@ class Alert(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     email_state: Mapped[str] = mapped_column(String(16), default="pending")
     email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    email_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # A failed digest is not tried again before this.
+    email_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PushSubscription(Base):

@@ -6,7 +6,7 @@ import { h } from "../dom";
 import { shortTime } from "../format";
 import { emptyState, loadFailed, poll, skeleton, staleLine } from "../poller";
 import type { Cleanup } from "../router";
-import { setTitle } from "../shell";
+import { setTitle, setUnread } from "../shell";
 
 interface Mail {
   id: string;
@@ -53,6 +53,7 @@ export function inboxPage(main: HTMLElement): Cleanup {
   const draw = (): void => {
     const unread = mails.filter((m) => !m.read).length;
     count.textContent = `${unread} unread`;
+    setUnread(unread);
     if (!mails.length) {
       list.replaceChildren(emptyState("No alerts yet.", "Alerts about new and late leads also land here."));
       return;

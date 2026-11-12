@@ -96,8 +96,11 @@ def set_password(
     session: Session, user: User, password: str, keep: uuid.UUID | None = None
 ) -> None:
     """Set the password and end every session of the user's but `keep`, the one making the
-    change when users change their own, so a leaked cookie stops working too."""
+    change when users change their own, so a leaked cookie stops working too. The user row
+    is locked first, so a sign-in that checked the old password either commits its session
+    before this (and the delete below ends it) or waits and finds the hash changed."""
     _check_password(password)
+    leads.lock_user(session, user.id, share=False)
     user.password_hash = _hasher.hash(password)
     ended = delete(UserSession).where(UserSession.user_id == user.id)
     if keep is not None:
@@ -172,6 +175,18 @@ class Started:
 
 
 def start_session(session: Session, user: User, clock: Clock, days: int) -> Started:
+    """A session for a user whose password was just checked. Under a share lock on the
+    user row, the stored hash must still be the one checked and the user still active:
+    a password reset or a deactivation that landed during the check wins."""
+    checked = user.password_hash
+    current = session.execute(
+        select(User.password_hash, User.active)
+        .where(User.id == user.id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    ).one_or_none()
+    if current is None or current.password_hash != checked or not current.active:
+        raise AccountError("the password or the account changed during sign-in")
     token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
     now = clock.now()
     expires = now + timedelta(days=days)

@@ -44,8 +44,14 @@ export function leadName(lead: Lead, href?: string): HTMLElement {
   return href ? link(href, lead.name, "name") : h("span", { class: "name", text: lead.name });
 }
 
+/** When the lead's current pool stay began. Waits, urgency and escalation all count from
+ * here; time to claim alone counts from arrival. */
+export function stayStart(lead: Lead): string {
+  return lead.pool_since ?? lead.arrival_at;
+}
+
 export function leadUrgency(lead: Lead): Urgency {
-  return urgency(lead.wait_business_minutes, minutesSince(lead.arrival_at), lead.thresholds);
+  return urgency(lead.wait_business_minutes, minutesSince(stayStart(lead)), lead.thresholds);
 }
 
 /** The wait timer with its urgency word and icon. */
@@ -56,7 +62,7 @@ export function waitTimer(lead: Lead): HTMLElement {
 }
 
 function fillTimer(box: HTMLElement, lead: Lead): void {
-  const minutes = minutesSince(lead.arrival_at);
+  const minutes = minutesSince(stayStart(lead));
   const level = leadUrgency(lead);
   box.className = `timer u-${level}`;
   box.setAttribute("aria-label", `${waitWords(minutes)}. ${URGENCY_WORD[level]}.`);
@@ -98,6 +104,7 @@ export class LeadList {
     for (const [id, entry] of this.entries) {
       const held = entry.lostAt !== undefined && now - entry.lostAt < LOST_HOLD_MS;
       if (!wanted.has(id) && !held) {
+        if (entry.li.contains(document.activeElement)) this.focusAfter(entry.li);
         entry.li.remove();
         this.entries.delete(id);
       }
@@ -257,10 +264,12 @@ export class LeadList {
     timer?.querySelector(".badge")?.replaceWith(h("span", { class: "badge" }, icon("lock"), "Already claimed"));
     timer?.removeAttribute("data-wait");
     const act = li.querySelector<HTMLElement>(".act");
-    const focusNext = act?.contains(document.activeElement) ?? false;
-    act?.replaceChildren(h("span", { class: "gone" }, icon("lock"), text));
+    // The busy button is disabled, which drops focus to the body, so that counts as ours.
+    const hadFocus = (act?.contains(document.activeElement) ?? false) || document.activeElement === document.body;
+    const gone = h("span", { class: "gone", attrs: { tabindex: "-1" } }, icon("lock"), text);
+    act?.replaceChildren(gone);
     announce(text);
-    if (focusNext) this.focusAfter(li);
+    if (hadFocus) gone.focus();
     this.element.setAttribute("aria-label", this.label(this.count));
     this.onChange();
   }

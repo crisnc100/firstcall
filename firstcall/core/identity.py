@@ -68,7 +68,14 @@ def find_emails(text: str) -> list[str]:
     return found
 
 
-BARE_ADDRESS = re.compile(rf"{LOCAL}{{1,64}}@[A-Za-z0-9-]{{1,63}}(?:\.[A-Za-z0-9-]{{1,63}}){{1,9}}")
+# Narrower than RFC 5322 on purpose: dot-separated runs of the characters every mail system
+# reads the same way. "=" and "?" would let an RFC 2047 encoded word through, which a
+# mail library decodes into a different address than the one checked.
+_ATOM = r"[A-Za-z0-9_%+-]+"
+_LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+BARE_ADDRESS = re.compile(
+    rf"(?=[^@]{{1,64}}@){_ATOM}(?:\.{_ATOM})*@(?:{_LABEL}\.){{1,9}}[A-Za-z]{{2,63}}"
+)
 
 
 def bare_address(text: str) -> str | None:

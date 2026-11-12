@@ -9,6 +9,8 @@ gets ConflictError: that is how the second of two claims learns it lost.
 
 from __future__ import annotations
 
+import logging
+import math
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +27,8 @@ from firstcall.core.access import LeadRef, Viewer, can_see, relations
 from firstcall.core.clock import Clock
 from firstcall.core.hours import Hours, business_minutes, hours_from, wall_minutes
 from firstcall.db import Lead, Membership, Team, User
+
+log = logging.getLogger("firstcall.board")
 
 
 class NotFoundError(Exception):
@@ -63,10 +67,15 @@ def lock_user(session: Session, user_id: uuid.UUID, share: bool) -> bool | None:
     """Lock a user row and read whether they are active now; None when there is no user.
 
     Every path takes the user row before any lead row: claim and reassign share-lock the
-    user who will own the lead, while deactivating and changing teams update-lock it. So a
-    claim either finishes first and its lead is then returned by owner-left, or waits and
-    sees the user gone. A lead never ends owned by an inactive user or a non-member."""
-    return session.scalar(select(User.active).where(User.id == user_id).with_for_update(read=share))
+    user who will own the lead, while deactivating and changing teams take FOR NO KEY
+    UPDATE. So a claim either finishes first and its lead is then returned by owner-left,
+    or waits and sees the user gone. A lead never ends owned by an inactive user or a
+    non-member. A plain FOR UPDATE would also block the key-share lock that every alert
+    insert takes on its user, stalling alerts behind a team change."""
+    locked = select(User.active).where(User.id == user_id)
+    if share:
+        return session.scalar(locked.with_for_update(read=True))
+    return session.scalar(locked.with_for_update(key_share=True))
 
 
 def _member(session: Session, user_id: uuid.UUID, team_id: uuid.UUID | None) -> bool:
@@ -136,9 +145,18 @@ def claim(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) ->
         team = session.get_one(Team, lead.team_id)
         lead.claimed_at = now
         lead.claim_minutes = _minutes(wall_minutes(lead.arrival_at, now))
-        lead.claim_business_minutes = _minutes(
-            business_minutes(lead.arrival_at, now, team_hours(team))
-        )
+        try:
+            hours = team_hours(team)
+        except (ValueError, KeyError, TypeError) as error:
+            # A claim must never fail over a config the claimer cannot fix; the
+            # business-minute report skips this lead instead.
+            log.error(
+                "team %s hours do not read; claim kept without business minutes: %s",
+                team.slug,
+                error,
+            )
+        else:
+            lead.claim_business_minutes = _minutes(business_minutes(lead.arrival_at, now, hours))
     events.write(session, lead, event, _cause("claim"), {"owner_id": viewer.user_id}, now)
     return Done(lead.id, event)
 
@@ -247,14 +265,16 @@ def owner_left(
 
 
 def urgency(lead: Lead, team: Team | None, now: datetime) -> dict[str, Any]:
-    """How long a pool lead has waited since arrival, in its team's business minutes, with
-    the minutes at which its team escalates, so a page shows "Late" when escalation does.
-    Unassigned has no hours, so its wait is wall-clock. Nothing for a lead not in a pool,
-    or for a team whose config does not read."""
+    """How long a pool lead has waited in its current pool stay, in its team's business
+    minutes, with the minutes at which its team escalates: the same clock and thresholds
+    escalation uses, so a page shows "Late" exactly when escalation does. Time to claim
+    still counts from arrival. Unassigned has no hours, so its wait is wall-clock. Nothing
+    for a lead not in a pool, or for a team whose config does not read."""
     if lead.state != "pool":
         return {"wait_business_minutes": None, "thresholds": None}
+    since = lead.pool_since or lead.arrival_at
     if team is None:
-        waited = wall_minutes(lead.arrival_at, now)
+        waited = wall_minutes(since, now)
         late, very_late = (
             escalation.DEFAULTS[escalation.UNASSIGNED],
             escalation.DEFAULTS[escalation.ADMINS],
@@ -264,11 +284,12 @@ def urgency(lead: Lead, team: Team | None, now: datetime) -> dict[str, Any]:
             hours, minutes = team_hours(team), escalation.overrides_from(team.escalation or {})
         except (ValueError, KeyError, TypeError):
             return {"wait_business_minutes": None, "thresholds": None}
-        waited = business_minutes(lead.arrival_at, now, hours)
+        waited = business_minutes(since, now, hours)
         late = minutes.get(escalation.TEAM_LEADS, escalation.DEFAULTS[escalation.TEAM_LEADS])
         very_late = minutes.get(escalation.ADMINS, escalation.DEFAULTS[escalation.ADMINS])
     return {
-        "wait_business_minutes": round(waited, 1),
+        # Rounded down, so the label never turns Late a moment before the timer's minute.
+        "wait_business_minutes": math.floor(waited * 10) / 10,
         "thresholds": {"late": late, "very_late": very_late},
     }
 
