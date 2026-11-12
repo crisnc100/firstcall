@@ -46,6 +46,14 @@ UNSEEN = email(
 )
 
 
+@pytest.fixture(autouse=True)
+def no_ambient_model_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A model key or mode exported in the shell must not change what these tests see."""
+    for name in list(os.environ):
+        if name.startswith("FIRSTCALL_MODEL_"):
+            monkeypatch.delenv(name)
+
+
 @dataclass
 class ModelPipeline(Pipeline):
     reader: ModelReader | None = None
@@ -328,8 +336,9 @@ def _record_answer(pipe: ModelPipeline, message_id: uuid.UUID, folder: Path, con
 def _worker(
     database_url: str, folder: Path, failpoint: str = ""
 ) -> subprocess.CompletedProcess[str]:
+    inherited = {k: v for k, v in os.environ.items() if not k.startswith("FIRSTCALL_MODEL_")}
     env = {
-        **os.environ,
+        **inherited,
         "FIRSTCALL_DATABASE_URL": database_url,
         "FIRSTCALL_MODEL_MODE": "replay",
         "FIRSTCALL_MODEL_NAME": MODEL,
