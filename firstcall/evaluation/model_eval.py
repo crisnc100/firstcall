@@ -192,19 +192,25 @@ def _run_method(
     run: ModelRun,
     methods: Mapping[str, str] | None,
     limit: int | None,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    cap: Decimal | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], Decimal]:
+    """One method on one seed, under `cap` (the run budget when not given). Also returns the
+    spend from the ledger, so a caller running several methods can keep one budget."""
     messages, labels, twins = _corpus(seed, limit)
     with throwaway_database(server_url) as sessions:
         reader = (
             None
             if methods is None
-            else ModelReader(_gateway(sessions, run, run.budget_usd), methods)
+            else ModelReader(
+                _gateway(sessions, run, run.budget_usd if cap is None else cap), methods
+            )
         )
         results = run_corpus(sessions, messages, twins, reader)
         with sessions() as session:
             stats = call_stats(session)
+        spent = _spent(sessions)
     scored = with_floors(score(results, labels))
-    return scored, stats, fully_right(results, labels)
+    return scored, stats, fully_right(results, labels), spent
 
 
 def _accuracy(scored: dict[str, Any], field: str, split: str = "all") -> float | None:
@@ -274,8 +280,14 @@ def evaluate_models(
     methods: dict[str, Any] = {}
     calls: dict[str, Any] = {}
     right: dict[str, Any] = {}
+    # Each method runs in its own throwaway database, so its own ledger; the run budget is
+    # carried across them by hand, or a live run could spend it once per method.
+    spent = Decimal(0)
     for name, chosen in runs.items():
-        methods[name], calls[name], right[name] = _run_method(seed, server_url, run, chosen, limit)
+        methods[name], calls[name], right[name], cost = _run_method(
+            seed, server_url, run, chosen, limit, cap=max(run.budget_usd - spent, Decimal(0))
+        )
+        spent += cost
     model_calls = calls["model"]["calls"] or 1
     report: dict[str, Any] = {
         "seed": seed,
@@ -308,7 +320,7 @@ def evaluate_confirm(
         raise RuntimeError(
             "seed 13 is the confirm run; it runs once, after config/field_methods.yaml is committed"
         )
-    scored, stats, right = _run_method(seed, server_url, run, methods, limit)
+    scored, stats, right, _ = _run_method(seed, server_url, run, methods, limit)
     return {
         "seed": seed,
         "model": run.model,

@@ -201,3 +201,16 @@ def test_a_record_pass_then_replay_gives_the_same_report(database_url: str, tmp_
 def test_a_replay_miss_stops_the_eval(database_url: str, tmp_path: Path) -> None:
     with pytest.raises(ReplayMissError):
         evaluate_models(7, database_url, _run("replay", tmp_path), limit=3)
+
+
+def test_one_budget_covers_every_method_of_a_live_eval(database_url: str, tmp_path: Path) -> None:
+    # Each answer costs $0.0012 at the test price; the model-only run alone wants more than
+    # the budget, so the combined run must get only what is left.
+    transport = FakeTransport(default=answer(category="lead"))
+    budget = Decimal("0.02")
+    run = ModelRun(
+        mode="live", model=MODEL, budget_usd=budget, recordings=tmp_path,
+        transport=transport, prices={MODEL: _price()},
+    )  # fmt: skip
+    evaluate_models(7, database_url, run, limit=24)
+    assert len(transport.requests) * Decimal("0.0012") <= budget
