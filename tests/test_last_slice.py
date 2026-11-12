@@ -156,3 +156,24 @@ def test_f5_s2_a_nested_comment_email_ends_failed_on_the_first_attempt(
     assert message.status == "failed"
     assert message.reason is not None
     assert "budget" in message.reason
+
+
+def test_f2_s1_a_parent_content_type_is_parsed_once_however_many_parts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The feed parser asks for the parent's type once per child; a near-cap header must not
+    be parsed again each time, or the work before the part limit grows with the header."""
+    from email import headerregistry
+
+    parses = {"content-type": 0}
+    original = headerregistry.HeaderRegistry.__call__
+
+    def counting(self: headerregistry.HeaderRegistry, name: str, value: str) -> object:
+        if name.lower() == "content-type":
+            parses["content-type"] += 1
+        return original(self, name, value)
+
+    monkeypatch.setattr(headerregistry.HeaderRegistry, "__call__", counting)
+    with pytest.raises(read.OverBudgetError, match="parts"):
+        read.read(_headerless_parts(1_000), INBOX, REFERENCE)
+    assert parses["content-type"] <= 3
