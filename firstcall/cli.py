@@ -104,21 +104,75 @@ def health(kind: str = typer.Argument(..., help="worker or scheduler")) -> None:
     raise typer.Exit(0 if healthy(_sessions(), kind) else 1)
 
 
+MODES = ("rules", "replay", "record", "live")
+MAX_RUN_BUDGET = 10.0
+
+
 @app.command("eval")
 def eval_command(
-    seed: int = typer.Option(..., help="7 (tune) or 11 (held out); 13 waits for the field methods"),
+    seed: int = typer.Option(..., help="7 (tune), 11 (held out) or 13 (confirm, once)"),
     date: str = typer.Option("", help="The report date, YYYY-MM-DD; today when empty"),
+    mode: str = typer.Option(
+        "rules", help="rules (no model), replay (recorded answers), record or live (paid)"
+    ),
+    budget: float = typer.Option(1.0, help="Most this run may spend, in US dollars (<= $10)"),
+    model: str = typer.Option("claude-haiku-5-5", help="The model, for every mode but rules"),
 ) -> None:
-    """Run the rules-only eval and write evals/reports/<date>-rules-seed-<N>.md and .json."""
-    from datetime import UTC, datetime
+    """Run an eval and write its reports under evals/reports/.
 
-    from firstcall.evaluation.report import write
-    from firstcall.evaluation.run import evaluate
+    rules writes <date>-rules-seed-<N>; the model modes write <date>-model-seed-<N> for
+    seeds 7 and 11 and <date>-confirm-seed-13 for the confirm run. record spends money: it
+    records every answer first, then writes the report from the recordings. A paid mode reads
+    the key from FIRSTCALL_MODEL_KEY; load it from .env with `set -a; . ./.env; set +a`."""
+    from dataclasses import replace
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
     from firstcall.settings import Settings
 
-    report = evaluate(seed, Settings().database_url)
+    if mode not in MODES:
+        raise typer.BadParameter(f"mode must be one of {MODES}")
     day = date or datetime.now(UTC).date().isoformat()
-    for path in write(report, day):
+    settings = Settings()
+    if mode == "rules":
+        from firstcall.evaluation.report import write
+        from firstcall.evaluation.run import evaluate
+
+        for path in write(evaluate(seed, settings.database_url), day):
+            typer.echo(f"wrote {path}")
+        return
+
+    from firstcall.evaluation.model_eval import (
+        CONFIRM_SEED,
+        ModelRun,
+        evaluate_confirm,
+        evaluate_models,
+        record,
+    )
+    from firstcall.evaluation.model_report import write_confirm, write_model
+    from firstcall.evaluation.run import FIELD_METHODS, REPO_ROOT, field_methods_frozen
+    from firstcall.pipeline.model_read import load_field_methods
+
+    key = settings.model_key.get_secret_value()
+    if mode in ("record", "live") and not key:
+        raise typer.BadParameter(
+            f"--mode {mode} needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
+        )
+    if budget > MAX_RUN_BUDGET:
+        raise typer.BadParameter(f"--budget is at most ${MAX_RUN_BUDGET:.0f} for one run")
+    if seed == CONFIRM_SEED and not field_methods_frozen(FIELD_METHODS, REPO_ROOT):
+        raise typer.BadParameter("seed 13 runs only after config/field_methods.yaml is committed")
+    run = ModelRun(mode=mode, model=model, budget_usd=Decimal(str(budget)), key=key)
+    url = settings.database_url
+    if mode == "record":
+        spent = record(seed, url, run)
+        typer.echo(f"recorded seed {seed}: ${spent:.4f} spent of ${budget:.2f}")
+        run = replace(run, mode="replay")
+    if seed == CONFIRM_SEED:
+        paths = write_confirm(evaluate_confirm(seed, url, run, load_field_methods()), day)
+    else:
+        paths = write_model(evaluate_models(seed, url, run), day)
+    for path in paths:
         typer.echo(f"wrote {path}")
 
 
