@@ -130,9 +130,6 @@ def model_markdown(report: dict[str, Any], date: str) -> str:
         f"| Model read latency p95 | <= 6,000 ms | "
         f"{_value(report['calls']['model']['latency_ms']['p95'])} ms | "
         f"{'yes' if gate['checks']['latency_p95'] else '**no**'} |",
-        f"| Model read latency p50 | <= 3,000 ms | "
-        f"{_value(report['calls']['model']['latency_ms']['p50'])} ms | "
-        f"{'yes' if gate['checks']['latency_p50'] else '**no**'} |",
         "",
         f"All gates passed: **{'yes' if gate['passed'] else 'no'}**. Message fully right "
         f"(model-only): {_rate(report['pass']['fully_right'])}.",

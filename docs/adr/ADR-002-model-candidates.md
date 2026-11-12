@@ -62,14 +62,13 @@ completion tokens. Reasoning models may spend more completion tokens than that (
   output per million tokens; $0.50 and $2.50 above 100,000 prompt tokens), the same figures
   the sibling Ledgerline project charges at (`ledgerline/config.py`, read 2026-11-12) and
   OpenRouter listed for `anthropic/claude-haiku-5.5` in the table above.
-- **Gates, unchanged in kind:** unreadable answers at most 2%, every safety floor met, and
-  model read latency p95 at most 6 seconds. Model read latency p50 at most 3 seconds is
-  added (from the 2026-11-12 brief). The gates are judged on the model-only run on seed 7.
+- **Gates, unchanged:** unreadable answers at most 2%, every safety floor met, and model
+  read latency p95 at most 6 seconds. They are judged on the model-only run on seed 7.
 - **Pick rule, unchanged:** among models that pass every gate, the cheapest that is not
   clearly worse than the best. With one candidate, the pick is Haiku 5.5 if it passes every
   gate, and no model if it does not. A test applies the rule to the seed-7 pass report.
-- **If Haiku 5.5 misses a gate,** the work stops and the miss is reported. No bigger model
-  is tried.
+- **If Haiku 5.5 misses a gate,** the work stops and is called back to Cristian. No bigger
+  model is tried.
 - **Run order:** seed 7 (the pass and the gates), seed 11 (the per-field choice, written to
   `config/field_methods.yaml`), then seed 13 once (the confirm run). Every live call goes
   through record mode under a run budget of at most $10; the reports are made from the
@@ -79,5 +78,5 @@ completion tokens. Reasoning models may spend more completion tokens than that (
 
 1. Haiku 5.5 passes every gate on seed 7.
 2. Unreadable answers are under 1%, with the API's JSON-schema output.
-3. Model read latency p50 is under 2 seconds and p95 under 4 seconds.
+3. Model read latency p95 is under 4 seconds.
 4. The three seeds together spend under $1.

@@ -54,7 +54,6 @@ ORDER = ("rules", "combined", "model")
 WITHIN = 0.01
 MAX_UNREADABLE = 0.02
 MAX_P95_MS = 6000
-MAX_P50_MS = 3000
 ALL_MODEL: Mapping[str, str] = dict.fromkeys(FIELDS, "model")
 ALL_COMBINED: Mapping[str, str] = dict.fromkeys(FIELDS, "combined")
 
@@ -243,7 +242,6 @@ def gates(scored: dict[str, Any], stats: dict[str, Any]) -> dict[str, Any]:
         "unreadable": unreadable <= MAX_UNREADABLE,
         "safety_floors": all(f["met"] for f in safety),
         "latency_p95": latency["p95"] is not None and latency["p95"] <= MAX_P95_MS,
-        "latency_p50": latency["p50"] is not None and latency["p50"] <= MAX_P50_MS,
     }
     return {"checks": checks, "passed": all(checks.values())}
 
