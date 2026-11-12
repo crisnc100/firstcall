@@ -34,6 +34,7 @@
     "phone": "rules",
     "team": "rules"
   },
+  "field_methods_sha256": "fa50d4b994b0cfebddade955c25526218635a7e4adf9bbcb211acafb7869bd84",
   "fully_right": {
     "hits": 500,
     "interval": [

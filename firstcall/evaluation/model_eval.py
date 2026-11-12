@@ -13,6 +13,7 @@ needs an answer for every message, so its record pass covers the other methods t
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -326,6 +327,9 @@ def evaluate_confirm(
         "model": run.model,
         "messages": len(_corpus(seed, limit)[0]),
         "field_methods": dict(sorted(methods.items())),
+        # Ties the report to the methods file it ran with, so a test can check the shipped
+        # file is that one even after the PR is squashed into a single commit.
+        "field_methods_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "shipped": scored,
         "calls": stats,
         "fully_right": right,

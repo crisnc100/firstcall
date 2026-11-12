@@ -185,6 +185,8 @@ def confirm_markdown(report: dict[str, Any], date: str) -> str:
         "first run. Answers recorded from live calls and replayed from `evals/recordings/`; "
         "CI reruns it in replay mode and compares the bytes.",
         "",
+        f"`config/field_methods.yaml` sha256: `{report['field_methods_sha256']}`",
+        "",
         "| Field | Method |",
         "|---|---|",
     ]

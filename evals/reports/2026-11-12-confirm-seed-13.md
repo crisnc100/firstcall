@@ -2,6 +2,8 @@
 
 Run date 2026-11-12. Model `claude-haiku-5-5`, 500 messages, with the per-field methods committed in `config/field_methods.yaml` before this seed was first run. Answers recorded from live calls and replayed from `evals/recordings/`; CI reruns it in replay mode and compares the bytes.
 
+`config/field_methods.yaml` sha256: `fa50d4b994b0cfebddade955c25526218635a7e4adf9bbcb211acafb7869bd84`
+
 | Field | Method |
 |---|---|
 | Phone exact | rules |
