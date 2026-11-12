@@ -309,3 +309,19 @@ The review of the email reset found 4 MEDIUM and 4 LOW findings. Their tests are
   first attempt.
 
 Both reports still reproduce byte for byte.
+
+## Phase 12: the docs-focus review
+
+- **HTML entities.** An HTML-only email's text is passed through `html.unescape` after the
+  tags are stripped, and no-break spaces become plain spaces. Decoding after the scan keeps an
+  escaped "<" as text. The regression tests came first and failed on the old code.
+- **Doc claims made true:** the seed-11 category numbers in docs/failures/0001, where the
+  labels come from (README), `duplicate_delivery` as an answer rather than a status
+  (definitions), which capped headers are read or parsed (definitions and the code comment),
+  what `unsure` holds, and on which paths the read keeps agent, relay and tracking contacts out.
+- **Filed for PR1b, not fixed here:**
+  - JSON numbers over 4,300 digits;
+  - the line budget measured on HTML source rather than text;
+  - the prefix tie between item names;
+  - top-posted replies read as forwards;
+  - the generator's label edge cases.
