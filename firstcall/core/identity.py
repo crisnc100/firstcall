@@ -75,10 +75,11 @@ def bare_address(text: str) -> str | None:
     """One plain address, lowercased, or None for anything a mail server could read as more
     or other: a display name, a list, a comment, quotes or angle brackets."""
     stripped = text.strip()
-    if not BARE_ADDRESS.fullmatch(stripped):
-        return None
+    # Parsed the way a mail library would read a To header, then held to a plain shape.
     parsed = getaddresses([stripped])
     if len(parsed) != 1 or parsed[0] != ("", stripped):
+        return None
+    if not BARE_ADDRESS.fullmatch(stripped):
         return None
     return stripped.lower()
 

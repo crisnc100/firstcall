@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board import accounts
+from firstcall.core.identity import bare_address
 from firstcall.db import Alert, Message, PushSend, PushSubscription
 from firstcall.outbound import allowlist
 from firstcall.outbound.mail import SmtpMailer
@@ -172,3 +173,11 @@ def test_a_sender_in_the_tray_is_not_a_buyer(board: Board) -> None:
     assert board.org_id is not None
     with board.sessions() as session:
         assert allowlist.check_email(session, board.org_id, sender).id == user.id
+
+
+def test_bare_address_reads_each_shape() -> None:
+    assert bare_address(" Ana.Park@Larkspur.Example ") == "ana.park@larkspur.example"
+    assert bare_address("Ana <ana@larkspur.example>") is None
+    assert bare_address("a@b.example, c@d.example") is None
+    assert bare_address("ana@larkspur") is None
+    assert bare_address("ana@") is None
