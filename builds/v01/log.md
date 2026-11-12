@@ -413,3 +413,41 @@ is unchanged: with the code fixed, it holds with a wide margin.
 
 **For phase 2.** The eval's clean-twin pass processes a message that is never committed, so
 its model call must be logged without a message id (the log row's foreign key would fail).
+
+## Phase 2: the provider, the eval wiring and the live runs
+
+- **Provider (Cristian, 2026-11-11):** Claude Haiku 5.5 (`claude-haiku-5-5`) on the Anthropic
+  Messages API, through httpx, which was already a dependency. No SDK was added.
+- **Request shape.** The fixed system prompt, the intake text only in the user turn, thinking
+  off, effort low, and the answer schema as `output_config.format`. The API accepted the
+  schema; the plain-JSON fallback (on a 400 that names the schema or its grammar) never
+  fired. API version header `2026-10-21`. No sampling parameters, which the model refuses.
+- **Cut and refused answers.** A `max_tokens`, `refusal` or context-window stop returns its
+  tokens and empty text, so it is charged and counted unreadable. None happened.
+- **Gates.** The plan's three (unreadable at most 2%, every safety floor, p95 at most 6
+  seconds), agreed with the orchestrator before the seed-7 result. An earlier amendment
+  commit had added a p50 gate; it was removed before the seed-7 report existed. The only
+  answers seen before then were three smoke-test calls.
+- **Record, then report.** A paid run records model-only answers for every message and clean
+  twin, then writes the report from the recordings in replay mode, so CI's rerun matches
+  byte for byte. Model-only covers combined and the shipped mix, since they ask the same
+  questions. Record mode answers an already-recorded request from its recording.
+- **The decision rule** compares methods on all messages (seen and unseen together): the plan
+  names no split, and unseen layouts are where the model earns its cost. Category uses
+  overall accuracy and team uses correct placement when the team is knowable.
+- **Message fully right** for the pick rule: a lead needs phone, email, name, item, agent
+  present or not, category and team right; any other message needs its category.
+- **Cost per lead** is the spend on the message stream (calls logged with a message) divided
+  by the leads the run created. Clean-twin calls count toward total spend only.
+- **Agent present** drops from 355/355 (rules) to 343/355 under combined and model on seeds 7
+  and 11: the model names an agent where the rules found none. The agent-contact safety
+  floor stays 0 under every method, and the decision rule keeps rules for the field.
+- **Spend, by the ledger:**
+
+  | Run | Spend |
+  |---|---|
+  | Smoke test, 3 calls on seed-7 messages | $0.0007 |
+  | Seed 7, record | $0.1147 |
+  | Seed 11, record | $0.1155 |
+  | Seed 13, record | $0.1155 |
+  | **Total** | **$0.3464** |
