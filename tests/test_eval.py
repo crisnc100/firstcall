@@ -4,6 +4,7 @@ reports (F5, F12)."""
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -177,31 +178,91 @@ def test_the_held_out_report_has_unseen_layouts_and_every_message_terminal() -> 
     assert everything["missing_reason"] == 0
 
 
-def test_the_only_seed_13_run_is_one_confirm_run_committed_after_the_field_methods() -> None:
+def _git(*args: str) -> str:
     import subprocess
 
-    def first_commit(path: Path) -> str:
-        found = subprocess.run(
-            ["git", "log", "--diff-filter=A", "--format=%H", "--", str(path)],
+    return subprocess.run(
+        ["git", *args], cwd=REPORTS.parents[1], capture_output=True, text=True, check=True
+    ).stdout
+
+
+def _is_ancestor(older: str, newer: str) -> bool:
+    import subprocess
+
+    found = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", older, newer], cwd=REPORTS.parents[1]
+    )
+    return found.returncode == 0
+
+
+def _squash_merge_on_main(commit: str) -> bool:
+    """A PR squashed onto main: one parent, a subject ending "(#N)", reachable from main.
+    CI proved the methods-then-report order on the PR branch before it was squashed."""
+    import subprocess
+
+    subject, parents = _git("log", "-1", "--format=%s%n%P", commit).splitlines()
+    if not re.search(r"\(#\d+\)$", subject) or len(parents.split()) != 1:
+        return False
+    for ref in ("origin/main", "main"):
+        known = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", ref],
             cwd=REPORTS.parents[1],
             capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.split()
-        assert found, f"{path} is not committed"
-        return found[-1]
-
-    seed_13 = sorted(p.name for p in REPORTS.glob("*-seed-13.*"))
-    assert len(seed_13) == 2
-    assert all("-confirm-seed-13." in name for name in seed_13)
-    methods = first_commit(run.FIELD_METHODS)
-    for name in seed_13:
-        report = first_commit(REPORTS / name)
-        assert report != methods
-        ancestor = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", methods, report], cwd=REPORTS.parents[1]
         )
-        assert ancestor.returncode == 0, f"{name} was committed before the field methods"
+        if known.returncode == 0 and _is_ancestor(commit, ref):
+            return True
+    return False
+
+
+def _results(committed_json: str) -> dict[str, Any]:
+    report = json.loads(committed_json)
+    report.pop("field_methods_sha256", None)
+    return report
+
+
+def test_the_only_seed_13_run_is_one_confirm_run_committed_after_the_field_methods() -> None:
+    import hashlib
+
+    methods_path = run.FIELD_METHODS.relative_to(REPORTS.parents[1]).as_posix()
+    reports = REPORTS.relative_to(REPORTS.parents[1]).as_posix()
+
+    # One run: exactly the JSON and Markdown pair of one dated confirm report.
+    seed_13 = sorted(p.name for p in REPORTS.glob("*seed-13*"))
+    assert len(seed_13) == 2, seed_13
+    stem = seed_13[0].removesuffix(".json")
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}-confirm-seed-13", stem), seed_13
+    assert seed_13 == [f"{stem}.json", f"{stem}.md"]
+    report_json, report_md = f"{reports}/{stem}.json", f"{reports}/{stem}.md"
+
+    # The report ran with the methods file as committed.
+    committed_methods = _git("show", f"HEAD:{methods_path}").encode()
+    report = json.loads((REPORTS / f"{stem}.json").read_text())
+    assert report["field_methods_sha256"] == hashlib.sha256(committed_methods).hexdigest()
+
+    # Each file of the pair was added once, in the same commit.
+    [added] = _git("log", "--diff-filter=A", "--format=%H", "--", report_json).split()
+    assert _git("log", "--diff-filter=A", "--format=%H", "--", report_md).split() == [added]
+
+    # Never rewritten: a later version may add the methods hash, but no result changes.
+    versions = _git("log", "--format=%H", "--", report_json).split()
+    first = _results(_git("show", f"{added}:{report_json}"))
+    for version in versions:
+        assert _results(_git("show", f"{version}:{report_json}")) == first, version
+
+    # The methods were committed before the report and never changed after it. They may
+    # first appear in the report's own commit only when that commit is a PR squashed onto
+    # main, whose branch history CI already checked.
+    touched = _git("log", "--format=%H", "--", methods_path).split()
+    assert touched, f"{methods_path} is not committed"
+    for commit in touched:
+        if commit == added:
+            assert _squash_merge_on_main(added), (
+                f"{methods_path} and {stem} share {added[:7]}, not a squash merge on main"
+            )
+        else:
+            assert _is_ancestor(commit, added), (
+                f"{methods_path} changed in {commit[:7]}, after or beside the confirm report"
+            )
 
 
 def test_an_injection_counts_only_when_the_clean_twin_differs() -> None:
