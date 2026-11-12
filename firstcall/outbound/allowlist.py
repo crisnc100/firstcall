@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from firstcall.core.identity import bare_address, normalize_phone
 from firstcall.db import Identity, Lead, PushSubscription, User
-from firstcall.outbound.push import endpoint_allowed
+from firstcall.outbound.push import checked_endpoint
 
 log = logging.getLogger("firstcall.outbound")
 
@@ -76,14 +76,17 @@ def check_push(
     user_id: uuid.UUID,
     allow_http: bool,
     hosts: Sequence[str],
-) -> None:
+) -> str:
     """The device belongs to the alert's user, who is active, and the endpoint is on a known
     push service. Checked again here, not only at subscribe, so a row stored before the
-    host list changed, or written some other way, still never directs a send."""
+    host list changed, or written some other way, still never directs a send. Returns the
+    URL to send to, rebuilt from the checked parts."""
     owner = session.get(User, subscription.user_id)
     if owner is None or owner.id != user_id or not owner.active:
         raise _refuse("the device does not belong to an active recipient")
     if owner.org_id != subscription.org_id:
         raise _refuse("the device belongs to another org")
-    if not endpoint_allowed(subscription.endpoint, hosts, allow_http):
+    url = checked_endpoint(subscription.endpoint, hosts, allow_http)
+    if url is None:
         raise _refuse("the endpoint is not on a known push service")
+    return url

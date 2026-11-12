@@ -108,7 +108,7 @@ class Outbound:
             send.state = "gone"
             return
         try:
-            allowlist.check_push(
+            url = allowlist.check_push(
                 session,
                 subscription,
                 alert.user_id,
@@ -130,9 +130,7 @@ class Outbound:
             "url": self.lead_url(lead.id),
         }
         send.attempts += 1
-        status = self.pusher.send(
-            subscription.endpoint, subscription.p256dh, subscription.auth, payload
-        )
+        status = self.pusher.send(url, subscription.p256dh, subscription.auth, payload)
         send.last_status = status
         if 200 <= status < 300:
             send.state, send.sent_at = "sent", self.clock.now()
