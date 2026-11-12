@@ -5,7 +5,7 @@ from __future__ import annotations
 import socket
 import sys
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -17,6 +17,9 @@ from firstcall.pipeline.jobs import reap, run_one
 from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.reread import reread
 from firstcall.settings import Settings
+
+if TYPE_CHECKING:
+    from firstcall.outbound.dispatch import Outbound
 
 HEARTBEAT_SECONDS = 5.0
 TICK_SECONDS = 30.0
@@ -61,15 +64,29 @@ def tick(
     return done
 
 
+def alert_tick(sessions: sessionmaker[Any], clock: Clock, outbound: Outbound) -> dict[str, int]:
+    """The scheduler's alert pass: fire due escalations, send what they queued, and send
+    the email digests whose window has closed."""
+    from firstcall.board.escalate import escalate
+
+    return {
+        "escalated": escalate(sessions, clock),
+        "pushed": outbound.push_pending(),
+        "emailed": outbound.email_digests(),
+    }
+
+
 def work(
     sessions: sessionmaker[Any],
     clock: Clock,
     settings: Settings,
     until_idle: bool = False,
     reader: ModelReader | None = None,
+    outbound: Outbound | None = None,
 ) -> int:
     """Process jobs until stopped, or until the queue is empty when until_idle is set.
-    Returns how many jobs ran."""
+    Push goes out right after each job, since the alert-latency floor counts from intake;
+    email digests are sent while the queue is empty. Returns how many jobs ran."""
     beat(sessions, "worker")
     print("firstcall worker ready", file=sys.stderr, flush=True)
     last_beat = time.monotonic()
@@ -80,7 +97,12 @@ def work(
             last_beat = time.monotonic()
         if run_one(sessions, clock, settings.job_lease_seconds, settings.max_attempts, reader):
             ran += 1
+            if outbound is not None:
+                outbound.push_pending()
             continue
+        if outbound is not None:
+            outbound.push_pending()
+            outbound.email_digests()
         if until_idle:
             return ran
         time.sleep(0.5)
@@ -91,10 +113,13 @@ def schedule(
     clock: Clock,
     settings: Settings,
     reader: ModelReader | None = None,
+    outbound: Outbound | None = None,
 ) -> None:
     while True:
         beat(sessions, "scheduler")
         tick(sessions, clock, settings, reader)
+        if outbound is not None:
+            alert_tick(sessions, clock, outbound)
         time.sleep(TICK_SECONDS)
 
 

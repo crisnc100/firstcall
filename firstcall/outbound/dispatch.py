@@ -1,0 +1,167 @@
+"""Send queued alerts: push at once, email as a digest.
+
+Rows are locked with SKIP LOCKED while they are sent, so two workers never send the same
+one. A crash between the send and the commit sends it again on the next pass: a repeat
+alert is better than a lost one.
+"""
+
+from __future__ import annotations
+
+import logging
+import uuid
+from dataclasses import dataclass
+from datetime import timedelta
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from firstcall.core.clock import Clock
+from firstcall.db import Alert, Lead, PushSend, PushSubscription, Team, User
+from firstcall.outbound import allowlist
+from firstcall.outbound.mail import InboxMailer, Line, Mailer, SmtpMailer, label, render
+from firstcall.outbound.push import NO_RESPONSE, PushSender, WebPushSender
+from firstcall.settings import Settings
+
+log = logging.getLogger("firstcall.outbound")
+GONE = (404, 410)
+BATCH = 100
+
+
+def retryable(status: int) -> bool:
+    return status >= 500 or status == NO_RESPONSE
+
+
+def tag(team: Team | None) -> str:
+    """One notification tag per team, so a device shows one notification for a burst."""
+    return f"team-{team.slug}" if team else "unassigned"
+
+
+@dataclass
+class Outbound:
+    sessions: sessionmaker[Any]
+    clock: Clock
+    settings: Settings
+    mailer: Mailer
+    pusher: PushSender | None
+
+    @classmethod
+    def from_settings(
+        cls, sessions: sessionmaker[Any], clock: Clock, settings: Settings
+    ) -> Outbound:
+        mailer: Mailer = (
+            SmtpMailer(settings.smtp_host, settings.smtp_port, settings.email_from)
+            if settings.email_backend == "smtp"
+            else InboxMailer()
+        )
+        key = settings.vapid_private_key.get_secret_value()
+        pusher = WebPushSender(key, settings.vapid_subject) if key else None
+        return cls(sessions, clock, settings, mailer, pusher)
+
+    def lead_url(self, lead_id: uuid.UUID) -> str:
+        return f"{self.settings.base_url.rstrip('/')}/leads/{lead_id}"
+
+    def push_pending(self) -> int:
+        """Send every pending push once. Returns how many were tried."""
+        if self.pusher is None:
+            return 0
+        with self.sessions.begin() as session:
+            sends = list(
+                session.scalars(
+                    select(PushSend)
+                    .where(PushSend.state == "pending")
+                    .order_by(PushSend.id)
+                    .limit(BATCH)
+                    .with_for_update(skip_locked=True)
+                )
+            )
+            for send in sends:
+                self._push(session, send)
+            return len(sends)
+
+    def _push(self, session: Session, send: PushSend) -> None:
+        assert self.pusher is not None
+        alert = session.get_one(Alert, send.alert_id)
+        subscription = (
+            session.get(PushSubscription, send.subscription_id) if send.subscription_id else None
+        )
+        if subscription is None:
+            send.state = "gone"
+            return
+        try:
+            allowlist.check_push(
+                session, subscription, alert.user_id, self.settings.push_allow_http
+            )
+        except allowlist.RefusedError:
+            send.state = "failed"
+            return
+        lead = session.get_one(Lead, alert.lead_id)
+        team = session.get(Team, alert.team_id) if alert.team_id else None
+        payload = {
+            "title": f"{label(alert.kind)} in {team.name if team else 'Unassigned'}",
+            "body": " ".join(filter(None, [lead.name, lead.item])) or "Open Firstcall to see it",
+            "tag": tag(team),
+            "url": self.lead_url(lead.id),
+        }
+        send.attempts += 1
+        status = self.pusher.send(
+            subscription.endpoint, subscription.p256dh, subscription.auth, payload
+        )
+        send.last_status = status
+        if 200 <= status < 300:
+            send.state, send.sent_at = "sent", self.clock.now()
+        elif status in GONE:
+            send.state = "gone"
+            session.delete(subscription)
+        elif retryable(status) and send.attempts <= self.settings.push_retries:
+            log.info("push answered %s; will retry", status)
+        else:
+            send.state = "failed"
+
+    def email_digests(self) -> int:
+        """One email per user and team once the oldest pending alert in that pair has waited
+        the digest window. Returns how many emails went out."""
+        cutoff = self.clock.now() - timedelta(seconds=self.settings.digest_seconds)
+        with self.sessions() as session:
+            groups = session.execute(
+                select(Alert.user_id, Alert.team_id)
+                .where(Alert.email_state == "pending")
+                .group_by(Alert.user_id, Alert.team_id)
+                .having(func.min(Alert.created_at) <= cutoff)
+            ).all()
+        sent = 0
+        for user_id, team_id in groups:
+            with self.sessions.begin() as session:
+                sent += self._digest(session, user_id, team_id)
+        return sent
+
+    def _digest(self, session: Session, user_id: uuid.UUID, team_id: uuid.UUID | None) -> int:
+        same_team = Alert.team_id.is_(None) if team_id is None else Alert.team_id == team_id
+        alerts = list(
+            session.scalars(
+                select(Alert)
+                .where(Alert.email_state == "pending", Alert.user_id == user_id, same_team)
+                .order_by(Alert.created_at, Alert.id)
+                .with_for_update(skip_locked=True)
+            )
+        )
+        if not alerts:
+            return 0
+        user = session.get_one(User, user_id)
+        try:
+            allowlist.check_email(session, user.org_id, user.email)
+        except allowlist.RefusedError:
+            for alert in alerts:
+                alert.email_state = "refused"
+            return 0
+        team = session.get(Team, team_id) if team_id else None
+        lines: list[Line] = []
+        for alert in alerts:
+            lead = session.get_one(Lead, alert.lead_id)
+            name = lead.name or "Name not known"
+            lines.append(Line(alert.kind, name, lead.item, self.lead_url(lead.id)))
+        now = self.clock.now()
+        self.mailer.send(session, user, render(team.name if team else "Unassigned", lines), now)
+        for alert in alerts:
+            alert.email_state, alert.email_sent_at = "sent", now
+        return 1

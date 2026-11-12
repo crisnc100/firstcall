@@ -41,9 +41,30 @@ class Settings(BaseSettings):
     model_timeout_seconds: float = 8.0
     model_max_output_tokens: int = 400
     model_recordings: str = "evals/recordings"
+    # Sign-in.
+    session_days: int = 7
+    signin_rate_per_minute: int = 10
+    # Alerts. The inbox backend keeps email in the app; smtp sends to a mail server, which is
+    # Mailpit locally.
+    email_backend: Literal["smtp", "inbox"] = "inbox"
+    smtp_host: str = "127.0.0.1"
+    smtp_port: int = 1025
+    email_from: str = "Firstcall <alerts@firstcall.localhost>"
+    digest_seconds: int = 60
+    # Links in alerts point here.
+    base_url: str = "http://localhost:8020"
+    # Web push. With no private key, push is off and email still goes out.
+    vapid_private_key: SecretStr = SecretStr("")
+    vapid_public_key: str = ""
+    vapid_subject: str = "mailto:alerts@firstcall.localhost"
+    push_retries: int = 3
+    # Plain-http push endpoints, for the fake push service in tests and compose only.
+    push_allow_http: bool = False
 
     @model_validator(mode="after")
     def _no_failpoints_in_beta(self) -> Settings:
         if self.env == "beta" and self.failpoint:
             raise ValueError("FIRSTCALL_FAILPOINT is refused when FIRSTCALL_ENV=beta")
+        if self.env == "beta" and self.push_allow_http:
+            raise ValueError("FIRSTCALL_PUSH_ALLOW_HTTP is refused when FIRSTCALL_ENV=beta")
         return self

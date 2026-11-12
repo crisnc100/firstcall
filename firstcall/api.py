@@ -1,4 +1,4 @@
-"""The HTTP app: health, intake routes and the built web pages."""
+"""The HTTP app: health, intake routes, the board's JSON API and the built web pages."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from starlette.concurrency import run_in_threadpool
 
+from firstcall.board.routes import board_router
 from firstcall.core.clock import Clock
 from firstcall.db import Source, make_engine, make_sessions
 from firstcall.intake import auth
@@ -186,6 +187,8 @@ def create_app(
     @app.options("/intake/{slug}/{token}")
     async def preflight_with_token(request: Request, slug: str, token: str) -> Response:
         return await preflight(request, slug)
+
+    app.include_router(board_router(settings, sessions, clock, monotonic, client_ip))
 
     if WEB_DIST.is_dir():
         app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")

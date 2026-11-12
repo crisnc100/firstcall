@@ -19,6 +19,7 @@ OrgRole = Literal["monitor", "admin"]
 @dataclass(frozen=True)
 class Viewer:
     user_id: str
+    org_id: str = ""
     org_roles: frozenset[str] = frozenset()
     # Team id to the viewer's role in that team.
     teams: Mapping[str, str] = field(default_factory=lambda: {})

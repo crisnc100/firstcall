@@ -64,36 +64,44 @@ def rotate_secret(slug: str) -> None:
 @app.command()
 def worker(until_idle: bool = typer.Option(False, help="Stop when the queue is empty.")) -> None:
     """Process stored messages."""
+    from firstcall.outbound.dispatch import Outbound
     from firstcall.pipeline.worker import model_reader, work
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
     reader = model_reader(sessions, clock, settings)
-    work(sessions, clock, settings, until_idle=until_idle, reader=reader)
+    outbound = Outbound.from_settings(sessions, clock, settings)
+    work(sessions, clock, settings, until_idle=until_idle, reader=reader, outbound=outbound)
 
 
 @app.command()
 def scheduler() -> None:
     """Run `tick` every 30 seconds."""
+    from firstcall.outbound.dispatch import Outbound
     from firstcall.pipeline.worker import model_reader, schedule
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
-    schedule(sessions, clock, settings, model_reader(sessions, clock, settings))
+    outbound = Outbound.from_settings(sessions, clock, settings)
+    schedule(sessions, clock, settings, model_reader(sessions, clock, settings), outbound)
 
 
 @app.command()
 def tick() -> None:
-    """One scheduler pass: return jobs whose lease ran out, then reread rules-path messages."""
-    from firstcall.pipeline.worker import model_reader
+    """One scheduler pass: reap expired jobs, escalate, send due alerts, then reread
+    rules-path messages."""
+    from firstcall.outbound.dispatch import Outbound
+    from firstcall.pipeline.worker import alert_tick, model_reader
     from firstcall.pipeline.worker import tick as run_tick
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
-    typer.echo(run_tick(sessions, clock, settings, model_reader(sessions, clock, settings)))
+    outbound = Outbound.from_settings(sessions, clock, settings)
+    reader = model_reader(sessions, clock, settings)
+    typer.echo(run_tick(sessions, clock, settings, reader) | alert_tick(sessions, clock, outbound))
 
 
 @app.command()
