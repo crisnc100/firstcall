@@ -255,7 +255,9 @@ def _tag_end(html: str, opens: int) -> int:
 
 def _strip_tags(html: str) -> str:
     """HTML with each block tag replaced by a line break and every other tag or comment by a
-    space, so labelled fields in paragraphs, rows or br lines stay on their own lines. Each
+    space, so labelled fields in paragraphs, rows or br lines stay on their own lines. A line
+    break in the source is a space, as a browser shows it: a "<br>" at the end of a source
+    line is one line break, not a blank line that would end a forwarded header block. Each
     tag is scanned once and the next search starts after it, so the cost is linear in the
     text. Text after a "<" that never closes is kept, as a browser would show it."""
     parts: list[str] = []
@@ -263,17 +265,19 @@ def _strip_tags(html: str) -> str:
     while True:
         opens = html.find("<", at)
         if opens < 0:
-            parts.append(html[at:])
+            parts.append(html[at:].replace("\n", " "))
             break
         closes = _tag_end(html, opens)
         if closes < 0:
-            parts.append(html[at:])
+            parts.append(html[at:].replace("\n", " "))
             break
-        parts.append(html[at:opens])
+        parts.append(html[at:opens].replace("\n", " "))
         tag = TAG_NAME.match(html, opens)
         parts.append("\n" if tag and tag.group(1).lower() in BLOCK_TAGS else " ")
         at = closes + 1
-    return "".join(parts)
+    # Spaces left at a line's ends are source indentation; without them a line holding only
+    # spaces is blank, as it looks on the page.
+    return "\n".join(line.strip(" \t") for line in "".join(parts).split("\n"))
 
 
 def _check_budget(text: str) -> None:
