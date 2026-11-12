@@ -529,3 +529,27 @@ its model call must be logged without a message id (the log row's foreign key wo
   are often colleagues, and refusing them would silence a user for good over one stray
   message. A rescue makes the sender a buyer from then on.
 - **Test leads** each get a unique name and phone; the helper asserts `lead_created`.
+
+## Phase 2: pages
+
+- **Pages** follow `builds/pr2/pages-design.md` and the comp: pool (team picker; team
+  leads also see who owns what), mine, unassigned, lead detail, waiting longest, the
+  Not-a-lead tray, inbox, users, alerts and account. Vanilla TypeScript with no framework;
+  every string goes in through `textContent`, never `innerHTML`.
+- **Urgency** uses the business-minute wait and the team's thresholds from the lead JSON.
+  Waiting longest lists the leads whose escalations fired and still stand, and a log of
+  every escalation sent (`GET /api/escalations`, monitors and admins).
+- **Serving.** The api serves `web/dist` and falls back to `index.html` for page paths,
+  so a reload on `/leads/<id>` works. API, intake and health paths never fall back.
+- **Push.** `sw.js` shows one notification per lead (tagged, so a repeat replaces it) and
+  a click opens only a same-origin path. Permission is asked from the button, never on load.
+- **Deviation.** On phones, Unassigned places a lead with an inline team select and a Place
+  button on the row, not the design's bottom panel: one tap fewer, and no focus trap.
+- **Rescue copy** says the lead is waiting in its pool, since the rescue may also place it.
+- **Hidden means hidden.** A class `display` rule beat the `hidden` attribute and left the
+  closed account menu taking clicks over the pool. F29 caught it; `[hidden]` now wins.
+- **F29** runs Chromium against an api and a worker container on their own database:
+  two salespeople claim one lead and the second is told it was taken, the monitor places
+  from Unassigned and rescues from the tray, and a `<script>` buyer name shows as text.
+  Playwright is a dev dependency; verify.sh installs Chromium, CI its system libraries.
+- verify.sh: 510 passed.
