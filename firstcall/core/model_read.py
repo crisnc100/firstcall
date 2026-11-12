@@ -19,8 +19,8 @@ CATEGORIES = ("lead", "vendor", "support", "spam")
 FIELDS = ("phone", "email", "name", "item", "agent", "category", "team")
 METHODS = ("rules", "model", "combined")
 CONTACT_FIELDS = ("phone", "email", "name", "item")
-# Until the eval picks a method per field, every field takes the rules first and the model
-# only where the rules found nothing or were unsure.
+# Used when config/field_methods.yaml is missing: every field takes the rules first and the
+# model only where the rules found nothing or were unsure.
 DEFAULT_METHODS: Mapping[str, str] = dict.fromkeys(FIELDS, "combined")
 
 

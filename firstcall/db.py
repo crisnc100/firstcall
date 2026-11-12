@@ -157,7 +157,7 @@ class Message(Base):
     # The model's parsed answer, kept apart from the combined reading in `extracted`.
     model_answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     # Why the last model read gave no answer: kill_switch, offline, no_key, budget, down or
-    # unreadable.
+    # unreadable; or set_aside or "error: <type>", set by the reread job.
     model_unavailable: Mapped[str | None] = mapped_column(String(32))
     # Rereads of this message that raised; the reread job gives up after a few.
     reread_errors: Mapped[int] = mapped_column(Integer, default=0)
