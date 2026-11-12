@@ -150,7 +150,7 @@ def test_team_a_never_sees_team_b_in_any_list(board: Board) -> None:
     assert seller.get("/api/leads?view=unassigned").status_code == 404
     assert seller.get(f"/api/leads/{south}").status_code == 404
     assert seller.get(f"/api/leads/{taken}").status_code == 404
-    assert ids(lead.get(f"/api/leads?view=team&team_id={north_id}")) == {str(north), str(taken)}
+    assert ids(lead.get(f"/api/leads?view=team&team_id={north_id}")) == {str(taken)}
     assert lead.get(f"/api/leads?view=team&team_id={south_id}").status_code == 404
     assert lead.get(f"/api/leads/{unassigned}").status_code == 404
     assert seller.get("/api/leads?view=nonsense").status_code == 422

@@ -27,7 +27,8 @@ def test_a_pool_lead_carries_its_business_wait_and_team_thresholds(board: Board)
     board.user("admin@larkspur.example", roles=["admin"])
     lead = board.lead("north")
     # Arrived Saturday 17:50 local; Sunday is closed; read on Monday 09:10.
-    board.set_lead(lead, arrival_at=datetime(2026, 2, 28, 22, 50, tzinfo=UTC))
+    saturday_1750 = datetime(2026, 2, 28, 22, 50, tzinfo=UTC)
+    board.set_lead(lead, arrival_at=saturday_1750, pool_since=saturday_1750)
     board.clock.current = datetime(2026, 3, 2, 14, 10, tzinfo=UTC)
     with board.sessions.begin() as session:
         session.execute(
@@ -39,7 +40,8 @@ def test_a_pool_lead_carries_its_business_wait_and_team_thresholds(board: Board)
     assert row["thresholds"] == {"late": 10, "very_late": 60}
 
     unassigned = board.lead(None)
-    board.set_lead(unassigned, arrival_at=board.clock.now() - timedelta(minutes=90))
+    ninety_ago = board.clock.now() - timedelta(minutes=90)
+    board.set_lead(unassigned, arrival_at=ninety_ago, pool_since=ninety_ago)
     admin = board.signed_in("admin@larkspur.example")
     detail = admin.get(f"/api/leads/{unassigned}").json()
     assert detail["wait_business_minutes"] == 90

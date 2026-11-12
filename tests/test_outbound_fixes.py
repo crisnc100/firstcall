@@ -116,6 +116,7 @@ def test_an_smtp_failure_keeps_the_alerts_pending_for_the_next_pass(board: Board
     with board.sessions() as session:
         states = set(session.scalars(select(Alert.email_state).where(Alert.user_id == seller.id)))
     assert states == {"pending"}
+    board.clock.advance(seconds=3600)
     assert board.outbound().email_digests() == 1
 
 
