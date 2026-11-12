@@ -12,15 +12,27 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from email import policy
 from email.parser import BytesHeaderParser
+from pathlib import Path
+from typing import Any, cast
+
+import yaml
 
 from firstcall import failpoints
-from firstcall.core.model_read import DEFAULT_METHODS, ModelAnswer, answer_schema, parse_answer
+from firstcall.core.model_read import (
+    DEFAULT_METHODS,
+    FIELDS,
+    METHODS,
+    ModelAnswer,
+    answer_schema,
+    parse_answer,
+)
 from firstcall.core.read import Reading
 from firstcall.db import Message
 from firstcall.model.gateway import Gateway, ModelRequest, ModelUnavailableError
 from firstcall.model.prompts import READ_MESSAGE
 
 FAILPOINT_DURING_MODEL_READ = "during_model_read"
+FIELD_METHODS = Path(__file__).resolve().parents[2] / "config" / "field_methods.yaml"
 UNREADABLE = "unreadable"
 # The headers a person would look at to tell who wrote and who to answer.
 EMAIL_HEADERS = ("From", "Reply-To", "To", "Subject", "Date")
@@ -49,10 +61,36 @@ def context_text(items: Sequence[str], teams: Mapping[str, str]) -> str:
     return f"Item list: {', '.join(items)}\nTeam list: {team_lines}"
 
 
+def load_field_methods(path: Path = FIELD_METHODS) -> Mapping[str, str]:
+    """The per-field methods the eval chose, or the combined default before there is a
+    choice. A file that names a field or method the reader does not know is refused."""
+    if not path.exists():
+        return DEFAULT_METHODS
+    data: Any = yaml.safe_load(path.read_text())
+    methods = data.get("methods") if isinstance(data, dict) else None
+    if not isinstance(methods, dict):
+        raise ValueError(f"{path}: field_methods needs a 'methods' mapping")
+    chosen = {str(k): str(v) for k, v in cast(dict[Any, Any], methods).items()}
+    if set(chosen) != set(FIELDS) or not set(chosen.values()) <= set(METHODS):
+        raise ValueError(f"{path}: field_methods must give one of {METHODS} for each of {FIELDS}")
+    return chosen
+
+
 class ModelReader:
-    def __init__(self, gateway: Gateway, methods: Mapping[str, str] = DEFAULT_METHODS) -> None:
+    def __init__(
+        self,
+        gateway: Gateway,
+        methods: Mapping[str, str] = DEFAULT_METHODS,
+        detached: bool = False,
+    ) -> None:
         self.gateway = gateway
         self.methods = methods
+        # A detached reader reads messages that are never committed (the eval's clean
+        # twins), so its calls are logged without a message id.
+        self.is_detached = detached
+
+    def detached(self) -> ModelReader:
+        return ModelReader(self.gateway, self.methods, detached=True)
 
     def request(
         self,
@@ -64,7 +102,7 @@ class ModelReader:
     ) -> ModelRequest:
         return ModelRequest(
             org_id=message.org_id,
-            message_id=message.id,
+            message_id=None if self.is_detached else message.id,
             task=READ_MESSAGE,
             intake_text=intake_text(message, reading, kind),
             context=context_text(items, teams),

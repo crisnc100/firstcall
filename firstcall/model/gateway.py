@@ -7,8 +7,9 @@ constant per task, so text written to steer a reader never gains a system prompt
 
 Modes:
 - replay: answers recorded from earlier runs. A miss raises ReplayMissError.
-- record: real calls whose answers are saved. Input that is not from the synthetic generator
-  raises NotSyntheticError before any call.
+- record: real calls whose answers are saved; a request already recorded is answered from
+  its recording. Input that is not from the synthetic generator raises NotSyntheticError
+  before any call.
 - live: real calls under the budget guard.
 - offline: no calls; every message takes the rules path.
 
@@ -209,8 +210,12 @@ class Gateway:
             return self._replay(request, outbound)
         if self.config.mode == "record":
             assert self.synthetic is not None
+            assert self.recordings is not None
             if request.raw not in self.synthetic:
                 raise NotSyntheticError("record mode only sends messages from the synthetic corpus")
+            if self.recordings.find(outbound) is not None:
+                # Already recorded: answered from the recording, so a rerun spends nothing.
+                return self._replay(request, outbound)
         return self._live(request, outbound)
 
     def outbound(self, request: ModelRequest) -> TransportRequest:

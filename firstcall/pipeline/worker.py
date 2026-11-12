@@ -102,5 +102,6 @@ def model_reader(sessions: sessionmaker[Any], clock: Clock, settings: Settings) 
     """The model read the settings ask for. Offline, switched off or without a key, every
     message takes the rules path and is marked for a reread."""
     from firstcall.model.gateway import Gateway
+    from firstcall.pipeline.model_read import load_field_methods
 
-    return ModelReader(Gateway.from_settings(settings, sessions, clock))
+    return ModelReader(Gateway.from_settings(settings, sessions, clock), load_field_methods())

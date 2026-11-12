@@ -24,10 +24,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from firstcall.core.delivery import sha256
 from firstcall.core.identity import normalize_name
 from firstcall.corpus.generate import GOLD_DIR, TWINS
-from firstcall.db import TERMINAL_STATUSES, Message, Source, Team
+from firstcall.db import TERMINAL_STATUSES, Job, Message, Source, Team
 from firstcall.evaluation.metrics import Rate
 from firstcall.intake.store import accept
+from firstcall.model.gateway import ReplayMissError
 from firstcall.pipeline.jobs import run_one
+from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.process import process
 from firstcall.seed import seed as seed_demo
 
@@ -103,6 +105,7 @@ def _twin(
     body: str,
     teams: dict[uuid.UUID, str],
     clock: FixedClock,
+    reader: ModelReader | None = None,
 ) -> Result:
     """Process the clean twin inside a transaction that is rolled back, just before the real
     message, so it sees exactly the leads the real message sees and leaves nothing behind."""
@@ -120,7 +123,7 @@ def _twin(
             )
             session.add(twin)
             session.flush()
-            status = process(session, twin.id, clock)
+            status = process(session, twin.id, clock, reader.detached() if reader else None)
             result = Result(
                 id=row["id"],
                 status=status,
@@ -136,10 +139,16 @@ def _twin(
     return result
 
 
+class EvalJobError(Exception):
+    """A message's job raised instead of ending in a status. An eval must not score a corpus
+    with a message left half done."""
+
+
 def run_corpus(
     sessions: sessionmaker[Session],
     messages: list[dict[str, Any]],
     twins: dict[str, str] | None = None,
+    reader: ModelReader | None = None,
 ) -> list[Result]:
     seed_demo(sessions)
     clock = FixedClock()
@@ -150,12 +159,20 @@ def run_corpus(
     for row in messages:
         source = sources[row["source"]]
         twin_body = (twins or {}).get(row["id"])
-        twin = _twin(sessions, source, row, twin_body, teams, clock) if twin_body else None
+        twin = _twin(sessions, source, row, twin_body, teams, clock, reader) if twin_body else None
         body = row["body"].encode()
         accepted = accept(sessions, source, body, row["content_type"], row["headers"])
-        while run_one(sessions, clock):
+        while run_one(sessions, clock, reader=reader):
             pass
         with sessions() as session:
+            job = session.scalars(select(Job).where(Job.message_id == accepted.message_id)).first()
+            if job is not None and job.state != "done":
+                error = job.last_error or ""
+                # The job keeps only the error's text; a replay miss is raised as itself so
+                # a stale recording fails the eval by name.
+                if error.startswith(ReplayMissError.__name__):
+                    raise ReplayMissError(f"message {row['id']}: {error}")
+                raise EvalJobError(f"message {row['id']}: {error}")
             message = session.get_one(Message, accepted.message_id)
             created = message.status == "lead_created"
             results.append(
