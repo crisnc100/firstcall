@@ -35,5 +35,8 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: web/package-lock.json
+      # verify.sh installs the browser; the runner also needs its system libraries.
+      - name: playwright system libraries
+        run: uv run --locked playwright install-deps chromium
       - name: verify.sh
         run: ./verify.sh

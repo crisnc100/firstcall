@@ -25,6 +25,9 @@ git ls-files -z --cached --others --exclude-standard \
 step "web: npm ci and the TypeScript build"
 (cd web && npm ci --silent && npm run build --silent)
 
+step "playwright chromium for the page tests"
+uv run playwright install chromium
+
 step "docker compose build and up"
 docker compose build --quiet
 docker compose up -d --wait
