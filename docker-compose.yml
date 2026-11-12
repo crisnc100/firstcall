@@ -70,7 +70,8 @@ services:
   # Catches local email, so nothing sent in development leaves the machine.
   mailpit:
     image: axllent/mailpit:v1.27
-    ports: ["127.0.0.1:8025:8025"]
+    # 8025 is the web page and API; 1025 takes SMTP.
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 3s

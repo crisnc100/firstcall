@@ -23,6 +23,10 @@ FLOORS: dict[str, float] = {
     "firstcall/core/match.py": CORE,
     "firstcall/core/identity.py": CORE,
     "firstcall/core/model_read.py": CORE,
+    "firstcall/core/states.py": CORE,
+    "firstcall/core/access.py": CORE,
+    "firstcall/core/hours.py": CORE,
+    "firstcall/core/escalation.py": CORE,
     "firstcall/api.py": EDGE,
     "firstcall/intake/auth.py": EDGE,
     "firstcall/intake/limits.py": EDGE,
@@ -33,6 +37,16 @@ FLOORS: dict[str, float] = {
     "firstcall/model/anthropic.py": EDGE,
     "firstcall/pipeline/model_read.py": EDGE,
     "firstcall/pipeline/reread.py": EDGE,
+    "firstcall/board/accounts.py": EDGE,
+    "firstcall/board/alerts.py": EDGE,
+    "firstcall/board/escalate.py": EDGE,
+    "firstcall/board/leads.py": EDGE,
+    "firstcall/board/routes.py": EDGE,
+    "firstcall/board/tray.py": EDGE,
+    "firstcall/outbound/allowlist.py": EDGE,
+    "firstcall/outbound/dispatch.py": EDGE,
+    "firstcall/outbound/mail.py": EDGE,
+    "firstcall/outbound/push.py": EDGE,
 }
 
 

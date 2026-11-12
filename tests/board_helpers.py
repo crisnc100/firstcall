@@ -111,7 +111,12 @@ class FakePushService:
                 body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
                 with service.lock:
                     service.received.append(
-                        Received(self.path, dict(self.headers), body, time.time())
+                        Received(
+                            self.path,
+                            {k.lower(): v for k, v in self.headers.items()},
+                            body,
+                            time.time(),
+                        )
                     )
                     queued = service.answers.get(self.path, [])
                     status = queued.pop(0) if queued else 201
@@ -233,7 +238,7 @@ class Board:
     def own(self, lead_id: uuid.UUID, user: User, at: datetime | None = None) -> None:
         self.set_lead(lead_id, state="owned", owner_id=user.id, pool_since=None, claimed_at=at)
 
-    def get(self, lead_id: uuid.UUID) -> Lead:
+    def get(self, lead_id: uuid.UUID | None) -> Lead:
         return self.pipe.lead(lead_id)
 
     def message(self, message_id: uuid.UUID) -> Message:
