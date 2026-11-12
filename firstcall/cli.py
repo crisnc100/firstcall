@@ -64,31 +64,36 @@ def rotate_secret(slug: str) -> None:
 @app.command()
 def worker(until_idle: bool = typer.Option(False, help="Stop when the queue is empty.")) -> None:
     """Process stored messages."""
-    from firstcall.pipeline.worker import work
+    from firstcall.pipeline.worker import model_reader, work
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
-    work(_sessions(), SystemClock(), Settings(), until_idle=until_idle)
+    sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    reader = model_reader(sessions, clock, settings)
+    work(sessions, clock, settings, until_idle=until_idle, reader=reader)
 
 
 @app.command()
 def scheduler() -> None:
     """Run `tick` every 30 seconds."""
-    from firstcall.pipeline.worker import schedule
+    from firstcall.pipeline.worker import model_reader, schedule
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
-    schedule(_sessions(), SystemClock(), Settings())
+    sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    schedule(sessions, clock, settings, model_reader(sessions, clock, settings))
 
 
 @app.command()
 def tick() -> None:
-    """One scheduler pass: return jobs whose lease ran out."""
+    """One scheduler pass: return jobs whose lease ran out, then reread rules-path messages."""
+    from firstcall.pipeline.worker import model_reader
     from firstcall.pipeline.worker import tick as run_tick
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
-    typer.echo(run_tick(_sessions(), SystemClock(), Settings()))
+    sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    typer.echo(run_tick(sessions, clock, settings, model_reader(sessions, clock, settings)))
 
 
 @app.command()

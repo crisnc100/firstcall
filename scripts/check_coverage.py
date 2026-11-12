@@ -22,6 +22,7 @@ FLOORS: dict[str, float] = {
     "firstcall/core/place.py": CORE,
     "firstcall/core/match.py": CORE,
     "firstcall/core/identity.py": CORE,
+    "firstcall/core/model_read.py": CORE,
     "firstcall/api.py": EDGE,
     "firstcall/intake/auth.py": EDGE,
     "firstcall/intake/limits.py": EDGE,
@@ -29,6 +30,8 @@ FLOORS: dict[str, float] = {
     "firstcall/pipeline/process.py": EDGE,
     "firstcall/pipeline/jobs.py": EDGE,
     "firstcall/model/gateway.py": EDGE,
+    "firstcall/pipeline/model_read.py": EDGE,
+    "firstcall/pipeline/reread.py": EDGE,
 }
 
 

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core.clock import Clock
 from firstcall.db import Job, Message
+from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.process import process
 
 log = logging.getLogger("firstcall.jobs")
@@ -104,13 +105,14 @@ def run(
     claimed: Claimed,
     lease_seconds: int,
     max_attempts: int,
+    reader: ModelReader | None = None,
 ) -> str | None:
     """Process a claimed job. The message's terminal status and the job's completion commit
     together; on an error the job goes back in the queue or, out of attempts, fails."""
     try:
         with keep_lease(sessions, clock, claimed, lease_seconds), sessions.begin() as session:
             job = session.get_one(Job, claimed.job_id, with_for_update=True)
-            status = process(session, claimed.message_id, clock)
+            status = process(session, claimed.message_id, clock, reader)
             job.state = "done"
             job.lease_until = None
             return status
@@ -129,12 +131,16 @@ def run(
 
 
 def run_one(
-    sessions: sessionmaker[Any], clock: Clock, lease_seconds: int = 60, max_attempts: int = 5
+    sessions: sessionmaker[Any],
+    clock: Clock,
+    lease_seconds: int = 60,
+    max_attempts: int = 5,
+    reader: ModelReader | None = None,
 ) -> bool:
     claimed = claim(sessions, clock, lease_seconds, max_attempts)
     if claimed is None:
         return False
-    run(sessions, clock, claimed, lease_seconds, max_attempts)
+    run(sessions, clock, claimed, lease_seconds, max_attempts, reader)
     return True
 
 

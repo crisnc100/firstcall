@@ -152,8 +152,13 @@ class Message(Base):
     lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id"), index=True)
     team_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("teams.id"))
     clean_body_sha256: Mapped[str | None] = mapped_column(String(64))
-    # Set when the model read was skipped; a reread fills the empty fields later.
+    # Set when the model read gave no answer; a reread fills the empty fields later.
     needs_reread: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The model's parsed answer, kept apart from the combined reading in `extracted`.
+    model_answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # Why the last model read gave no answer: kill_switch, offline, no_key, budget, down or
+    # unreadable.
+    model_unavailable: Mapped[str | None] = mapped_column(String(32))
 
 
 class Lead(Base):
@@ -174,6 +179,10 @@ class Lead(Base):
     item: Mapped[str | None] = mapped_column(String(200))
     # Lead ids this lead may duplicate; a person decides, nothing merges automatically.
     possible_duplicates: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    # Fields a person has set. The model reread never changes them.
+    edited_fields: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    # Notes for the monitor, such as the reread finding that the message is not a lead.
+    flags: Mapped[list[Any]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
