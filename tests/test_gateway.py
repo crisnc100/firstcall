@@ -156,7 +156,10 @@ def test_the_price_snapshot_lists_every_adr_002_candidate() -> None:
     for model, price in prices.items():
         row = f"| {model} | {price.prompt_per_million:.3f} | {price.completion_per_million:.3f} |"
         assert row in adr, row
-    assert len(prices) == 12
+    # The twelve OpenRouter candidates, plus Claude Haiku 5.5 on the Anthropic API
+    # (the 2026-11-12 amendment).
+    assert len(prices) == 13
+    assert "claude-haiku-5-5" in prices
 
 
 @pytest.mark.parametrize("mode", ["live", "record", "replay"])
