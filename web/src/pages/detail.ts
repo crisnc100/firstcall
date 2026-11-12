@@ -4,6 +4,7 @@ import { api, ApiError, session, type LeadDetail, type MessageRow, type Team } f
 import { announce, h, link } from "../dom";
 import { fullTime, shortTime } from "../format";
 import { icon } from "../icons";
+import { categoryLabel, sourceLabel, statusLabel } from "../labels";
 import { busy, stateBadge, unbusy, waitTimer } from "../leadlist";
 import { loadFailed } from "../poller";
 import type { Cleanup } from "../router";
@@ -19,12 +20,6 @@ const BACK: Record<string, [string, (team: string) => string]> = {
   waiting: ["/waiting", () => "Back to Waiting longest"],
 };
 
-const SOURCES: Record<string, string> = {
-  inbox: "Email",
-  "site-form": "Web form",
-  "partner-form": "Partner form",
-  calls: "Phone call",
-};
 
 function copyButton(value: string, what: string): HTMLButtonElement {
   const button = h("button", { class: "btn secondary", attrs: { type: "button" } }, icon("copy"), "Copy");
@@ -56,9 +51,12 @@ function messageBlock(message: MessageRow): HTMLElement[] {
     h(
       "div",
       { class: "line muted sm" },
-      `${SOURCES[message.source] ?? message.source} · ${shortTime(message.received_at)}`,
-      message.category ? h("span", { class: "badge", text: message.category }) : null,
-      h("span", { class: "badge", text: message.status.replace(/_/g, " ") }),
+      `${sourceLabel(message.source)} · ${shortTime(message.received_at)}`,
+      // Every message on a lead page reads as a lead; only a different category says anything.
+      message.category && message.category !== "lead"
+        ? h("span", { class: "badge", text: categoryLabel(message.category) })
+        : null,
+      h("span", { class: "badge", text: statusLabel(message.status) }),
     ),
     text,
   ];
@@ -87,7 +85,7 @@ function sentence(
   switch (event.type) {
     case "lead.created": {
       const first = lead.messages[0];
-      return `Arrived from ${first ? (SOURCES[first.source] ?? first.source) : "a source"}`;
+      return `Arrived from ${first ? sourceLabel(first.source) : "a source"}`;
     }
     case "lead.placed":
       return `Placed in ${team(p.team)}`;
@@ -105,6 +103,8 @@ function sentence(
       return `Moved from ${team(p.from_team)} to ${team(p.to_team)}`;
     case "lead.activity":
       return "New message from the buyer";
+    case "lead.rescued":
+      return `Rescued from Not-a-lead by ${who("by")}`;
     default:
       return event.type.replace(/[._]/g, " ");
   }
@@ -149,7 +149,7 @@ async function draw(
   reload: () => Promise<void>,
 ): Promise<void> {
   const s = session();
-  const names = new Map<string, string>();
+  const names = new Map<string, string>(Object.entries(lead.people ?? {}));
   if (s) names.set(s.user.id, s.user.name);
   if (lead.owner) names.set(lead.owner.id, lead.owner.name);
   let members: { id: string; name: string }[] = [];

@@ -84,8 +84,12 @@ export function waitingPage(main: HTMLElement): Cleanup {
     const levels = leads.map(leadUrgency);
     const veryLate = levels.filter((l) => l === "verylate").length;
     const late = levels.filter((l) => l === "late").length;
-    const teamCount = new Set(leads.map((l) => l.team?.id ?? "unassigned")).size;
-    summary.textContent = `${veryLate} very late, ${late} late, across ${teamCount} team${teamCount === 1 ? "" : "s"}.`;
+    const teamCount = new Set(leads.flatMap((l) => (l.team ? [l.team.id] : []))).size;
+    const where = [
+      teamCount ? `${teamCount} team${teamCount === 1 ? "" : "s"}` : "",
+      leads.some((l) => !l.team) ? "Unassigned" : "",
+    ].filter(Boolean);
+    summary.textContent = `${veryLate} very late, ${late} late, in ${where.join(" and ")}.`;
   };
   const drawLog = (fired: Fired[]): void => {
     logHeading.hidden = fired.length === 0;

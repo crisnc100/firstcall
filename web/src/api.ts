@@ -47,6 +47,7 @@ export interface MessageRow {
 export interface LeadDetail extends Lead {
   messages: MessageRow[];
   events: { seq: number; type: string; at: string; payload: Record<string, unknown> }[];
+  people: Record<string, string>;
 }
 
 export interface User {

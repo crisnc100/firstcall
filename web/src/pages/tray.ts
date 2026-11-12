@@ -8,9 +8,9 @@ import { busy, unbusy } from "../leadlist";
 import { emptyState, loadFailed, poll, skeleton, staleLine } from "../poller";
 import type { Cleanup } from "../router";
 import { setTitle } from "../shell";
+import { categoryLabel, sourceLabel } from "../labels";
 import { messageText } from "./detail";
 
-const CATEGORY: Record<string, string> = { vendor: "Vendor", support: "Support", spam: "Spam" };
 
 export function trayPage(main: HTMLElement): Cleanup {
   setTitle("Not-a-lead tray");
@@ -35,7 +35,7 @@ export function trayPage(main: HTMLElement): Cleanup {
     tabs.replaceChildren(
       ...["all", "vendor", "support", "spam"].map((key) => {
         const anchor = h("a", {
-          text: `${key === "all" ? "All" : CATEGORY[key]} ${counts[key] ?? 0}`,
+          text: `${key === "all" ? "All" : categoryLabel(key)} ${counts[key] ?? 0}`,
           attrs: { href: "#", "aria-current": key === filter ? "page" : undefined },
         });
         anchor.addEventListener("click", (event) => {
@@ -59,9 +59,9 @@ export function trayPage(main: HTMLElement): Cleanup {
           h(
             "li",
             {},
-            h("span", { class: "badge", text: CATEGORY[row.category ?? ""] ?? row.category ?? "Other" }),
+            h("span", { class: "badge", text: categoryLabel(row.category) }),
             link(`/tray/${row.id}`, row.name ?? row.email ?? "No sender name", "name"),
-            h("span", { class: "muted sm num", text: `${shortTime(row.received_at)} · ${row.source}` }),
+            h("span", { class: "muted sm num", text: `${shortTime(row.received_at)} · ${sourceLabel(row.source)}` }),
             h("span", { class: "muted sm", text: row.reason ?? "" }),
           ),
         ),
@@ -114,17 +114,26 @@ function draw(main: HTMLElement, row: MessageRow): void {
     busy(rescue, "Moving…");
     void api<{ status: string; lead_id: string }>("POST", `/tray/${row.id}/rescue`)
       .then((answer) => {
-        rescue.remove();
         const text = "Moved to the leads. It's waiting in its pool.";
-        status.replaceChildren(
-          h("p", { class: "line" }, icon("check", true), text, link(`/leads/${answer.lead_id}?from=unassigned`, "Open the lead")),
+        const result = h(
+          "p",
+          { class: "line", attrs: { tabindex: "-1" } },
+          icon("check", true),
+          text,
+          link(`/leads/${answer.lead_id}?from=unassigned`, "Open the lead"),
         );
+        status.replaceChildren(result);
+        // Removing the focused button would drop focus to the page body.
+        result.focus();
+        rescue.remove();
         announce(text);
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 409) {
+          const result = h("p", { text: "Already moved to the leads.", attrs: { tabindex: "-1" } });
+          status.replaceChildren(result);
+          result.focus();
           rescue.remove();
-          status.replaceChildren(h("p", { text: "Already moved to the leads." }));
           announce("Already moved to the leads.");
           return;
         }
@@ -148,11 +157,11 @@ function draw(main: HTMLElement, row: MessageRow): void {
       h("dt", { text: "Email" }),
       h("dd", { text: row.email ?? "No email given" }),
       h("dt", { text: "Source" }),
-      h("dd", { text: row.source }),
+      h("dd", { text: sourceLabel(row.source) }),
       h("dt", { text: "Received" }),
       h("dd", { class: "num", text: fullTime(row.received_at) }),
       h("dt", { text: "Category" }),
-      h("dd", { text: CATEGORY[row.category ?? ""] ?? row.category ?? "" }),
+      h("dd", { text: categoryLabel(row.category) }),
       h("dt", { text: "Reason" }),
       h("dd", { text: row.reason ?? "" }),
     ),

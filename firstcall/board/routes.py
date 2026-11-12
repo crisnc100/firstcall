@@ -336,8 +336,10 @@ def board_router(
             messages = db.scalars(
                 select(Message).where(Message.lead_id == lead.id).order_by(Message.received_at)
             )
-            history = db.scalars(
-                select(LeadEvent).where(LeadEvent.lead_id == lead.id).order_by(LeadEvent.seq)
+            history = list(
+                db.scalars(
+                    select(LeadEvent).where(LeadEvent.lead_id == lead.id).order_by(LeadEvent.seq)
+                )
             )
             return {
                 **lead_json(db, lead, who.viewer),
@@ -351,6 +353,7 @@ def board_router(
                     }
                     for e in history
                 ],
+                "people": people_named(db, who.user.org_id, history),
             }
 
     @router.post("/leads/{lead_id}/claim")
@@ -608,6 +611,25 @@ def _b64url(text: str) -> bytes | None:
         return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
     except (ValueError, binascii.Error):
         return None
+
+
+PERSON_KEYS = ("by", "owner_id", "from", "to", "rescued_by")
+
+
+def people_named(db: Session, org_id: uuid.UUID, history: list[LeadEvent]) -> dict[str, str]:
+    """Names for the users a lead's history mentions, so the page never has to say "a
+    teammate" about a monitor or someone who has left the team."""
+    ids: set[uuid.UUID] = set()
+    for event in history:
+        for key in PERSON_KEYS:
+            try:
+                ids.add(uuid.UUID(str(event.payload.get(key))))
+            except ValueError:
+                continue
+    if not ids:
+        return {}
+    rows = db.execute(select(User.id, User.name).where(User.org_id == org_id, User.id.in_(ids)))
+    return {str(user_id): name for user_id, name in rows}
 
 
 def push_keys_valid(p256dh: str, auth: str) -> bool:

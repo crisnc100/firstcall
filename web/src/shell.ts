@@ -80,7 +80,8 @@ export function setUnread(count: number): void {
   unreadShown.words.textContent = count === 1 ? "1 unread" : `${count} unread`;
 }
 
-async function refreshUnread(): Promise<void> {
+/** Re-read the unread count; every list poll calls it, so the badge keeps up. */
+export async function refreshUnread(): Promise<void> {
   try {
     const rows = await api<{ read: boolean }[]>("GET", "/inbox");
     setUnread(rows.filter((row) => !row.read).length);

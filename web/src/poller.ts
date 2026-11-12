@@ -3,6 +3,7 @@
 
 import { h } from "./dom";
 import { shortTime } from "./format";
+import { refreshUnread } from "./shell";
 
 const EVERY_MS = 15000;
 
@@ -22,6 +23,7 @@ export function poll(load: () => Promise<void>, stale: HTMLElement, tick?: () =>
     if (stopped) return;
     try {
       await load();
+      void refreshUnread();
       lastOk = new Date().toISOString();
       stale.hidden = true;
     } catch {

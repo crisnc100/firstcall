@@ -17,6 +17,12 @@ interface Mail {
 }
 
 /** The body as text, with links to this app's own pages made clickable and nothing else. */
+/** The digest's first line repeats its subject, which the reader already shows as the heading. */
+function withoutHeading(text: string, subject: string): string {
+  const [first, ...rest] = text.split("\n");
+  return first && subject.startsWith(first.trim()) ? rest.join("\n").replace(/^\n+/, "") : text;
+}
+
 function body(text: string): HTMLElement {
   const block = h("div", { class: "msg" });
   const pattern = /https?:\/\/\S+/g;
@@ -81,7 +87,7 @@ export function inboxPage(main: HTMLElement): Cleanup {
   };
   const open = async (mail: Mail): Promise<void> => {
     openId = mail.id;
-    reader.replaceChildren(h("h2", { text: mail.subject }), body(mail.text));
+    reader.replaceChildren(h("h2", { text: mail.subject }), body(withoutHeading(mail.text, mail.subject)));
     if (!mail.read) {
       mail.read = true;
       draw();

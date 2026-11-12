@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import and_, or_, select
@@ -263,6 +264,8 @@ def settle(
         _add_identities(session, lead, keys)
         payload = {"message_id": str(message.id), **rescue}
         events.write(session, lead, "lead.activity", cause, payload, now)
+        if rescued_by:
+            _rescued(session, lead, message, rescued_by, now)
         alerts.activity(session, lead, cause, now)
         message.status, message.reason = "attached", "matched a known buyer"
         return message.status
@@ -275,7 +278,9 @@ def settle(
         state="pool",
         created_by_message_id=message.id,
         arrival_at=message.received_at,
-        pool_since=message.received_at,
+        # A rescue starts the pool stay now: the lead was never in a pool before, so its
+        # wait and escalation count from here, while time to claim counts from arrival.
+        pool_since=now if rescued_by else message.received_at,
         name=reading.name,
         phone=reading.phone if ("phone", reading.phone) in keys else None,
         email=reading.email if ("email", reading.email) in keys else None,
@@ -292,7 +297,11 @@ def settle(
         "possible_duplicates": list(decision.possible_duplicates),
         **rescue,
     }
-    events.write(session, lead, "lead.created", cause, payload, now)
+    created = events.write(session, lead, "lead.created", cause, payload, now)
+    if rescued_by:
+        # The history shows the arrival at the buyer's receipt time, then the rescue.
+        created.created_at = message.received_at
+        _rescued(session, lead, message, rescued_by, now)
     alerts.entered_pool(session, lead, "new_lead", cause, now)
     message.lead_id = lead.id
     message.team_id = team_id
@@ -301,3 +310,8 @@ def settle(
     if rescued_by:
         message.reason = "rescued from the Not-a-lead tray"
     return message.status
+
+
+def _rescued(session: Session, lead: Lead, message: Message, by: uuid.UUID, now: datetime) -> None:
+    payload = {"message_id": str(message.id), "by": str(by)}
+    events.write(session, lead, "lead.rescued", f"rescue:{message.id}", payload, now)
