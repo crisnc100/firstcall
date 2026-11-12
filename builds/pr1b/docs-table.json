@@ -1,0 +1,334 @@
+{
+ "rows": [
+  {
+   "behavior": "Model gateway: modes, kill switch, key, budget pre-check, daily cap and call log",
+   "files": [
+    "firstcall/model/gateway.py",
+    "firstcall/model/recordings.py",
+    "firstcall/model/synthetic.py",
+    "firstcall/model/prompts.py",
+    "firstcall/model/__init__.py",
+    "firstcall/settings.py",
+    "firstcall/db.py",
+    "migrations/versions/0003_model_read.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "The gateway is the only code that calls a model",
+       "at": "firstcall/model/gateway.py:1"
+      },
+      {
+       "claim": "Checks in order: kill switch, mode, key, budget",
+       "at": "firstcall/model/gateway.py:193"
+      },
+      {
+       "claim": "Kill switch FIRSTCALL_MODEL_OFF stops every call",
+       "at": "firstcall/settings.py:38"
+      },
+      {
+       "claim": "Daily cap per org and UTC day, default $1.00",
+       "at": "firstcall/settings.py:40"
+      },
+      {
+       "claim": "Spend is kept per org and day in the budget ledger",
+       "at": "firstcall/model/gateway.py:301"
+      },
+      {
+       "claim": "Worst-case cost (prompt plus full-length answer) is reserved before a call",
+       "at": "firstcall/model/gateway.py:256"
+      },
+      {
+       "claim": "A call that could take the day past the cap is refused",
+       "at": "firstcall/model/gateway.py:326"
+      },
+      {
+       "claim": "The real cost replaces the reservation after the call",
+       "at": "firstcall/model/gateway.py:282"
+      },
+      {
+       "claim": "A failed attempt keeps its reservation; the ledger reads high, never low",
+       "at": "firstcall/model/gateway.py:18"
+      },
+      {
+       "claim": "Model down means two attempts failed",
+       "at": "firstcall/model/gateway.py:50"
+      },
+      {
+       "claim": "offline is the default mode and makes no calls",
+       "at": "firstcall/settings.py:34"
+      },
+      {
+       "claim": "Offline gives no answer, so the message is marked needs_reread",
+       "at": "firstcall/model/gateway.py:195"
+      },
+      {
+       "claim": "Replay answers are keyed by SHA-256 of model, system prompt, user message and schema",
+       "at": "firstcall/model/recordings.py:35"
+      },
+      {
+       "claim": "Record mode refuses input not from the synthetic generator",
+       "at": "firstcall/model/gateway.py:214"
+      },
+      {
+       "claim": "Only tests use a fake model",
+       "at": "tests/model_fakes.py:1"
+      }
+     ]
+    },
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "The model is off by default (FIRSTCALL_MODEL_MODE=offline), so no key is needed",
+       "at": "firstcall/settings.py:34"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Prices and the long-prompt tier",
+   "files": [
+    "firstcall/model/prices.py",
+    "config/model_prices.yaml"
+   ],
+   "docs": [
+    {
+     "path": "docs/adr/ADR-002-model-candidates.md",
+     "claims": [
+      {
+       "claim": "A call whose prompt is over 100,000 tokens is charged the higher rates on all its tokens",
+       "at": "firstcall/model/prices.py:30"
+      },
+      {
+       "claim": "Long tier above 100,000 tokens at $0.50 and $2.50",
+       "at": "config/model_prices.yaml:20"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Anthropic transport and structured output",
+   "files": [
+    "firstcall/model/transport.py",
+    "firstcall/model/anthropic.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "Only Claude models on the Anthropic API are wired",
+       "at": "firstcall/model/transport.py:55"
+      },
+      {
+       "claim": "An unreadable answer is charged (a cut answer comes back with its tokens and empty text)",
+       "at": "firstcall/model/anthropic.py:100"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Model read and per-field method choice",
+   "files": [
+    "firstcall/core/model_read.py",
+    "firstcall/pipeline/model_read.py",
+    "firstcall/pipeline/process.py",
+    "firstcall/pipeline/jobs.py",
+    "config/field_methods.yaml"
+   ],
+   "docs": [
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "An email is shown as From, Reply-To, To, Subject and Date plus decoded body text",
+       "at": "firstcall/pipeline/model_read.py:38"
+      },
+      {
+       "claim": "A form or call post is shown as its JSON",
+       "at": "firstcall/pipeline/model_read.py:52"
+      },
+      {
+       "claim": "Unless category's method is model, a rules-spam message is not sent",
+       "at": "firstcall/pipeline/process.py:191"
+      },
+      {
+       "claim": "Unreadable: not a JSON object, wrong type, or a value outside its list",
+       "at": "firstcall/core/model_read.py:132"
+      },
+      {
+       "claim": "rules, model and combined methods; combined keeps rules unless empty or unsure",
+       "at": "firstcall/core/model_read.py:156"
+      },
+      {
+       "claim": "A rules spam signal still decides the category under combined",
+       "at": "firstcall/core/model_read.py:179"
+      },
+      {
+       "claim": "With no answer the rules read stands and the message is marked needs_reread",
+       "at": "firstcall/pipeline/process.py:197"
+      }
+     ]
+    },
+    {
+     "path": "firstcall/core/model_read.py",
+     "claims": [
+      {
+       "claim": "DEFAULT_METHODS applies when config/field_methods.yaml is missing",
+       "at": "firstcall/pipeline/model_read.py:68"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "No-model fallback and the reread job",
+   "files": [
+    "firstcall/pipeline/reread.py",
+    "firstcall/pipeline/worker.py",
+    "migrations/versions/0004_reread_errors.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "The scheduler's tick rereads needs_reread messages",
+       "at": "firstcall/pipeline/worker.py:60"
+      },
+      {
+       "claim": "A reread fills only empty fields and never a person's edit",
+       "at": "firstcall/pipeline/reread.py:162"
+      },
+      {
+       "claim": "A phone or email becomes an identity only if no other lead holds it",
+       "at": "firstcall/pipeline/reread.py:169"
+      },
+      {
+       "claim": "A not-a-lead answer flags the lead for the monitor",
+       "at": "firstcall/pipeline/reread.py:177"
+      },
+      {
+       "claim": "Only messages that created a lead are reread",
+       "at": "firstcall/pipeline/reread.py:89"
+      }
+     ]
+    },
+    {
+     "path": "firstcall/db.py",
+     "claims": [
+      {
+       "claim": "model_unavailable can also hold set_aside or 'error: <type>' from the reread job",
+       "at": "firstcall/pipeline/reread.py:194"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Eval command: --mode, --budget, model and confirm reports, replay check",
+   "files": [
+    "firstcall/cli.py",
+    "firstcall/evaluation/model_eval.py",
+    "firstcall/evaluation/model_report.py",
+    "firstcall/evaluation/run.py",
+    "scripts/check_replay_report.py",
+    "docs/rerecord.md"
+   ],
+   "docs": [
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "--mode defaults to rules (no model)",
+       "at": "firstcall/cli.py:116"
+      },
+      {
+       "claim": "Model modes score rules only, model only and combined",
+       "at": "firstcall/evaluation/model_eval.py:276"
+      },
+      {
+       "claim": "Seed 13 runs the shipped field methods",
+       "at": "firstcall/cli.py:172"
+      },
+      {
+       "claim": "--budget is at most $10 per run",
+       "at": "firstcall/cli.py:161"
+      },
+      {
+       "claim": "A rerun gives the same bytes for model reports too",
+       "at": "scripts/check_replay_report.py:31"
+      }
+     ]
+    },
+    {
+     "path": "docs/rerecord.md",
+     "claims": [
+      {
+       "claim": "Seeds 7, 11 and 13 measured $0.1147, $0.1155 and $0.1155 by the ledger",
+       "at": "builds/v01/log.md:452"
+      },
+      {
+       "claim": "The reports' Calls and cost tables come from the call log",
+       "at": "firstcall/evaluation/model_report.py:160"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "ADR-002 result and the ADR index",
+   "files": [
+    "docs/adr/ADR-002-model-candidates.md"
+   ],
+   "docs": [
+    {
+     "path": "docs/adr/ADR-002-model-candidates.md",
+     "claims": [
+      {
+       "claim": "Total spend for the three seeds was $0.3464 by the budget ledger",
+       "at": "builds/v01/log.md:453"
+      }
+     ]
+    },
+    {
+     "path": "docs/adr/README.md",
+     "claims": [
+      {
+       "claim": "ADR-002 has its candidate list amended and its result recorded",
+       "at": "docs/adr/ADR-002-model-candidates.md:85"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "HTML line breaks and title/style/script text in the rules read; bare-CR header splitting",
+   "files": [
+    "firstcall/core/read.py"
+   ],
+   "none": "Internal reading fixes; the docstrings in read.py already state the behavior and no doc describes it."
+  },
+  {
+   "behavior": "Coverage floors and the secrets scan cover the new model code and recordings",
+   "files": [
+    "scripts/check_coverage.py",
+    "verify.sh"
+   ],
+   "none": "Build tooling; the comment in verify.sh states why recordings are excluded."
+  },
+  {
+   "behavior": "Recorded model answers that CI replays",
+   "files": [
+    "evals/recordings/claude-haiku-5-5.jsonl"
+   ],
+   "none": "Generated data written by firstcall eval --mode record; docs/rerecord.md already explains how it is made and replayed."
+  }
+ ]
+}

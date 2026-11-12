@@ -135,16 +135,41 @@ def _git(*args: str) -> str:
     ).stdout.strip()
 
 
-def _first_commit_adding(path: str) -> str | None:
-    found = _git("log", "--diff-filter=A", "--format=%H", "--", path).splitlines()
+# PR1a reached main as one squash commit, so gold and code first appear together there. Its
+# branch history, where the gold landed first, is kept under this tag. Only this exact commit
+# is checked on the tag; any other commit that adds gold and code together still fails.
+SQUASHED = {"ce83ec7": "pr1a-history"}
+
+
+def _first_commit_adding(path: str, ref: str = "HEAD") -> str | None:
+    found = _git("log", ref, "--diff-filter=A", "--format=%H", "--", path).splitlines()
     return found[-1] if found else None
 
 
-def test_gold_and_predictions_were_committed_before_any_extraction_code() -> None:
-    assert _git("rev-parse", "--is-shallow-repository") == "false", "needs full history"
-    gold = ["evals/gold/MANIFEST.json"] + [
-        f"evals/gold/seed-{s}/{n}" for s in SEEDS for n in ("messages.jsonl", "labels.jsonl")
-    ]
+def _history_of(commit: str) -> str:
+    """The ref whose history holds this commit's real order: the tag for a listed squash
+    merge, which must be present, or HEAD."""
+    listed = {
+        _git("rev-parse", "--verify", f"{short}^{{commit}}"): t for short, t in SQUASHED.items()
+    }
+    tag = listed.get(commit)
+    if tag is None:
+        return "HEAD"
+    found = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{tag}^{{commit}}"], cwd=ROOT
+    )
+    assert found.returncode == 0, (
+        f"{commit} is a squash merge; checking its order needs the tag {tag} (git fetch --tags)"
+    )
+    # The tag must be the history of this squash, not any other commit: a squash merge keeps
+    # its branch tip's tree exactly.
+    assert _git("rev-parse", f"{tag}^{{tree}}") == _git("rev-parse", f"{commit}^{{tree}}"), (
+        f"{tag} does not hold the same files as the squash merge {commit}"
+    )
+    return tag
+
+
+def _check_order(gold: list[str]) -> None:
     earlier: dict[str, str | None] = {p: _first_commit_adding(p) for p in (*gold, *PREDICTIONS)}
     for code in EXTRACTION_CODE:
         if not (ROOT / code).exists():
@@ -154,11 +179,27 @@ def test_gold_and_predictions_were_committed_before_any_extraction_code() -> Non
             assert commit is not None, f"{path} is not committed, but {code} exists"
             if code_commit is None:
                 continue
-            assert commit != code_commit, f"{path} landed together with {code}"
+            first, later = commit, code_commit
+            if first == later:
+                ref = _history_of(first)
+                if ref != "HEAD":
+                    first = _first_commit_adding(path, ref)
+                    later = _first_commit_adding(code, ref)
+                    assert first is not None, f"{path} is not in {ref}"
+                    assert later is not None, f"{code} is not in {ref}"
+            assert first != later, f"{path} landed together with {code}"
             ancestor = subprocess.run(
-                ["git", "merge-base", "--is-ancestor", commit, code_commit], cwd=ROOT
+                ["git", "merge-base", "--is-ancestor", first, later], cwd=ROOT
             )
             assert ancestor.returncode == 0, f"{path} was committed after {code}"
+
+
+def test_gold_and_predictions_were_committed_before_any_extraction_code() -> None:
+    assert _git("rev-parse", "--is-shallow-repository") == "false", "needs full history"
+    gold = ["evals/gold/MANIFEST.json"] + [
+        f"evals/gold/seed-{s}/{n}" for s in SEEDS for n in ("messages.jsonl", "labels.jsonl")
+    ]
+    _check_order(gold)
 
 
 @pytest.mark.parametrize("seed", SEEDS)

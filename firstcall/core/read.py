@@ -191,9 +191,11 @@ def _lines_of(text: str) -> str:
 def check_header_budget(raw: bytes) -> None:
     """Refuse a message whose header block, or any one header in PARSED_HEADERS, is over the
     budget, before any header is parsed. Header parsing time grows faster than a header's
-    length."""
-    ends = [at for at in (raw.find(b"\n\n"), raw.find(b"\r\n\r\n")) if at >= 0]
-    head = raw[: min(ends)] if ends else raw
+    length. Line ends are read as the email parser reads them: CRLF, bare CR and LF all end a
+    line, so a bare-CR message splits into the same headers here as in the worker."""
+    lines = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    end = lines.find(b"\n\n")
+    head = lines[:end] if end >= 0 else lines
     if len(head) > MAX_HEADER_BYTES:
         raise OverBudgetError(
             f"over the read budget: {len(head)} bytes of headers (limit {MAX_HEADER_BYTES})"
@@ -225,9 +227,12 @@ BLOCK_TAGS = frozenset(
     {
         "p", "div", "br", "tr", "li", "ul", "ol", "table", "tbody", "thead", "tfoot",
         "h1", "h2", "h3", "h4", "h5", "h6", "hr", "section", "article", "header", "footer",
-        "blockquote", "pre", "dl", "dt", "dd", "address",
+        "blockquote", "pre", "dl", "dt", "dd", "address", "html", "head", "body", "title",
     }
 )  # fmt: skip
+# Elements whose text is never shown on the page: a title, a style sheet, a script.
+HIDDEN_TAGS = frozenset({"title", "style", "script"})
+HIDDEN_END = {name: re.compile(f"</{name}", re.IGNORECASE) for name in HIDDEN_TAGS}
 
 
 def _tag_end(html: str, opens: int) -> int:
@@ -255,25 +260,43 @@ def _tag_end(html: str, opens: int) -> int:
 
 def _strip_tags(html: str) -> str:
     """HTML with each block tag replaced by a line break and every other tag or comment by a
-    space, so labelled fields in paragraphs, rows or br lines stay on their own lines. Each
+    space, so labelled fields in paragraphs, rows or br lines stay on their own lines. The
+    text of a title, style or script element is dropped, as a page never shows it. A line
+    break in the source is a space, as a browser shows it: a "<br>" at the end of a source
+    line is one line break, not a blank line that would end a forwarded header block. Each
     tag is scanned once and the next search starts after it, so the cost is linear in the
     text. Text after a "<" that never closes is kept, as a browser would show it."""
     parts: list[str] = []
+    unclosed: set[str] = set()
     at = 0
     while True:
         opens = html.find("<", at)
         if opens < 0:
-            parts.append(html[at:])
+            parts.append(html[at:].replace("\n", " "))
             break
         closes = _tag_end(html, opens)
         if closes < 0:
-            parts.append(html[at:])
+            parts.append(html[at:].replace("\n", " "))
             break
-        parts.append(html[at:opens])
+        parts.append(html[at:opens].replace("\n", " "))
         tag = TAG_NAME.match(html, opens)
-        parts.append("\n" if tag and tag.group(1).lower() in BLOCK_TAGS else " ")
+        name = tag.group(1).lower() if tag else ""
+        parts.append("\n" if name in BLOCK_TAGS else " ")
         at = closes + 1
-    return "".join(parts)
+        if name in HIDDEN_TAGS and name not in unclosed and html[opens + 1] != "/":
+            # Skip to the element's end tag. With no end tag the text is kept: losing the
+            # rest of a lead to a stray tag is the worse error. A name found unclosed once is
+            # not searched for again, so many stray tags cannot make the scan quadratic.
+            # Searched on the original text: lowering it can change its length (a dotted
+            # capital I becomes two characters), which would shift every position after it.
+            ends = HIDDEN_END[name].search(html, at)
+            if ends:
+                at = ends.start()
+            else:
+                unclosed.add(name)
+    # Spaces left at a line's ends are source indentation; without them a line holding only
+    # spaces is blank, as it looks on the page.
+    return "\n".join(line.strip(" \t") for line in "".join(parts).split("\n"))
 
 
 def _check_budget(text: str) -> None:

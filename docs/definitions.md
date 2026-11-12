@@ -208,13 +208,51 @@ append-only history, so a reopen never erases one.
 - The lead events table is the outbox: because each event commits with its change, a crash after
   commit loses nothing. Webhook delivery reads from it.
 
+## The model read
+
+- **Model read:** one model call per message, which reads the message into the same fields
+  as the rules read. The model is `FIRSTCALL_MODEL_NAME`; Claude Haiku 5.5 is the one chosen
+  (ADR-002), and only Claude models on the Anthropic API are wired. Unless the category's
+  field method is `model`, a message the rules already call spam (a honeypot or a listed
+  spam sender) is not sent. An email is shown to the model as its From, Reply-To, To,
+  Subject and Date headers and its decoded body text; a form or call post as its JSON.
+- **Gateway:** the only code that calls a model. Before each call it checks, in order, the
+  kill switch, the mode, the key and the budget.
+- **Kill switch:** `FIRSTCALL_MODEL_OFF=1`. While it is set, no model call is made.
+- **Daily cap:** the most the model may spend per org and UTC day
+  (`FIRSTCALL_MODEL_DAILY_CAP_USD`, default $1.00). Spend is kept in the budget ledger, so a restart does not reset it.
+- **Budget pre-check:** before a call, its worst-case cost (the prompt plus a full-length
+  answer) is reserved in the ledger; a call that could take the day past the cap is refused.
+  After the call the real cost replaces the reservation. A failed attempt keeps its
+  reservation, because a provider may bill a call that timed out on our side, so the ledger
+  can read high but never low.
+- **Unreadable answer:** an answer that is not a JSON object, has a value of the wrong type,
+  or names a category, item or team outside its list. It is charged and treated as no answer.
+- **Field method:** how one field is filled, set per field in `config/field_methods.yaml`.
+  `rules` keeps the rules value, `model` takes the model's, and `combined` keeps the rules
+  value unless the rules found nothing or marked the field unsure. A rules spam signal (a
+  honeypot or a listed spam sender) still decides the category under `combined`.
+- **No answer:** the kill switch, offline mode, no key, the budget, the model down (two attempts
+  failed), or an unreadable answer. The lead is still created from the rules read, the category fails open
+  (anything the rules do not call spam is a lead), and the message is marked `needs_reread`.
+- **Reread:** the scheduler reads `needs_reread` messages again once the model answers. A
+  reread fills only a lead's empty fields. It never closes or moves a lead and never changes
+  a field a person edited. A filled phone or email becomes an identity only when no other
+  lead holds it. When the model says the message is not a lead, the lead stays and gets a
+  flag for the monitor. Only messages that created a lead are reread.
+
 ## Model modes
 
-- **replay:** answers recorded from live runs. A miss raises an error, so evals and tests fail loudly.
+`FIRSTCALL_MODEL_MODE` picks one:
+
+- **offline** (the default): no model calls. Every message takes the rules path and is marked
+  `needs_reread`.
+- **replay:** answers recorded from live runs, keyed by the SHA-256 of the model, the system
+  prompt, the user message and the answer schema. A miss raises an error, so evals and tests
+  fail loudly.
 - **record:** live calls whose answers are saved. Refuses any input that is not from the synthetic generator.
 - **live:** real calls, under the budget guard.
-- **offline:** the running app with no key. Leads come from the rules read alone and are
-  marked `needs_reread`.
 
-Every model answer in a committed report comes from a real model on the Firstcall key. There are no
-simulated answers in this project.
+Every model answer in a committed report comes from a live call to Claude Haiku 5.5 on the
+Anthropic API, saved in `evals/recordings/`. No report holds a simulated answer; only tests
+use a fake model.

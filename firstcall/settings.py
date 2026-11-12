@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LOCAL_DATABASE_URL = (
@@ -29,6 +30,17 @@ class Settings(BaseSettings):
     ip_rate_per_minute: int = 30
     form_max_bytes: int = 1_000_000
     email_max_bytes: int = 10_000_000
+    # The model read. Offline makes no model calls; every message takes the rules path.
+    model_mode: Literal["replay", "record", "live", "offline"] = "offline"
+    model_name: str = ""
+    model_key: SecretStr = SecretStr("")
+    # The kill switch, FIRSTCALL_MODEL_OFF=1: no model call is made while it is set.
+    model_off: bool = False
+    # Spend per org and UTC day, kept in the budget ledger so a restart does not reset it.
+    model_daily_cap_usd: Decimal = Decimal("1.00")
+    model_timeout_seconds: float = 8.0
+    model_max_output_tokens: int = 400
+    model_recordings: str = "evals/recordings"
 
     @model_validator(mode="after")
     def _no_failpoints_in_beta(self) -> Settings:

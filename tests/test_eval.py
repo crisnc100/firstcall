@@ -4,6 +4,7 @@ reports (F5, F12)."""
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -177,8 +178,147 @@ def test_the_held_out_report_has_unseen_layouts_and_every_message_terminal() -> 
     assert everything["missing_reason"] == 0
 
 
-def test_no_confirm_run_exists_yet() -> None:
-    assert not list(REPORTS.glob("*-seed-13.*"))
+def _git(*args: str) -> str:
+    import subprocess
+
+    return subprocess.run(
+        ["git", *args], cwd=REPORTS.parents[1], capture_output=True, text=True, check=True
+    ).stdout
+
+
+def _is_ancestor(older: str, newer: str) -> bool:
+    import subprocess
+
+    found = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", older, newer], cwd=REPORTS.parents[1]
+    )
+    return found.returncode == 0
+
+
+def _squash_merge_on_main(commit: str) -> bool:
+    """A PR squashed onto main: one parent, a subject ending "(#N)", reachable from main.
+    CI proved the methods-then-report order on the PR branch before it was squashed."""
+    import subprocess
+
+    subject, parents = _git("log", "-1", "--format=%s%n%P", commit).splitlines()
+    if not re.search(r"\(#\d+\)$", subject) or len(parents.split()) != 1:
+        return False
+    for ref in ("origin/main", "main"):
+        known = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", ref],
+            cwd=REPORTS.parents[1],
+            capture_output=True,
+        )
+        if known.returncode == 0 and _is_ancestor(commit, ref):
+            return True
+    return False
+
+
+# The Markdown line that carries the methods hash, and the blank line after it.
+HASH_LINE = re.compile(r"^`config/field_methods\.yaml` sha256: `([0-9a-f]{64})`\n\n", re.M)
+
+
+def _history(path: str) -> list[str]:
+    """Every commit that touched `path`, oldest first. --full-history keeps side branches
+    that a merge brought in, which the default simplification would hide."""
+    return _git(
+        "log", "--full-history", "--topo-order", "--reverse", "--format=%H", "--", path
+    ).split()
+
+
+def _blob(commit: str, path: str) -> str | None:
+    import subprocess
+
+    found = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{commit}:{path}"],
+        cwd=REPORTS.parents[1],
+        capture_output=True,
+        text=True,
+    )
+    return found.stdout.strip() if found.returncode == 0 else None
+
+
+def _parents(commit: str) -> list[str]:
+    return _git("log", "-1", "--format=%P", commit).split()
+
+
+def _changes(path: str) -> list[str]:
+    """The commits in `path`'s full history that gave it new content. A merge that only
+    carries one parent's version over makes no change of its own."""
+    return [
+        commit
+        for commit in _history(path)
+        if _blob(commit, path) not in {_blob(parent, path) for parent in _parents(commit)}
+    ]
+
+
+def _adds(path: str) -> list[str]:
+    """The commits that brought `path` into being: none of their parents has it."""
+    return [c for c in _changes(path) if all(_blob(p, path) is None for p in _parents(c))]
+
+
+def _json_version(text: str) -> tuple[dict[str, Any], str | None]:
+    report = json.loads(text)
+    return report, report.pop("field_methods_sha256", None)
+
+
+def _md_version(text: str) -> tuple[str, str | None]:
+    found = HASH_LINE.search(text)
+    return HASH_LINE.sub("", text, count=1), found.group(1) if found else None
+
+
+def test_the_only_seed_13_run_is_one_confirm_run_committed_after_the_field_methods() -> None:
+    import hashlib
+
+    methods_path = run.FIELD_METHODS.relative_to(REPORTS.parents[1]).as_posix()
+    reports = REPORTS.relative_to(REPORTS.parents[1]).as_posix()
+
+    # One run: exactly the JSON and Markdown pair of one dated confirm report.
+    seed_13 = sorted(p.name for p in REPORTS.glob("*seed-13*"))
+    assert len(seed_13) == 2, seed_13
+    stem = seed_13[0].removesuffix(".json")
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}-confirm-seed-13", stem), seed_13
+    assert seed_13 == [f"{stem}.json", f"{stem}.md"]
+    report_json, report_md = f"{reports}/{stem}.json", f"{reports}/{stem}.md"
+
+    # The report ran with the methods file as committed.
+    committed_methods = _git("show", f"HEAD:{methods_path}").encode()
+    report = json.loads((REPORTS / f"{stem}.json").read_text())
+    assert report["field_methods_sha256"] == hashlib.sha256(committed_methods).hexdigest()
+
+    # Each file of the pair was added once, in the same commit, on any branch.
+    adds = _adds(report_json)
+    assert len(adds) == 1, (report_json, adds)
+    added = adds[0]
+    assert _adds(report_md) == [added], report_md
+
+    # Never rewritten: no version of either file changes a result. A version may add the
+    # methods hash, once; after that every version keeps the same hash.
+    for path, read in ((report_json, _json_version), (report_md, _md_version)):
+        first, _ = read(_git("show", f"{added}:{path}"))
+        seen: str | None = None
+        for version in _changes(path):
+            results, digest = read(_git("show", f"{version}:{path}"))
+            assert results == first, (path, version)
+            if seen is not None:
+                assert digest == seen, (path, version, "the methods hash changed or was dropped")
+            seen = digest
+        assert seen == report["field_methods_sha256"], path
+
+    # The methods were committed before the report and never changed after it, on any
+    # branch. They may first appear in the report's own commit only when that commit is a
+    # PR squashed onto main, whose branch history CI already checked.
+    touched = _changes(methods_path)
+    assert touched, f"{methods_path} is not committed"
+    for commit in touched:
+        if commit == added:
+            assert _squash_merge_on_main(added), (
+                f"{methods_path} and {stem} share {added[:7]}, not a squash merge on main"
+            )
+        else:
+            assert _is_ancestor(commit, added), (
+                f"{methods_path} changed in {commit[:7]}, after or beside the confirm report"
+            )
 
 
 def test_an_injection_counts_only_when_the_clean_twin_differs() -> None:

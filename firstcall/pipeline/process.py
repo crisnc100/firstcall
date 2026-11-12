@@ -20,6 +20,7 @@ from firstcall.core import delivery
 from firstcall.core.clock import Clock
 from firstcall.core.identity import first_name
 from firstcall.core.match import Candidate, decide, gate
+from firstcall.core.model_read import combine
 from firstcall.core.place import place, team_key
 from firstcall.core.read import AgentRef, Reading, Reference, SourceRules, UnparseableError, read
 from firstcall.core.uuid7 import uuid7
@@ -35,6 +36,7 @@ from firstcall.db import (
     Team,
 )
 from firstcall.locks import lock_all
+from firstcall.pipeline.model_read import ModelReader
 
 FAILPOINT_AFTER_LEAD_INSERT = "after_lead_insert"
 
@@ -46,6 +48,8 @@ class OrgView:
     team_names: dict[str, str]
     team_ids: dict[str, uuid.UUID]
     team_slugs: dict[uuid.UUID, str]
+    # Each team's slug and display name, the team list the model chooses from.
+    team_labels: dict[str, str]
     never_phones: frozenset[str]
     never_emails: frozenset[str]
 
@@ -65,6 +69,7 @@ def org_view(session: Session, org_id: uuid.UUID, source: Source) -> OrgView:
         team_names=names,
         team_ids={t.slug: t.id for t in teams},
         team_slugs={t.id: t.slug for t in teams},
+        team_labels={t.slug: t.name for t in teams},
         never_phones=frozenset(
             {a.phone for a in agents if a.phone} | {str(n) for n in source.tracking_numbers}
         ),
@@ -174,9 +179,41 @@ def _is_reforward(session: Session, message: Message, lead_id: uuid.UUID) -> boo
     return match is not None
 
 
-def process(session: Session, message_id: uuid.UUID, clock: Clock) -> str:
-    """The message's terminal status. A message already terminal is left as it is."""
-    message = session.scalar(select(Message).where(Message.id == message_id).with_for_update())
+def _model_pass(
+    message: Message, source: Source, reading: Reading, view: OrgView, reader: ModelReader | None
+) -> Reading:
+    """The reading after the model read, and the message's reread mark. With no answer the
+    rules read stands and the category fails open: the rules call only spam, so anything
+    else is a lead until the reread."""
+    if reader is None:
+        message.needs_reread = True
+        return reading
+    if reading.spam_signals and reader.methods["category"] != "model":
+        # A honeypot or listed spam sender already decides the category; a model call would
+        # only spend budget on a spam burst.
+        message.needs_reread = False
+        return reading
+    outcome = reader.read(message, source.kind, reading, view.reference.items, view.team_labels)
+    if outcome.answer is None:
+        message.needs_reread = True
+        message.model_unavailable = outcome.reason
+        return reading
+    message.needs_reread = False
+    message.model_unavailable = None
+    message.model_answer = outcome.answer.as_json()
+    return combine(reading, outcome.answer, reader.methods)
+
+
+def process(
+    session: Session, message_id: uuid.UUID, clock: Clock, reader: ModelReader | None = None
+) -> str:
+    """The message's terminal status. A message already terminal is left as it is. Without a
+    reader every message takes the rules path and is marked for a reread."""
+    # FOR NO KEY UPDATE, not FOR UPDATE: the gateway logs each model call in its own
+    # transaction, and that row's foreign key to this message must not wait on this lock.
+    message = session.scalar(
+        select(Message).where(Message.id == message_id).with_for_update(key_share=True)
+    )
     if message is None:
         raise LookupError(f"no message {message_id}")
     if message.status in TERMINAL_STATUSES:
@@ -189,8 +226,7 @@ def process(session: Session, message_id: uuid.UUID, clock: Clock) -> str:
     except UnparseableError as error:
         message.status, message.reason = "failed", f"unparseable: {error}"
         return message.status
-    # Every message here took the rules-only path, so a model reread is owed.
-    message.needs_reread = True
+    reading = _model_pass(message, source, reading, view, reader)
     message.category = reading.category
     message.extracted = reading.as_json()
     message.source_time = reading.source_time
