@@ -166,8 +166,9 @@ def test_ef71c1_f3_a_replay_miss_in_the_reread_is_contained(
 ) -> None:
     message = _fallback(pipe)
     reader = ModelReader(gateway(sessions, clock, mode="replay", recordings=tmp_path))
-    assert reread(sessions, reader) == {"error": 1}
-    assert pipe.message(message.id).model_unavailable == "error: ReplayMissError"
+    assert reread(sessions, reader) == {"halted": 1}
+    contained = pipe.message(message.id)
+    assert (contained.needs_reread, contained.reread_errors) == (True, 0)
 
 
 def test_ef71c1_f3_an_error_leaves_the_lead_untouched(
