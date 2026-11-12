@@ -199,8 +199,11 @@ function editForm(user: User, teams: Team[], reload: () => Promise<void>, close:
   const password = h("button", { class: "btn secondary", text: "Set a new password", attrs: { type: "button" } });
   password.addEventListener("click", () => {
     const input = h("input", { attrs: { id: "set-password", type: "password", autocomplete: "new-password" } });
-    const set = h("button", { class: "btn primary", text: "Set password", attrs: { type: "button" } });
-    set.addEventListener("click", () => {
+    const set = h("button", { class: "btn primary", text: "Set password", attrs: { type: "submit" } });
+    // Its own form, outside the edit form, so Enter here sets the password and nothing else.
+    const setForm = h("form", { class: "panel" }, field("New password", input), h("div", { class: "row-buttons" }, set));
+    setForm.addEventListener("submit", (event) => {
+      event.preventDefault();
       busy(set, "Setting…");
       api("PUT", `/users/${user.id}/password`, { password: input.value })
         .then(() => {
@@ -215,7 +218,7 @@ function editForm(user: User, teams: Team[], reload: () => Promise<void>, close:
           error.replaceChildren(icon("alert"), message(caught));
         });
     });
-    extra.replaceChildren(h("div", { class: "panel" }, field("New password", input), h("div", { class: "row-buttons" }, set)));
+    extra.replaceChildren(setForm);
     input.focus();
   });
 
@@ -275,13 +278,11 @@ function editForm(user: User, teams: Team[], reload: () => Promise<void>, close:
     teamBox,
     error,
     h("div", { class: "row-buttons" }, save, password, h("button", { class: "btn secondary", text: "Cancel", attrs: { type: "button" }, on: { click: close } })),
-    extra,
-    h("div", { class: "row-buttons" }, status),
   );
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     busy(save, "Saving…");
     void change({ name: name.value, roles: readRoles(), teams: readTeams() }, "Saved.").finally(() => unbusy(save, "Save"));
   });
-  return form;
+  return h("div", {}, form, extra, h("div", { class: "row-buttons" }, status));
 }

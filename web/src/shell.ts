@@ -169,13 +169,48 @@ export function frame(root: HTMLElement): HTMLElement {
   return main;
 }
 
+const RETRY_SIGN_OUT_MS = 5000;
+
+/** Sign out, and show the sign-in page only once the server confirms. Until then the app
+ * is covered and the sign-out is retried: on a shared browser, a sign-in page shown over a
+ * live session would hand the account to the next person. */
 export async function leave(): Promise<void> {
-  try {
-    await signOut();
-  } catch {
-    // Signed out either way: the cookie is gone or already invalid.
-  }
-  navigate("/signin", true);
+  let waiting: HTMLElement | null = null;
+  let retry = 0;
+  const attempt = async (): Promise<void> => {
+    window.clearTimeout(retry);
+    try {
+      await signOut();
+    } catch {
+      waiting ??= blockUntilSignedOut(() => void attempt());
+      retry = window.setTimeout(() => void attempt(), RETRY_SIGN_OUT_MS);
+      return;
+    }
+    waiting?.remove();
+    navigate("/signin", true);
+  };
+  await attempt();
+}
+
+function blockUntilSignedOut(tryNow: () => void): HTMLElement {
+  const again = h("button", { class: "btn primary", text: "Try again now", attrs: { type: "button" } });
+  again.addEventListener("click", tryNow);
+  const cover = h(
+    "div",
+    { class: "signing-out", attrs: { role: "alertdialog", "aria-modal": "true", "aria-labelledby": "signing-out-title" } },
+    h(
+      "div",
+      { class: "panel" },
+      h("h1", { text: "Not signed out yet", attrs: { id: "signing-out-title" } }),
+      h("p", {
+        text: "Firstcall couldn't be reached, so this browser is still signed in. Trying again every few seconds. Stay here until it says you're signed out.",
+      }),
+      again,
+    ),
+  );
+  document.body.append(cover);
+  again.focus();
+  return cover;
 }
 
 export function homeFor(s: Session): string {

@@ -248,7 +248,8 @@ function actionColumn(
   if (!lead.actions.length) return null;
   const status = h("div", { attrs: { role: "status" } });
   const aside = h("aside", { class: "actions", attrs: { "aria-label": "Actions" } });
-  const rest = h("div", { class: "rest", attrs: { style: "flex-direction: column; gap: 8px; display: flex" } });
+  // Layout lives in the stylesheet: an inline display would beat the phone rule that hides it.
+  const rest = h("div", { class: "rest" });
   const teamName = lead.team?.name ?? "the";
 
   const run = async (

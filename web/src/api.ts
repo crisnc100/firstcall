@@ -19,6 +19,7 @@ export interface Lead {
   item: string | null;
   arrival_at: string;
   pool_since: string | null;
+  owned_since: string | null;
   claimed_at: string | null;
   claim_minutes: number | null;
   claim_business_minutes: number | null;
@@ -155,10 +156,14 @@ export async function signIn(email: string, password: string): Promise<Session> 
   return current;
 }
 
+/** Ends the session on the server. Throws when the server did not confirm, and then the
+ * session stays: the cookie may still work, so the page must not act signed out. */
 export async function signOut(): Promise<void> {
   try {
     await api("DELETE", "/session");
-  } finally {
-    current = null;
+  } catch (error) {
+    // 401: the server already has no session for this cookie, which is the goal.
+    if (!(error instanceof ApiError && error.status === 401)) throw error;
   }
+  current = null;
 }

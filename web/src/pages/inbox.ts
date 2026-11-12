@@ -2,7 +2,7 @@
 // carries buyer text and the app has no sanitiser for it.
 
 import { api } from "../api";
-import { h } from "../dom";
+import { h, link } from "../dom";
 import { shortTime } from "../format";
 import { emptyState, loadFailed, poll, skeleton, staleLine } from "../poller";
 import type { Cleanup } from "../router";
@@ -12,39 +12,38 @@ interface Mail {
   id: string;
   subject: string;
   text: string;
+  links: { label: string; path: string }[];
   created_at: string;
   read: boolean;
 }
 
-/** The body as text, with links to this app's own pages made clickable and nothing else. */
 /** The digest's first line repeats its subject, which the reader already shows as the heading. */
 function withoutHeading(text: string, subject: string): string {
   const [first, ...rest] = text.split("\n");
   return first && subject.startsWith(first.trim()) ? rest.join("\n").replace(/^\n+/, "") : text;
 }
 
-function body(text: string): HTMLElement {
-  const block = h("div", { class: "msg" });
-  const pattern = /https?:\/\/\S+/g;
-  let last = 0;
-  for (const match of text.matchAll(pattern)) {
-    const url = match[0];
-    block.append(text.slice(last, match.index));
-    let own: URL | null = null;
-    try {
-      own = new URL(url);
-    } catch {
-      own = null;
-    }
-    if (own && own.origin === window.location.origin) {
-      block.append(h("a", { text: url, attrs: { href: own.pathname, "data-link": true } }));
-    } else {
-      block.append(url);
-    }
-    last = (match.index ?? 0) + url.length;
-  }
-  block.append(text.slice(last));
-  return block;
+/** A path inside this app: one leading "/", never "//", which a browser reads as another host. */
+function inApp(path: string): boolean {
+  return path.startsWith("/") && !path.startsWith("//") && !path.includes("\\");
+}
+
+/** The body as plain text, then the server's own links to the leads it names. A link is
+ * never made from the text: buyer names and items are in it. */
+function body(mail: Mail): HTMLElement {
+  const links = mail.links.filter((l) => inApp(l.path));
+  return h(
+    "div",
+    {},
+    h("div", { class: "msg", text: withoutHeading(mail.text, mail.subject) }),
+    links.length
+      ? h(
+          "ul",
+          { class: "list-plain", attrs: { "aria-label": "Leads in this alert" } },
+          ...links.map((l) => h("li", {}, link(l.path, `Open ${l.label || "the lead"}`))),
+        )
+      : null,
+  );
 }
 
 export function inboxPage(main: HTMLElement): Cleanup {
@@ -87,7 +86,7 @@ export function inboxPage(main: HTMLElement): Cleanup {
   };
   const open = async (mail: Mail): Promise<void> => {
     openId = mail.id;
-    reader.replaceChildren(h("h2", { text: mail.subject }), body(withoutHeading(mail.text, mail.subject)));
+    reader.replaceChildren(h("h2", { text: mail.subject }), body(mail));
     if (!mail.read) {
       mail.read = true;
       draw();

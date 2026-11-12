@@ -50,6 +50,11 @@ export function stayStart(lead: Lead): string {
   return lead.pool_since ?? lead.arrival_at;
 }
 
+/** How long the current owner has had the lead; the first claim may be someone else's. */
+function ownedText(lead: Lead): string {
+  return lead.owned_since ? `Claimed ${agoText(lead.owned_since)}` : "";
+}
+
 export function leadUrgency(lead: Lead): Urgency {
   return urgency(lead.wait_business_minutes, minutesSince(stayStart(lead)), lead.thresholds);
 }
@@ -138,6 +143,8 @@ export class LeadList {
     if (timer) fillTimer(timer, entry.lead);
     const where = entry.li.querySelector<HTMLElement>(".where");
     if (where) where.replaceChildren(...this.whereParts(entry.lead));
+    const owned = entry.li.querySelector<HTMLElement>(".owned-since");
+    if (owned) owned.textContent = ownedText(entry.lead);
   }
 
   private waits(): boolean {
@@ -166,7 +173,7 @@ export class LeadList {
           "div",
           { class: "timer" },
           stateBadge(lead.state),
-          h("span", { class: "meta num", text: lead.claimed_at ? `Claimed ${agoText(lead.claimed_at)}` : "" }),
+          h("span", { class: "meta num owned-since", text: ownedText(lead) }),
         );
     const notices = lead.possible_duplicates.length
       ? h("span", { class: "badge" }, icon("copy"), "Possible duplicate")
