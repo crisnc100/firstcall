@@ -1,0 +1,1 @@
+{"f1":{"status":"fixed","response":"real"},"x1":{"status":"deferred","reason":"Only Turkish dotted capital I before a title/style/script end tag; low likelihood. Phase 2 of this PR searches the original string case-insensitively instead.","fix":"Search end tags with a case-insensitive regex on the original string rather than indexing html.lower()."}}
