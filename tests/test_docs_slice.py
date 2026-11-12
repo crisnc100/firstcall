@@ -20,7 +20,7 @@ def html_buyer(html: str) -> tuple[str | None, str | None, str | None, str | Non
     return reading.name, reading.email, reading.phone, reading.item
 
 
-@pytest.mark.parametrize("space", ["&nbsp;", "&#160;", "&#xA0;", " "])
+@pytest.mark.parametrize("space", ["&nbsp;", "&#160;", "&#xA0;", "\N{NO-BREAK SPACE}"])
 def test_html_entities_and_no_break_spaces_are_decoded(space: str) -> None:
     html = (
         f"<p>Name: Ana{space}Ruiz</p><p>Email: ana@inbox.example</p>"
