@@ -99,7 +99,7 @@ def test_each_escalation_fires_once_at_its_time_and_not_before(board: Board) -> 
     monitor = board.user("monitor@larkspur.example", roles=["monitor"])
     north, unassigned, claimed = board.lead("north"), board.lead(None), board.lead("north")
     for lead in (north, unassigned, claimed):
-        board.set_lead(lead, arrival_at=MONDAY_10AM_NEW_YORK)
+        board.set_lead(lead, arrival_at=MONDAY_10AM_NEW_YORK, pool_since=MONDAY_10AM_NEW_YORK)
     board.own(claimed, lead_user)
     start = _alerts(board)
 
@@ -127,7 +127,8 @@ def test_each_escalation_fires_once_at_its_time_and_not_before(board: Board) -> 
 def test_a_team_level_waits_for_business_hours(board: Board) -> None:
     lead_user = board.user("lead@larkspur.example", teams={"north": "team_lead"})
     lead = board.lead("north")
-    board.set_lead(lead, arrival_at=datetime(2026, 3, 2, 22, 55, tzinfo=UTC))  # 17:55 local
+    entered = datetime(2026, 3, 2, 22, 55, tzinfo=UTC)  # 17:55 local
+    board.set_lead(lead, arrival_at=entered, pool_since=entered)
     board.clock.current = datetime(2026, 3, 3, 14, 9, tzinfo=UTC)  # Tue 09:09: 14 minutes
     assert escalate(board.sessions, board.clock) == 0
     board.clock.advance(minutes=1)
