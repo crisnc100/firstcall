@@ -159,6 +159,8 @@ class Message(Base):
     # Why the last model read gave no answer: kill_switch, offline, no_key, budget, down or
     # unreadable.
     model_unavailable: Mapped[str | None] = mapped_column(String(32))
+    # Rereads of this message that raised; the reread job gives up after a few.
+    reread_errors: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Lead(Base):

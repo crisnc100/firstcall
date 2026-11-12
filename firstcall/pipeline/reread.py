@@ -12,10 +12,11 @@ category and its lead's fields came from the message that created it.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core.model_read import combine
@@ -25,9 +26,14 @@ from firstcall.locks import lock_all
 from firstcall.pipeline.model_read import UNREADABLE, ModelReader
 from firstcall.pipeline.process import identities, org_view, source_rules
 
+log = logging.getLogger("firstcall.reread")
 BATCH = 50
 # A message whose answers keep failing stops being retried after this many calls.
+# Answers, readable or not, that a message gets before it stops being reread. A failed
+# attempt (the model down) is not an answer, so an outage never uses this up.
 MAX_CALLS_PER_MESSAGE = 4
+# Rereads that raised (a replay miss, a database error) before a message is left alone.
+MAX_REREAD_ERRORS = 3
 FILLABLE = ("name", "phone", "email", "item")
 
 
@@ -35,7 +41,7 @@ def _due(session: Session, limit: int) -> list[uuid.UUID]:
     calls = (
         select(func.count())
         .select_from(ModelCall)
-        .where(ModelCall.message_id == Message.id)
+        .where(ModelCall.message_id == Message.id, ModelCall.ok.is_(True))
         .scalar_subquery()
     )
     return list(
@@ -45,6 +51,7 @@ def _due(session: Session, limit: int) -> list[uuid.UUID]:
                 Message.needs_reread.is_(True),
                 Message.status == "lead_created",
                 calls < MAX_CALLS_PER_MESSAGE,
+                Message.reread_errors < MAX_REREAD_ERRORS,
             )
             .order_by(Message.received_at, Message.id)
             .limit(limit)
@@ -52,19 +59,13 @@ def _due(session: Session, limit: int) -> list[uuid.UUID]:
     )
 
 
-def _held_elsewhere(session: Session, lead: Lead, kind: str, value: str) -> bool:
-    return (
-        session.scalar(
-            select(Identity.id)
-            .where(
-                Identity.org_id == lead.org_id,
-                Identity.kind == kind,
-                Identity.value == value,
-                Identity.lead_id != lead.id,
+def _holders(session: Session, lead: Lead, kind: str, value: str) -> set[uuid.UUID]:
+    return set(
+        session.scalars(
+            select(Identity.lead_id).where(
+                Identity.org_id == lead.org_id, Identity.kind == kind, Identity.value == value
             )
-            .limit(1)
         )
-        is not None
     )
 
 
@@ -101,9 +102,13 @@ def _reread_one(session: Session, message_id: uuid.UUID, reader: ModelReader) ->
         if not value:
             continue
         if name in ("phone", "email"):
-            if _held_elsewhere(session, lead, name, value):
+            holders = _holders(session, lead, name, value)
+            if holders - {lead.id}:
                 continue
-            session.add(Identity(org_id=lead.org_id, lead_id=lead.id, kind=name, value=value))
+            # A later message attached to this lead may already have added the identity
+            # without setting the lead's column.
+            if not holders:
+                session.add(Identity(org_id=lead.org_id, lead_id=lead.id, kind=name, value=value))
         setattr(lead, name, value)
         filled.append(name)
     if reading.category != "lead":
@@ -116,18 +121,37 @@ def _reread_one(session: Session, message_id: uuid.UUID, reader: ModelReader) ->
     return "filled" if filled else "unchanged"
 
 
+def _record_error(sessions: sessionmaker[Any], message_id: uuid.UUID, error: Exception) -> None:
+    with sessions.begin() as session:
+        session.execute(
+            update(Message)
+            .where(Message.id == message_id)
+            .values(
+                reread_errors=Message.reread_errors + 1,
+                model_unavailable=f"error: {type(error).__name__}"[:32],
+            )
+        )
+
+
 def reread(sessions: sessionmaker[Any], reader: ModelReader, limit: int = BATCH) -> dict[str, int]:
-    """Reread up to `limit` messages. Stops at the first sign the model is unavailable."""
+    """Reread up to `limit` messages. Stops at the first sign the model is unavailable. A
+    message whose reread raises is logged, counted and skipped, so it cannot stop the
+    scheduler or hold up the others; after MAX_REREAD_ERRORS it is left alone."""
     with sessions() as session:
         due = _due(session, limit)
     counts: dict[str, int] = {}
     for message_id in due:
-        with sessions.begin() as session:
-            org_id = session.scalar(select(Message.org_id).where(Message.id == message_id))
-            if org_id is None or reader.gateway.unavailable(org_id) is not None:
-                break
-            result = _reread_one(session, message_id, reader)
+        try:
+            with sessions.begin() as session:
+                org_id = session.scalar(select(Message.org_id).where(Message.id == message_id))
+                if org_id is None or reader.gateway.unavailable(org_id) is not None:
+                    break
+                result = _reread_one(session, message_id, reader)
+        except Exception as error:
+            log.exception("reread of message %s failed", message_id)
+            _record_error(sessions, message_id, error)
+            result = "error"
         counts[result] = counts.get(result, 0) + 1
-        if result not in ("filled", "unchanged", "skipped", UNREADABLE):
+        if result not in ("filled", "unchanged", "skipped", "error", UNREADABLE):
             break
     return counts
