@@ -67,10 +67,11 @@ def test_a_rescue_makes_a_lead_records_who_and_alerts_the_pool(board: Board) -> 
     assert saved.reason == "rescued from the Not-a-lead tray"
     lead = board.get(saved.lead_id)
     assert board.pipe.team_slug(lead) == "north"
-    [created] = board.pipe.events(lead.id)
+    created, rescued = board.pipe.events(lead.id)
     assert created.type == "lead.created"
     monitor_id = monitor.get("/api/session").json()["user"]["id"]
     assert created.payload["rescued_by"] == monitor_id
+    assert (rescued.type, rescued.payload["by"]) == ("lead.rescued", monitor_id)
     with board.sessions() as session:
         told = {a.user_id for a in session.scalars(select(Alert).where(Alert.lead_id == lead.id))}
     assert told == {seller.id}
