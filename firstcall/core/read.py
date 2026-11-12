@@ -19,6 +19,7 @@ from email.message import EmailMessage
 from email.parser import BytesParser
 from email.policy import EmailPolicy
 from email.utils import getaddresses, parsedate_to_datetime
+from html import unescape
 from typing import Any, cast
 
 from firstcall.core.identity import (
@@ -366,7 +367,9 @@ def _body_text(message: EmailMessage) -> str:
     content = _lines_of(content)
     _check_budget(content)
     if part.get_content_subtype() == "html":
-        content = _strip_tags(content)
+        # Entities are decoded after the tags are gone, so an escaped "<" stays text. A
+        # no-break space reads as a plain space, so "Ana&nbsp;Ruiz" is "Ana Ruiz".
+        content = unescape(_strip_tags(content)).replace("\u00a0", " ")
     return content
 
 
