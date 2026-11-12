@@ -52,9 +52,11 @@ MAX_LINES = 4_000
 MAX_LINE_CHARS = 4_000
 MAX_HEADER_BYTES = 64_000
 MAX_PARTS = 100
-# Headers that are read or parsed field by field; each one is capped at MAX_LINE_CHARS. Any other
-# header, such as a long thread's References, is never parsed, so it counts only toward the
-# total above.
+# Headers capped at MAX_LINE_CHARS each: the ones the rules read (From, Reply-To, Subject,
+# Date, and Message-ID at intake), the ones the email library parses to find the body
+# (Content-Type, Content-Disposition, Content-Transfer-Encoding), and To, Sender and
+# MIME-Version, which are capped though not read. Every other header counts only toward the
+# total above; the library can still parse Content-ID inside multipart/related.
 PARSED_HEADERS = frozenset(
     {
         "from", "to", "reply-to", "sender", "subject", "date", "message-id", "content-type",

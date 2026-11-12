@@ -66,8 +66,8 @@ nothing about other phrasings, and a model in PR1b may react to wording these do
 
 ## 3. Category accuracy and spam classed as lead
 
-Category accuracy is 334/434 = 0.770 against a floor of 0.92. Spam classed as lead is 13/58 =
-22.4% against a floor of 10%. Both sit inside the ranges predicted before any result:
+Category accuracy is 335/434 = 0.772 against a floor of 0.92. Spam classed as lead is 12/58 =
+20.7% against a floor of 10%. These are the numbers in the current seed-11 report. Both sit inside the ranges predicted before any result:
 0.75 to 0.85 in ADR-001, and 15% to 35% in ADR-006. Rules call only spam, so all 43 support and
 44 vendor messages count as leads, and spam from a sender not on the source's list, without a
 filled honeypot, is a lead too. This is the fail-open design: a lost lead is the worse error,

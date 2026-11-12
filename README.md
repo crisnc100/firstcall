@@ -30,7 +30,7 @@ spam check, not by the key. Sources that must refuse strangers use basic auth or
 ## How good are the rules?
 
 `uv run firstcall eval --seed 11` runs 500 made-up messages through the real pipeline and
-scores every field against hand-set labels. The latest reports are in
+scores every field against the labels the generator writes along with each message. The latest reports are in
 [evals/reports/](evals/reports/). Seed 7 is for tuning, seed 11 is held out, and seed 13 is a
 one-time confirm run. Seed 13 refuses to run until `config/field_methods.yaml` is committed.
 Each report checks safety floors (no wrong merges, no wrong attaches, no attack sentence

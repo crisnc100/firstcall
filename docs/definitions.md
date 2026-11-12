@@ -34,7 +34,8 @@ These terms are fixed. Code, tests and docs use them with exactly these meanings
   - Form and call service: the source plus the provider's delivery id header, when the source names one.
     Otherwise the SHA-256 of the body, but only within 10 minutes. The same body after 10 minutes is a
     new message, because a buyer can genuinely send the same form twice.
-  - A repeat delivery returns 200 and stores nothing new. Its status is `duplicate_delivery`.
+  - A repeat delivery returns 200 with `duplicate_delivery` and the original message's id. It
+    stores nothing new, so `duplicate_delivery` is an answer, not a message status.
   - **Re-forwards:** a message with a new `Message-ID` whose cleaned body (forward headers stripped)
     matches a message already on the same lead within 24 hours ends as `duplicate_content`. It adds no
     activity and sends no alert.
@@ -42,10 +43,12 @@ These terms are fixed. Code, tests and docs use them with exactly these meanings
   message ends `failed` with the limit in its reason, and its raw bytes stay stored. Nothing is
   cut short to fit, because a cut could drop the line that names the buyer.
   - Text: 200,000 characters, 4,000 lines, and 4,000 characters in one line.
-  - Email headers: 64,000 characters in all. The headers the rules read or parse (From, To,
-    Reply-To, Sender, Subject, Date, Message-ID, MIME-Version, Content-Type,
-    Content-Disposition and Content-Transfer-Encoding) are also capped at 4,000 characters
-    each. Other headers, such as a long References chain, count only toward the total.
+  - Email headers: 64,000 characters in all. Eleven headers are also capped at 4,000
+    characters each: the ones the rules read (From, Reply-To, Subject, Date, and Message-ID
+    at intake), the ones the email library parses to find the body (Content-Type,
+    Content-Disposition, Content-Transfer-Encoding), and To, Sender and MIME-Version, which
+    are capped though not read. Other headers, such as a long References chain, count only
+    toward the total; the library can still parse Content-ID inside multipart/related.
   - Email structure: at most 100 parts, the message itself included, and at most 10 levels of
     nesting, the message itself being the first.
   - Nesting deep enough to overflow Python's stack, in email or JSON, is refused the same way.
@@ -92,7 +95,7 @@ These terms are fixed. Code, tests and docs use them with exactly these meanings
 
 - **Working:** `received`, `processing`.
 - **Terminal:** `lead_created`, `attached` (added to an existing lead as activity), `not_a_lead`
-  (vendor, support or spam, kept in the Not-a-lead tray), `duplicate_delivery`, `duplicate_content`,
+  (vendor, support or spam, kept in the Not-a-lead tray), `duplicate_content`,
   `failed` (with a reason: retries exhausted or unparseable).
 - The raw message and its job are written in one transaction, so a message never exists without a job.
 - Every message ends in a terminal status with a non-empty reason. Nothing leaves a terminal status,
