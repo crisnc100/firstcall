@@ -435,6 +435,7 @@ class _Budget:
     def __init__(self) -> None:
         self.header_bytes = 0
         self.parts = 0
+        self.parsed: dict[tuple[str, str], Any] = {}
 
 
 class _BudgetPolicy(EmailPolicy):
@@ -460,6 +461,19 @@ class _BudgetPolicy(EmailPolicy):
                 f"(limit {MAX_HEADER_BYTES})"
             )
         return super().header_source_parse(sourcelines)
+
+    def header_fetch_parse(self, name: str, value: str) -> Any:
+        """A parsed header, kept for the rest of this message. The feed parser fetches the
+        parent's Content-Type once per child part, so without this a long header would be
+        parsed again for every part, up to the part limit. Parsed headers do not change, and
+        the cache holds at most the distinct headers inside the header budget."""
+        budget = self.budget
+        if budget is None or hasattr(value, "name"):
+            return super().header_fetch_parse(name, value)
+        key = (name.lower(), value)
+        if key not in budget.parsed:
+            budget.parsed[key] = super().header_fetch_parse(name, value)
+        return budget.parsed[key]
 
 
 def _depth(message: EmailMessage) -> int:
