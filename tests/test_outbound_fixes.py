@@ -88,7 +88,7 @@ def test_bad_stored_keys_fail_that_device_and_the_others_still_get_their_push(
 
 
 class _Exploding:
-    def send(self, *args: Any) -> int:
+    def send(self, endpoint: str, p256dh: str, auth: str, payload: dict[str, Any]) -> int:
         raise RuntimeError("the push library broke")
 
 
