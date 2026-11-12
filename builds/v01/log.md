@@ -451,3 +451,56 @@ its model call must be logged without a message id (the log row's foreign key wo
   | Seed 11, record | $0.1155 |
   | Seed 13, record | $0.1155 |
   | **Total** | **$0.3464** |
+
+# PR2 build log
+
+## Phase 1: the backend (no pages yet)
+
+- **Dependencies.** pywebpush and Jinja2, both named in the plan's stack. pywebpush brings
+  aiohttp, cryptography, py-vapid and http-ece.
+- **Where the rules live.** `core/states.py` holds the whole transition table, PR3's rows
+  included, so F22's table test covers every row now. PR2 wires place, claim, release,
+  return, owner left, reassign and move team. `core/access.py` is the access rule,
+  `core/hours.py` business minutes, `core/escalation.py` the levels.
+- **404 or 409.** A user who cannot see a lead, or whose role has no row for the action,
+  gets 404 with the same body as a missing lead. A role that may act, on a lead it can see,
+  in the wrong state or place, gets 409. One exception: a teammate who loses a claim race
+  can no longer see the lead but gets 409 "already claimed", as F21 needs.
+- **Monitor.** Sees every lead in the org, read-only, so its escalations link somewhere. It
+  acts only on Unassigned (place) and the tray (rescue).
+- **Events.** Owner left writes `lead.returned` with reason `owner_left`. A rescue writes
+  `lead.created` (or `lead.activity` if it matches a lead) with `rescued_by`. Nurture is a
+  `lead.outcome`, resume a `lead.reopened`, a buyer writing again a `lead.activity`.
+- **Alerts.** Any lead entering a pool alerts that pool: created, placed, moved, released,
+  returned, owner left. The Unassigned pool belongs to the monitors, which covers the "on
+  arrival" escalation row. Reassign alerts the new owner. Activity alerts only the owner of
+  an owned or nurture lead.
+- **Push** goes out after each job in the worker, then on idle passes and each tick. Tag
+  `team-<slug>` or `unassigned`. A 5xx or no answer is retried on later passes, 3 retries
+  after the first try. A 404 or 410 deletes the subscription and keeps the send row.
+  Redirects are not followed.
+- **Email.** One digest per user and team once the oldest pending alert is 60 seconds old.
+  Text and HTML from Jinja2, HTML autoescaped. The subject carries at most a first name,
+  with control characters removed. Backends: SMTP (Mailpit, whose SMTP port compose now
+  publishes on localhost) and the in-app inbox, the default.
+- **Allowlist.** Email only to an active user of the org, and never to an address found on
+  any lead, identity or message, nor to one whose local part is a buyer's phone (email-to-
+  text gateways). Push only to the alert user's own device, HTTPS unless
+  `FIRSTCALL_PUSH_ALLOW_HTTP=1`, which is refused in beta.
+- **Import scan.** No module outside `firstcall/outbound/` may import a mail, push or HTTP
+  client. `firstcall/model/anthropic.py` is the one named exception: it calls the model
+  provider and addresses no person.
+- **Escalation clocks** run from arrival. Team levels count business minutes, Unassigned
+  counts wall-clock (it has no hours). Each (lead, level) fires once ever. Teams can set
+  their own minutes in `teams.escalation`. The "owned, no real contact" row waits for PR3,
+  which builds real contacts.
+- **Sessions.** A random token in an HttpOnly, SameSite=Lax cookie (Secure outside local),
+  stored as a SHA-256, 7 days. CSRF: a per-session token in `X-CSRF-Token`; before sign-in a
+  double-submit cookie covers the sign-in post. Unknown emails are checked against a decoy
+  hash, so timing does not tell which accounts exist. Passwords need 12 characters.
+- **First admin.** `firstcall user add` and `firstcall user password` (typed at a prompt).
+- **`tick` is unchanged.** Escalation and alert sending run in a separate `alert_tick`, so
+  the scheduler and `firstcall tick` run both and no existing test changed.
+- **Alert latency (F28),** 50 rules-path leads on compose, intake commit to push request,
+  both read on the host clock: p50 0.27 s, p95 0.50 s, max 0.55 s
+  (`tests/fault/test_alert_latency.py`).
