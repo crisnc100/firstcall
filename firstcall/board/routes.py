@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import re
 import secrets
 import uuid
 from collections.abc import Callable, Iterator
@@ -42,6 +43,7 @@ from firstcall.db import (
     UserSession,
 )
 from firstcall.intake.limits import RateLimiter
+from firstcall.outbound.push import endpoint_allowed
 from firstcall.pipeline.process import source_rules
 from firstcall.settings import Settings
 
@@ -177,6 +179,7 @@ def board_router(
             "arrival_at": lead.arrival_at.isoformat(),
             "pool_since": lead.pool_since.isoformat() if lead.pool_since else None,
             "claimed_at": lead.claimed_at.isoformat() if lead.claimed_at else None,
+            "owned_since": lead.owned_since.isoformat() if lead.owned_since else None,
             "claim_minutes": float(lead.claim_minutes) if lead.claim_minutes is not None else None,
             "claim_business_minutes": float(lead.claim_business_minutes)
             if lead.claim_business_minutes is not None
@@ -471,6 +474,11 @@ def board_router(
                     "subject": m.subject,
                     "text": m.text_body,
                     "html": m.html_body,
+                    "links": [
+                        {"label": str(link["label"]), "path": link["path"]}
+                        for link in m.links or []
+                        if IN_APP_PATH.fullmatch(str(link.get("path", "")))
+                    ],
                     "created_at": m.created_at.isoformat(),
                     "read": m.read_at is not None,
                 }
@@ -492,10 +500,8 @@ def board_router(
 
     @router.post("/push/subscriptions", status_code=201)
     def subscribe(request: Request, body: Subscription) -> dict[str, str]:
-        if not body.endpoint.startswith("https://") and not (
-            settings.push_allow_http and body.endpoint.startswith("http://")
-        ):
-            raise HTTPException(422, "a push endpoint must be https")
+        if not endpoint_allowed(body.endpoint, settings.push_hosts, settings.push_allow_http):
+            raise HTTPException(422, "the endpoint is not on a known push service")
         if not push_keys_valid(body.keys.p256dh, body.keys.auth):
             raise HTTPException(
                 422, "the push keys are not a P-256 public key and a 16-byte secret"
@@ -613,6 +619,8 @@ def _b64url(text: str) -> bytes | None:
         return None
 
 
+# The only in-app link an inbox email offers: a lead page, by id.
+IN_APP_PATH = re.compile(r"/leads/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
 PERSON_KEYS = ("by", "owner_id", "from", "to", "rescued_by")
 
 

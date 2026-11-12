@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from urllib.parse import urlsplit
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from firstcall.core.identity import bare_address, normalize_phone
 from firstcall.db import Identity, Lead, PushSubscription, User
+from firstcall.outbound.push import endpoint_allowed
 
 log = logging.getLogger("firstcall.outbound")
 
@@ -70,14 +71,19 @@ def check_email(session: Session, org_id: uuid.UUID, address: str) -> User:
 
 
 def check_push(
-    session: Session, subscription: PushSubscription, user_id: uuid.UUID, allow_http: bool
+    session: Session,
+    subscription: PushSubscription,
+    user_id: uuid.UUID,
+    allow_http: bool,
+    hosts: Sequence[str],
 ) -> None:
-    """The device belongs to the alert's user, who is active, and the endpoint is HTTPS."""
+    """The device belongs to the alert's user, who is active, and the endpoint is on a known
+    push service. Checked again here, not only at subscribe, so a row stored before the
+    host list changed, or written some other way, still never directs a send."""
     owner = session.get(User, subscription.user_id)
     if owner is None or owner.id != user_id or not owner.active:
         raise _refuse("the device does not belong to an active recipient")
     if owner.org_id != subscription.org_id:
         raise _refuse("the device belongs to another org")
-    scheme = urlsplit(subscription.endpoint).scheme
-    if scheme != "https" and not (allow_http and scheme == "http"):
-        raise _refuse("push endpoints must be https")
+    if not endpoint_allowed(subscription.endpoint, hosts, allow_http):
+        raise _refuse("the endpoint is not on a known push service")

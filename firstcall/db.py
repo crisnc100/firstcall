@@ -199,6 +199,8 @@ class Lead(Base):
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     claim_minutes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     claim_business_minutes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    # When the current owner took the lead; claimed_at is the first claim only.
+    owned_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Identity(Base):
@@ -417,6 +419,8 @@ class InboxEmail(Base):
     subject: Mapped[str] = mapped_column(String(300))
     text_body: Mapped[str] = mapped_column(Text)
     html_body: Mapped[str] = mapped_column(Text)
+    # In-app paths the page may link, built by the server; the page never links text.
+    links: Mapped[list[Any]] = mapped_column(JSON, default=list, server_default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

@@ -70,6 +70,8 @@ class Line:
     name: str
     item: str | None
     url: str
+    # The in-app path, which the inbox offers as the link; the URL above is for email.
+    path: str = ""
 
     @property
     def label(self) -> str:
@@ -81,6 +83,7 @@ class Rendered:
     subject: str
     text: str
     html: str
+    links: tuple[tuple[str, str], ...] = ()
 
 
 def render(team: str, lines: list[Line]) -> Rendered:
@@ -94,7 +97,8 @@ def render(team: str, lines: list[Line]) -> Rendered:
         subject = f"{len(lines)} alerts in {header_safe(team)}"
     heading = subject if len(lines) > 1 else f"{lines[0].label} in {team}"
     context = {"heading": heading, "lines": lines, "team": team}
-    return Rendered(header_safe(subject, 200), _text.render(context), _html.render(context))
+    links = tuple((line.name, line.path) for line in lines if line.path)
+    return Rendered(header_safe(subject, 200), _text.render(context), _html.render(context), links)
 
 
 class Mailer(Protocol):
@@ -127,6 +131,7 @@ class InboxMailer:
                 subject=mail.subject,
                 text_body=mail.text,
                 html_body=mail.html,
+                links=[{"label": label, "path": path} for label, path in mail.links],
                 created_at=now,
             )
         )

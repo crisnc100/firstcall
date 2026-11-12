@@ -140,6 +140,7 @@ def claim(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) ->
     event = _check(lead, "claim", "owned", _relations(viewer, lead, "claim"))
     now = clock.now()
     lead.state, lead.owner_id, lead.pool_since = "owned", user_id, None
+    lead.owned_since = now
     if lead.claimed_at is None:
         assert lead.team_id is not None
         team = session.get_one(Team, lead.team_id)
@@ -178,6 +179,7 @@ def _to_pool(
     if team_id is not None:
         lead.team_id = team_id
     lead.state, lead.owner_id, lead.pool_since = "pool", None, now
+    lead.owned_since = None
     cause = _cause(action)
     events.write(session, lead, event, cause, payload, now)
     alerts.entered_pool(session, lead, action, cause, now)
@@ -241,7 +243,7 @@ def reassign(
         raise InvalidError("that user already owns the lead")
     now = clock.now()
     payload = {"by": viewer.user_id, "from": str(lead.owner_id), "to": str(member.id)}
-    lead.owner_id = member.id
+    lead.owner_id, lead.owned_since = member.id, now
     cause = _cause("reassign")
     events.write(session, lead, event, cause, payload, now)
     alerts.queue(session, lead, "assigned", cause, [member], now)

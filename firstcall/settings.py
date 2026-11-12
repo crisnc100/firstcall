@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_subject: str = "mailto:alerts@firstcall.localhost"
     push_retries: int = 3
+    # The push services browsers hand out endpoints on. A leading "." matches subdomains.
+    push_hosts: list[str] = [
+        "fcm.googleapis.com",
+        "updates.push.services.mozilla.com",
+        "web.push.apple.com",
+        ".notify.windows.com",
+    ]
     # Plain-http push endpoints, for the fake push service in tests and compose only.
     push_allow_http: bool = False
 

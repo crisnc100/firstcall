@@ -19,14 +19,23 @@ from functools import cache
 
 from argon2 import PasswordHasher
 from argon2.exceptions import Argon2Error, InvalidHashError
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from firstcall.board import leads
 from firstcall.core.access import Viewer
 from firstcall.core.clock import Clock
 from firstcall.core.identity import bare_address
-from firstcall.db import ORG_ROLES, TEAM_ROLES, Membership, Team, User, UserSession
+from firstcall.db import (
+    ORG_ROLES,
+    TEAM_ROLES,
+    Alert,
+    Membership,
+    PushSend,
+    Team,
+    User,
+    UserSession,
+)
 
 MIN_PASSWORD = 12
 _hasher = PasswordHasher()
@@ -134,12 +143,31 @@ def set_memberships(
         if team_id not in wanted:
             session.delete(membership)
             leads.owner_left(session, user.id, clock, team_id)
+            _cancel_alerts(session, user.id, team_id)
     for team_id, role in wanted.items():
         if team_id in current:
             current[team_id].role = role
         else:
             session.add(Membership(org_id=user.org_id, user_id=user.id, team_id=team_id, role=role))
     session.flush()
+
+
+def _cancel_alerts(session: Session, user_id: uuid.UUID, team_id: uuid.UUID) -> None:
+    """Pending alerts about a team's leads stop when the user leaves the team; the senders
+    check again at send time for anything this misses."""
+    queued = (
+        select(Alert.id).where(Alert.user_id == user_id, Alert.team_id == team_id).scalar_subquery()
+    )
+    session.execute(
+        update(PushSend)
+        .where(PushSend.alert_id.in_(queued), PushSend.state == "pending")
+        .values(state="failed")
+    )
+    session.execute(
+        update(Alert)
+        .where(Alert.user_id == user_id, Alert.team_id == team_id, Alert.email_state == "pending")
+        .values(email_state="refused")
+    )
 
 
 def deactivate(session: Session, user: User, clock: Clock) -> list[leads.Done]:

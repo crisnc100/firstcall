@@ -17,6 +17,7 @@ from typing import Any
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from firstcall.board import accounts, leads
 from firstcall.core.clock import Clock
 from firstcall.db import Alert, Lead, PushSend, PushSubscription, Team, User
 from firstcall.outbound import allowlist
@@ -108,12 +109,19 @@ class Outbound:
             return
         try:
             allowlist.check_push(
-                session, subscription, alert.user_id, self.settings.push_allow_http
+                session,
+                subscription,
+                alert.user_id,
+                self.settings.push_allow_http,
+                self.settings.push_hosts,
             )
         except allowlist.RefusedError:
             send.state = "failed"
             return
         lead = session.get_one(Lead, alert.lead_id)
+        if not _still_sees(session, alert.user_id, lead):
+            send.state = "failed"
+            return
         team = session.get(Team, alert.team_id) if alert.team_id else None
         payload = {
             "title": f"{label(alert.kind)} in {team.name if team else 'Unassigned'}",
@@ -215,13 +223,20 @@ class Outbound:
             return 0
         team = session.get(Team, team_id) if team_id else None
         lines: list[Line] = []
+        kept: list[Alert] = []
         for alert in alerts:
             lead = session.get_one(Lead, alert.lead_id)
+            if not _still_sees(session, user.id, lead):
+                alert.email_state = "refused"
+                continue
+            kept.append(alert)
             name = lead.name or "Name not known"
-            lines.append(Line(alert.kind, name, lead.item, self.lead_url(lead.id)))
+            lines.append(Line(alert.kind, name, lead.item, self.lead_url(lead.id), _path(lead.id)))
+        if not lines:
+            return 0
         now = self.clock.now()
         self.mailer.send(session, user, render(team.name if team else "Unassigned", lines), now)
-        for alert in alerts:
+        for alert in kept:
             alert.email_state, alert.email_sent_at = "sent", now
         return 1
 
@@ -232,3 +247,14 @@ def _same_team(team_id: uuid.UUID | None) -> Any:
 
 def _due(now: datetime) -> Any:
     return or_(Alert.email_retry_at.is_(None), Alert.email_retry_at <= now)
+
+
+def _still_sees(session: Session, user_id: uuid.UUID, lead: Lead) -> bool:
+    """Whether the recipient may see the lead now. An alert is queued when it is made, so a
+    recipient removed from the team since must not get the lead's current details."""
+    user = session.get_one(User, user_id)
+    return user.active and leads.visible(accounts.viewer(session, user), lead)
+
+
+def _path(lead_id: uuid.UUID) -> str:
+    return f"/leads/{lead_id}"
