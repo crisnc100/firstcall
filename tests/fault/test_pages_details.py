@@ -143,7 +143,7 @@ def test_the_second_qa_round_in_a_browser(
             expect(mo.get_by_text("Web form").first).to_be_visible()
             mo.get_by_role("link", name="Sly Bot").click()
             mo.get_by_role("button", name="This is a lead: move it to the leads").click()
-            expect(mo.get_by_text("Moved to the leads.")).to_be_visible()
+            expect(mo.locator("main").get_by_text("Moved to the leads.")).to_be_visible()
             focused = mo.evaluate("() => document.activeElement.textContent")
             assert focused.startswith("Moved to the leads."), focused
 

@@ -182,7 +182,7 @@ def test_claim_already_claimed_place_rescue_and_escaped_names(
             monitor.goto("/tray")
             monitor.get_by_role("link", name="Sam Rescueme").click()
             monitor.get_by_role("button", name="This is a lead: move it to the leads").click()
-            expect(monitor.get_by_text("Moved to the leads.")).to_be_visible()
+            expect(monitor.locator("main").get_by_text("Moved to the leads.")).to_be_visible()
             browser.close()
 
         with sessions() as session:
