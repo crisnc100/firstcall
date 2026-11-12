@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.corpus.generate import GOLD_DIR
 from firstcall.db import ModelCall
+from firstcall.evaluation.metrics import Rate
 from firstcall.evaluation.model_eval import (
     ModelRun,
     choose_methods,
@@ -22,7 +23,6 @@ from firstcall.evaluation.model_eval import (
     pick,
     record,
 )
-from firstcall.evaluation.metrics import Rate
 from firstcall.evaluation.model_report import write_model
 from firstcall.model.gateway import ReplayMissError
 from firstcall.model.synthetic import SyntheticIndex
