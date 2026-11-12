@@ -47,7 +47,7 @@ MAX_LINES = 4_000
 MAX_LINE_CHARS = 4_000
 MAX_HEADER_BYTES = 64_000
 MAX_PARTS = 100
-# Headers that are read or parsed field by field; each has its own length cap. Any other
+# Headers that are read or parsed field by field; each one is capped at MAX_LINE_CHARS. Any other
 # header, such as a long thread's References, is never parsed, so it counts only toward the
 # total above.
 PARSED_HEADERS = frozenset(
@@ -162,8 +162,8 @@ FORWARD_FORMATS = ("%a, %b %d, %Y at %I:%M %p", "%A, %B %d, %Y %I:%M %p")
 
 
 def read(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
-    """The rules read. Raises UnparseableError, or OverBudgetError for text over the read
-    budget, which the pipeline records as a failed message with its reason."""
+    """The rules read. Raises UnparseableError, or OverBudgetError for a message over the
+    read budget, which the pipeline records as a failed message with its reason."""
     try:
         if rules.kind == "email":
             return _read_email(raw, rules, reference)
@@ -174,17 +174,15 @@ def read(raw: bytes, rules: SourceRules, reference: Reference) -> Reading:
         raise OverBudgetError("over the read budget: nested too deeply") from error
 
 
-# Shared helpers
-
-
 def _lines_of(text: str) -> str:
     """Line endings as LF, so CRLF mail splits on the same blank lines as LF mail."""
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def check_header_budget(raw: bytes) -> None:
-    """Refuse a message whose header block, or any one header, is over the budget, before
-    any header is parsed. Header parsing time grows faster than a header's length."""
+    """Refuse a message whose header block, or any one header in PARSED_HEADERS, is over the
+    budget, before any header is parsed. Header parsing time grows faster than a header's
+    length."""
     ends = [at for at in (raw.find(b"\n\n"), raw.find(b"\r\n\r\n")) if at >= 0]
     head = raw[: min(ends)] if ends else raw
     if len(head) > MAX_HEADER_BYTES:
@@ -354,9 +352,6 @@ def _excluded(rules: SourceRules, reference: Reference) -> tuple[set[str], set[s
 
 def _first(values: list[str], excluded: set[str]) -> str | None:
     return next((v for v in values if v not in excluded), None)
-
-
-# Email
 
 
 def _body_text(message: EmailMessage) -> str:
@@ -605,9 +600,6 @@ def _read_email(raw: bytes, rules: SourceRules, reference: Reference) -> Reading
         source_time=source_time,
         text=body,
     )
-
-
-# Forms and call services
 
 
 def _path(payload: Any, dotted: str) -> Any:

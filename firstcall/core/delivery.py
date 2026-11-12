@@ -1,8 +1,9 @@
 """Delivery keys: how a repeat delivery of the same message is spotted, and the cleaned body
 that spots a re-forward.
 
-- Email: the source plus the Message-ID header, or the SHA-256 of the raw message when there
-  is no Message-ID.
+- Email: the source plus the Message-ID header, hashed when it is over MAX_MESSAGE_ID_CHARS
+  or holds characters that cannot be printed. The SHA-256 of the raw message when there is
+  no Message-ID, or when the headers are over the read budget.
 - Form and call service: the source plus the provider's delivery id header, when the source
   names one. Otherwise the SHA-256 of the body, but only within WINDOW, because a buyer can
   genuinely send the same form twice.
