@@ -232,6 +232,7 @@ BLOCK_TAGS = frozenset(
 )  # fmt: skip
 # Elements whose text is never shown on the page: a title, a style sheet, a script.
 HIDDEN_TAGS = frozenset({"title", "style", "script"})
+HIDDEN_END = {name: re.compile(f"</{name}", re.IGNORECASE) for name in HIDDEN_TAGS}
 
 
 def _tag_end(html: str, opens: int) -> int:
@@ -266,7 +267,6 @@ def _strip_tags(html: str) -> str:
     tag is scanned once and the next search starts after it, so the cost is linear in the
     text. Text after a "<" that never closes is kept, as a browser would show it."""
     parts: list[str] = []
-    lowered = html.lower()
     unclosed: set[str] = set()
     at = 0
     while True:
@@ -287,9 +287,11 @@ def _strip_tags(html: str) -> str:
             # Skip to the element's end tag. With no end tag the text is kept: losing the
             # rest of a lead to a stray tag is the worse error. A name found unclosed once is
             # not searched for again, so many stray tags cannot make the scan quadratic.
-            ends = lowered.find(f"</{name}", at)
-            if ends >= 0:
-                at = ends
+            # Searched on the original text: lowering it can change its length (a dotted
+            # capital I becomes two characters), which would shift every position after it.
+            ends = HIDDEN_END[name].search(html, at)
+            if ends:
+                at = ends.start()
             else:
                 unclosed.add(name)
     # Spaces left at a line's ends are source indentation; without them a line holding only

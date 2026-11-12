@@ -16,25 +16,61 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import func, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import func, or_, select, update
+from sqlalchemy.exc import InterfaceError, OperationalError
+from sqlalchemy.orm import Session, aliased, sessionmaker
 
 from firstcall.core.model_read import combine
 from firstcall.core.read import UnparseableError, read
 from firstcall.db import Identity, Lead, Message, ModelCall, Source
 from firstcall.locks import lock_all
+from firstcall.model.gateway import DOWN, NotSyntheticError, ReplayMissError
 from firstcall.pipeline.model_read import UNREADABLE, ModelReader
 from firstcall.pipeline.process import identities, org_view, source_rules
 
 log = logging.getLogger("firstcall.reread")
 BATCH = 50
-# A message whose answers keep failing stops being retried after this many calls.
 # Answers, readable or not, that a message gets before it stops being reread. A failed
 # attempt (the model down) is not an answer, so an outage never uses this up.
 MAX_CALLS_PER_MESSAGE = 4
 # Rereads that raised (a replay miss, a database error) before a message is left alone.
 MAX_REREAD_ERRORS = 3
+# Failed attempts since a message's last answer before it is set aside, counted only while
+# the model answers other messages. Each failure keeps its budget reservation, so a message
+# the provider always rejects cannot keep reserving budget. An outage fails every message
+# alike and sets none aside; the fewest-failures-first order keeps one message from holding
+# the head of the queue.
+MAX_TRANSPORT_FAILURES = 10
+SET_ASIDE = "set_aside"
+# Errors that come from the mode or the database, not from the message: a missing recording,
+# record mode given real input, a lost connection or a deadlock. They end the tick and count
+# against no message.
+MODE_ERRORS: tuple[type[Exception], ...] = (
+    ReplayMissError,
+    NotSyntheticError,
+    OperationalError,
+    InterfaceError,
+)
 FILLABLE = ("name", "phone", "email", "item")
+
+
+def _since_answer() -> Any:
+    """Failed attempts logged for the outer message since its last answer."""
+    answers = aliased(ModelCall)
+    answered = (
+        select(func.max(answers.created_at))
+        .where(answers.message_id == Message.id, answers.ok.is_(True))
+        .scalar_subquery()
+    )
+    return select(ModelCall).where(
+        ModelCall.message_id == Message.id,
+        ModelCall.ok.is_(False),
+        or_(answered.is_(None), ModelCall.created_at > answered),
+    )
+
+
+def _failures_since_answer() -> Any:
+    return _since_answer().with_only_columns(func.count()).scalar_subquery()
 
 
 def _due(session: Session, limit: int) -> list[uuid.UUID]:
@@ -44,6 +80,7 @@ def _due(session: Session, limit: int) -> list[uuid.UUID]:
         .where(ModelCall.message_id == Message.id, ModelCall.ok.is_(True))
         .scalar_subquery()
     )
+    failures = _failures_since_answer()
     return list(
         session.scalars(
             select(Message.id)
@@ -52,11 +89,37 @@ def _due(session: Session, limit: int) -> list[uuid.UUID]:
                 Message.status == "lead_created",
                 calls < MAX_CALLS_PER_MESSAGE,
                 Message.reread_errors < MAX_REREAD_ERRORS,
+                or_(Message.model_unavailable.is_(None), Message.model_unavailable != SET_ASIDE),
             )
-            .order_by(Message.received_at, Message.id)
+            .order_by(failures, Message.received_at, Message.id)
             .limit(limit)
         )
     )
+
+
+def _set_aside_if_stuck(sessions: sessionmaker[Any], message_id: uuid.UUID) -> None:
+    """Set the message aside when it has failed often since its last answer and the model
+    has answered some other call since its first such failure."""
+    with sessions.begin() as session:
+        message = session.get_one(Message, message_id)
+        failed = list(
+            session.scalars(
+                _since_answer().where(Message.id == message_id).order_by(ModelCall.created_at)
+            )
+        )
+        if len(failed) < MAX_TRANSPORT_FAILURES:
+            return
+        others_answered = session.scalar(
+            select(func.count())
+            .select_from(ModelCall)
+            .where(
+                ModelCall.org_id == message.org_id,
+                ModelCall.ok.is_(True),
+                ModelCall.created_at > failed[0].created_at,
+            )
+        )
+        if others_answered:
+            message.model_unavailable = SET_ASIDE
 
 
 def _holders(session: Session, lead: Lead, kind: str, value: str) -> set[uuid.UUID]:
@@ -147,11 +210,17 @@ def reread(sessions: sessionmaker[Any], reader: ModelReader, limit: int = BATCH)
                 if org_id is None or reader.gateway.unavailable(org_id) is not None:
                     break
                 result = _reread_one(session, message_id, reader)
+        except MODE_ERRORS:
+            log.exception("reread stopped at message %s; no message is charged", message_id)
+            counts["halted"] = counts.get("halted", 0) + 1
+            break
         except Exception as error:
             log.exception("reread of message %s failed", message_id)
             _record_error(sessions, message_id, error)
             result = "error"
         counts[result] = counts.get(result, 0) + 1
+        if result == DOWN:
+            _set_aside_if_stuck(sessions, message_id)
         if result not in ("filled", "unchanged", "skipped", "error", UNREADABLE):
             break
     return counts
