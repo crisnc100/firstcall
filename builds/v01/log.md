@@ -553,3 +553,28 @@ its model call must be logged without a message id (the log row's foreign key wo
   from Unassigned and rescues from the tray, and a `<script>` buyer name shows as text.
   Playwright is a dev dependency; verify.sh installs Chromium, CI its system libraries.
 - verify.sh: 510 passed.
+
+## QA round and fix checks
+
+- **One stay clock.** Urgency, the page timers and escalation all count the current pool
+  stay; time to claim still counts from arrival. Waiting longest lists exactly the leads
+  whose label reads Late or Very late, so a lead placed from Unassigned starts again at New.
+  The wait is rounded down, so the label never turns before the timer's minute.
+- **Owned in a team** (`view=team`) lists owned and nurture leads only.
+- **Plain addresses** are dot-separated runs of letters, digits and `_%+-` at a domain of
+  well-formed labels. An RFC 2047 encoded word needs `=` and `?`, so it is refused at store
+  time and in the allowlist.
+- **Digest retries.** A failed digest counts on its alerts and waits `digest_seconds`,
+  doubling each time; after `email_retries` (3) its alerts are `failed` (migration 0007).
+- **Locks.** Team changes and deactivation take `FOR NO KEY UPDATE` on the user, which
+  alert inserts' key-share locks pass. `set_password` locks the user row first, and
+  `start_session` re-checks the hash and active flag under a share lock, so a sign-in that
+  checked the old password never outlives the reset.
+- **A claim under a bad team config** claims and logs; its business minutes stay empty.
+- **Base URL.** Beta refuses the local default; compose passes `FIRSTCALL_BASE_URL`.
+- **Pages.** Show sits inside the password field (`.signin .btn` had stretched it to the
+  full row). The alerts page keeps its card and says alerts aren't set up when the server
+  has no push keys. Reading mail updates the top-bar count. A lost claim moves focus to
+  the row's message, since the busy button's disable had dropped it to the body.
+- Three existing tests changed in their own commit (a32ae0e); `test_pages_qa.py` checks
+  the page fixes in Chromium on compose. verify.sh: 532 passed.
