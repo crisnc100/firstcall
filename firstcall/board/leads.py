@@ -73,7 +73,8 @@ def _relations(viewer: Viewer, lead: Lead, action: str) -> frozenset[states.Rela
     in their own pool a moment ago, so that answer leaks nothing new."""
     found = relations(viewer, ref(lead))
     if action == "claim" and viewer.in_team(str(lead.team_id) if lead.team_id else None):
-        found |= {"team_member"}
+        teammate: frozenset[states.Relation] = frozenset({"team_member"})
+        return found | teammate
     return found
 
 
