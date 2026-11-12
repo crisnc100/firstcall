@@ -8,6 +8,7 @@ import { busy, unbusy } from "../leadlist";
 import { emptyState, loadFailed, poll, skeleton, staleLine } from "../poller";
 import type { Cleanup } from "../router";
 import { setTitle } from "../shell";
+import { messageText } from "./detail";
 
 const CATEGORY: Record<string, string> = { vendor: "Vendor", support: "Support", spam: "Spam" };
 
@@ -155,7 +156,7 @@ function draw(main: HTMLElement, row: MessageRow): void {
       h("dt", { text: "Reason" }),
       h("dd", { text: row.reason ?? "" }),
     ),
-    h("div", { class: "msg", text: row.text ?? "" }),
+    messageText(row.text),
     rescue,
     status,
   );

@@ -44,8 +44,14 @@ function contact(value: string | null, href: string, missing: string, what: stri
   return h("dd", { class: "line" }, h("a", { class: "num", text: value, attrs: { href } }), copyButton(value, what));
 }
 
+/** The message body, or a plain line when it has none: a form post may carry only fields. */
+export function messageText(text: string | null | undefined): HTMLElement {
+  if (!text?.trim()) return h("p", { class: "muted", text: "No message text." });
+  return h("div", { class: "msg", text });
+}
+
 function messageBlock(message: MessageRow): HTMLElement[] {
-  const text = h("div", { class: "msg", text: message.text ?? "" });
+  const text = messageText(message.text);
   const parts: HTMLElement[] = [
     h(
       "div",

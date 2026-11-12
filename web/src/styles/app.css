@@ -658,6 +658,15 @@ td {
   border-top: 1px solid var(--border);
   overflow-wrap: anywhere;
 }
+/* A row's own header names the row: set it like the cells beside it, only bolder. */
+tbody th {
+  font-size: inherit;
+  font-weight: 600;
+  background: none;
+  padding: var(--s3);
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
 tr.inactive td {
   color: var(--text-muted);
 }
@@ -711,7 +720,7 @@ tr.inactive td {
   }
   .tabs,
   .right .who,
-  .mark {
+  .topbar .mark {
     display: none;
   }
   .page-title {
@@ -727,7 +736,8 @@ tr.inactive td {
     display: block;
   }
   .row {
-    grid-template-columns: 1fr auto;
+    /* minmax lets the timer column shrink, so the action never gets pushed past the edge. */
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "timer act" "who who" "where where";
     gap: var(--s2) var(--s3);
     padding: var(--s4);
@@ -735,8 +745,10 @@ tr.inactive td {
   .row .timer {
     grid-area: timer;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--s2);
+    gap: var(--s1) var(--s2);
+    min-width: 0;
   }
   .row.lost,
   .row.wide-act {
