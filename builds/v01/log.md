@@ -489,7 +489,8 @@ its model call must be logged without a message id (the log row's foreign key wo
   `FIRSTCALL_PUSH_ALLOW_HTTP=1`, which is refused in beta.
 - **Import scan.** No module outside `firstcall/outbound/` may import a mail, push or HTTP
   client. `firstcall/model/anthropic.py` is the one named exception: it calls the model
-  provider and addresses no person.
+  provider and addresses no person. A test pins it: its only URL is `API_URL` on
+  api.anthropic.com, and every HTTP call in it targets that constant.
 - **Escalation clocks** run from arrival. Team levels count business minutes, Unassigned
   counts wall-clock (it has no hours). Each (lead, level) fires once ever. Teams can set
   their own minutes in `teams.escalation`. The "owned, no real contact" row waits for PR3,
