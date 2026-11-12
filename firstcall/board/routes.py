@@ -557,7 +557,9 @@ def board_router(
     def set_password(request: Request, user_id: uuid.UUID, body: Password) -> None:
         try:
             with caller(request, writes=True) as (db, who):
-                accounts.set_password(admin_user(db, who, user_id), body.password)
+                user = admin_user(db, who, user_id)
+                own = who.session_row.id if user.id == who.user.id else None
+                accounts.set_password(db, user, body.password, keep=own)
         except accounts.AccountError as error:
             raise account_error(error) from error
 

@@ -252,7 +252,7 @@ def user_password(email: str) -> None:
             raise typer.BadParameter(f"no user {address}")
         password = typer.prompt("New password", hide_input=True, confirmation_prompt=True)
         try:
-            accounts.set_password(user, password)
+            accounts.set_password(session, user, password)
         except accounts.AccountError as error:
             raise typer.BadParameter(str(error)) from error
         typer.echo(f"password set for {user.email}")

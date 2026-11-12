@@ -58,6 +58,25 @@ def _who(action: str) -> frozenset[states.Relation]:
     return frozenset(found)
 
 
+def lock_user(session: Session, user_id: uuid.UUID, share: bool) -> bool | None:
+    """Lock a user row and read whether they are active now; None when there is no user.
+
+    Every path takes the user row before any lead row: claim and reassign share-lock the
+    user who will own the lead, while deactivating and changing teams update-lock it. So a
+    claim either finishes first and its lead is then returned by owner-left, or waits and
+    sees the user gone. A lead never ends owned by an inactive user or a non-member."""
+    return session.scalar(select(User.active).where(User.id == user_id).with_for_update(read=share))
+
+
+def _member(session: Session, user_id: uuid.UUID, team_id: uuid.UUID | None) -> bool:
+    if team_id is None:
+        return False
+    found = session.scalar(
+        select(Membership.id).where(Membership.user_id == user_id, Membership.team_id == team_id)
+    )
+    return found is not None
+
+
 def _locked(session: Session, viewer: Viewer, lead_id: uuid.UUID, action: str) -> Lead:
     lead = session.get(Lead, lead_id, with_for_update=True)
     if lead is None or str(lead.org_id) != viewer.org_id:
@@ -102,10 +121,14 @@ class Done:
 
 
 def claim(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) -> Done:
+    user_id = uuid.UUID(viewer.user_id)
+    if not lock_user(session, user_id, share=True):
+        raise NotFoundError
     lead = _locked(session, viewer, lead_id, "claim")
+    if not _member(session, user_id, lead.team_id):
+        raise NotFoundError
     event = _check(lead, "claim", "owned", _relations(viewer, lead, "claim"))
     now = clock.now()
-    user_id = uuid.UUID(viewer.user_id)
     lead.state, lead.owner_id, lead.pool_since = "owned", user_id, None
     if lead.claimed_at is None:
         assert lead.team_id is not None
@@ -189,14 +212,11 @@ def place(
 def reassign(
     session: Session, viewer: Viewer, lead_id: uuid.UUID, to_user: uuid.UUID, clock: Clock
 ) -> Done:
+    target_active = lock_user(session, to_user, share=True)
     lead = _locked(session, viewer, lead_id, "reassign")
     event = _check(lead, "reassign", lead.state, relations(viewer, ref(lead)))
-    member = session.scalar(
-        select(User)
-        .join(Membership, Membership.user_id == User.id)
-        .where(User.id == to_user, User.active, Membership.team_id == lead.team_id)
-    )
-    if member is None:
+    member = session.get(User, to_user)
+    if member is None or not target_active or not _member(session, to_user, lead.team_id):
         raise InvalidError("the new owner must be an active member of the lead's team")
     if member.id == lead.owner_id:
         raise InvalidError("that user already owns the lead")

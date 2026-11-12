@@ -82,16 +82,29 @@ def create_user(
         active=True,
     )
     if password is not None:
-        set_password(user, password)
+        _check_password(password)
+        user.password_hash = _hasher.hash(password)
     session.add(user)
     session.flush()
     return user
 
 
-def set_password(user: User, password: str) -> None:
+def set_password(
+    session: Session, user: User, password: str, keep: uuid.UUID | None = None
+) -> None:
+    """Set the password and end every session of the user's but `keep`, the one making the
+    change when users change their own, so a leaked cookie stops working too."""
+    _check_password(password)
+    user.password_hash = _hasher.hash(password)
+    ended = delete(UserSession).where(UserSession.user_id == user.id)
+    if keep is not None:
+        ended = ended.where(UserSession.id != keep)
+    session.execute(ended)
+
+
+def _check_password(password: str) -> None:
     if len(password) < MIN_PASSWORD:
         raise AccountError(f"a password needs at least {MIN_PASSWORD} characters")
-    user.password_hash = _hasher.hash(password)
 
 
 def set_roles(user: User, roles: list[str]) -> None:
@@ -108,6 +121,7 @@ def set_memberships(
     teams = set(session.scalars(select(Team.id).where(Team.org_id == user.org_id)))
     if set(wanted) - teams:
         raise AccountError("no such team")
+    leads.lock_user(session, user.id, share=False)
     rows = session.scalars(select(Membership).where(Membership.user_id == user.id))
     current = {m.team_id: m for m in rows}
     for team_id, membership in current.items():
@@ -125,7 +139,9 @@ def set_memberships(
 def deactivate(session: Session, user: User, clock: Clock) -> list[leads.Done]:
     """The user can no longer sign in, every session ends, and their open leads go back to
     their pools."""
+    leads.lock_user(session, user.id, share=False)
     user.active = False
+    session.flush()
     session.execute(delete(UserSession).where(UserSession.user_id == user.id))
     return leads.owner_left(session, user.id, clock)
 
