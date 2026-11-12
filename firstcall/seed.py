@@ -8,6 +8,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from firstcall.core.escalation import overrides_from
+from firstcall.core.hours import hours_from
 from firstcall.corpus.world import World, load_world
 from firstcall.db import Agent, Org, Source, Team
 from firstcall.intake import auth
@@ -46,6 +48,12 @@ def _teams(session: Session, org: Org, specs: list[dict[str, Any]]) -> dict[str,
         team.name = spec["name"]
         team.timezone = spec["timezone"]
         team.business_hours = dict(spec["business_hours"])
+        team.escalation = dict(spec.get("escalation", {}))
+        try:
+            hours_from(team.business_hours, team.timezone)
+            overrides_from(team.escalation)
+        except (ValueError, KeyError, TypeError) as error:
+            raise ValueError(f"team {spec['slug']}: {error}") from error
         team.items = list(spec["items"])
         session.add(team)
         existing[spec["slug"]] = team

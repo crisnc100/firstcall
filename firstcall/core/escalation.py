@@ -1,9 +1,10 @@
 """Escalation: which levels are due for an unclaimed lead.
 
-Clocks run from arrival, so time a lead spent in Unassigned counts once it is placed. Team
-levels count the team's business minutes. Unassigned has no team and so no hours; its level
-counts wall-clock minutes. Each level fires once per lead, ever: the caller stores fired
-levels under a unique key and passes them back in.
+Clocks run from the start of the lead's current stay in its pool: arrival for a new lead,
+or the moment it was released, returned, moved or placed. Team levels count the team's
+business minutes. Unassigned has no team and so no hours; its level counts wall-clock
+minutes. Each level fires once per stay: the caller stores fired levels under a unique key
+and passes the current stay's back in. Time to claim still counts from arrival.
 """
 
 from __future__ import annotations
@@ -37,6 +38,18 @@ AUDIENCES: Mapping[str, Audience] = {
 }
 
 
+def overrides_from(config: Mapping[str, object]) -> dict[str, float]:
+    """A team's escalation minutes, checked: known level names and positive numbers only."""
+    found: dict[str, float] = {}
+    for name, value in config.items():
+        if name not in DEFAULTS:
+            raise ValueError(f"unknown escalation level {name}")
+        if isinstance(value, bool) or not isinstance(value, int | float) or value <= 0:
+            raise ValueError(f"escalation minutes for {name} must be a positive number")
+        found[name] = float(value)
+    return found
+
+
 def levels(overrides: Mapping[str, float] | None = None) -> tuple[Level, ...]:
     """The levels with a team's own minutes in place of the defaults."""
     minutes = {**DEFAULTS, **(overrides or {})}
@@ -50,7 +63,7 @@ def levels(overrides: Mapping[str, float] | None = None) -> tuple[Level, ...]:
 def due(
     state: str,
     in_team: bool,
-    arrival: datetime,
+    since: datetime,
     now: datetime,
     hours: Hours | None,
     fired: frozenset[str],
@@ -66,9 +79,9 @@ def due(
         if level.in_team != in_team or level.name in fired:
             continue
         waited = (
-            business_minutes(arrival, now, hours)
+            business_minutes(since, now, hours)
             if in_team and hours is not None
-            else wall_minutes(arrival, now)
+            else wall_minutes(since, now)
         )
         if waited >= level.minutes:
             found.append(level)

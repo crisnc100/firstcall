@@ -390,14 +390,17 @@ class PushSend(Base):
 
 
 class Escalation(Base):
-    """A level that fired for a lead. The unique key stops a second tick sending it again."""
+    """A level that fired for one stay of a lead in a pool. The unique key stops a second
+    tick sending it again; a lead that re-enters a pool starts a new stay."""
 
     __tablename__ = "escalations"
-    __table_args__ = (UniqueConstraint("lead_id", "level"),)
+    __table_args__ = (UniqueConstraint("lead_id", "level", "stay"),)
     id: Mapped[uuid.UUID] = _uuid()
     org_id: Mapped[uuid.UUID] = _org()
     lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
     level: Mapped[str] = mapped_column(String(32))
+    # The lead's pool_since when the level fired: which stay it belongs to.
+    stay: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     fired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
