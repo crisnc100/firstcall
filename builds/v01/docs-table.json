@@ -21,11 +21,11 @@
      "claims": [
       {
        "claim": "Basic auth password stored as an argon2id hash",
-       "at": "firstcall/intake/auth.py:41-42"
+       "at": "firstcall/intake/auth.py:41"
       },
       {
        "claim": "Form key is random, stored as a SHA-256 hash, names the source; protected by honeypot, rate limits and spam check",
-       "at": "firstcall/intake/auth.py:3-6"
+       "at": "firstcall/intake/auth.py:3"
       },
       {
        "claim": "The api runs with its access log off, so the key never reaches a log",
@@ -33,11 +33,11 @@
       },
       {
        "claim": "HMAC over timestamp and body in Firstcall-Timestamp / Firstcall-Signature; more than 5 minutes off is refused; secret in a named env var",
-       "at": "firstcall/intake/auth.py:25-27,71-91"
+       "at": "firstcall/intake/auth.py:25"
       },
       {
        "claim": "Honeypot filled means spam",
-       "at": "firstcall/core/read.py:689-690"
+       "at": "firstcall/core/read.py:689"
       },
       {
        "claim": "202 stored, 200 repeat",
@@ -45,35 +45,35 @@
       },
       {
        "claim": "401 bad credentials, 404 unknown source",
-       "at": "firstcall/api.py:102-103,116-137"
+       "at": "firstcall/api.py:102"
       },
       {
        "claim": "413 over 10 MB email / 1 MB form or call, checked while the body streams",
-       "at": "firstcall/settings.py:30-31; firstcall/api.py:112-115,126-129; firstcall/intake/limits.py:66-74"
+       "at": "firstcall/settings.py:30"
       },
       {
        "claim": "415 wrong content type, message/rfc822 for email, application/json otherwise",
-       "at": "firstcall/api.py:28,109-111"
+       "at": "firstcall/api.py:28"
       },
       {
        "claim": "429: 30 per minute per client address before anything else; 60 per minute per source after auth",
-       "at": "firstcall/settings.py:28-29; firstcall/api.py:99,138-141"
+       "at": "firstcall/settings.py:28"
       },
       {
        "claim": "503 when the database write fails",
-       "at": "firstcall/api.py:142-148"
+       "at": "firstcall/api.py:142"
       },
       {
        "claim": "IPv6 client counted by its /64",
-       "at": "firstcall/intake/limits.py:17-28"
+       "at": "firstcall/intake/limits.py:17"
       },
       {
        "claim": "X-Forwarded-For only with FIRSTCALL_TRUST_PROXY; client is the entry FIRSTCALL_TRUSTED_HOPS from the right, default 1",
-       "at": "firstcall/api.py:50-65; firstcall/settings.py:22,25"
+       "at": "firstcall/api.py:50"
       },
       {
        "claim": "Allowed origins get Access-Control-Allow-Origin; others get none",
-       "at": "firstcall/api.py:71-75,105,155-168"
+       "at": "firstcall/api.py:71"
       }
      ]
     },
@@ -82,11 +82,11 @@
      "claims": [
       {
        "claim": "Email source takes basic auth with user inbox and message/rfc822 on port 8020",
-       "at": "config/demo.yaml:55-58; docker-compose.yml:34; firstcall/api.py:28"
+       "at": "config/demo.yaml:55"
       },
       {
        "claim": "The form key is public; sources that must refuse strangers use basic auth or a signature",
-       "at": "firstcall/intake/auth.py:3-7"
+       "at": "firstcall/intake/auth.py:3"
       }
      ]
     },
@@ -95,7 +95,7 @@
      "claims": [
       {
        "claim": "rotate-secret prints a new key; origin must be in allowed_origins; honeypot name equals honeypot_field",
-       "at": "firstcall/seed.py:81-95; firstcall/api.py:155-168; config/demo.yaml:73-75"
+       "at": "firstcall/seed.py:81"
       }
      ]
     }
@@ -114,15 +114,15 @@
      "claims": [
       {
        "claim": "A Message-ID over 200 characters or with unprintable characters is replaced by its SHA-256",
-       "at": "firstcall/core/delivery.py:21,44-46"
+       "at": "firstcall/core/delivery.py:21"
       },
       {
        "claim": "No Message-ID, or headers over the read budget: key is the SHA-256 of the raw message",
-       "at": "firstcall/core/delivery.py:42-43; firstcall/intake/store.py:29-33"
+       "at": "firstcall/core/delivery.py:42"
       },
       {
        "claim": "Form and call: delivery id header, else body hash within 10 minutes",
-       "at": "firstcall/core/delivery.py:18,50-52; firstcall/intake/store.py:38-63"
+       "at": "firstcall/core/delivery.py:18"
       }
      ]
     }
@@ -140,27 +140,27 @@
      "claims": [
       {
        "claim": "Over any limit the message ends failed with the limit in its reason; nothing is cut",
-       "at": "firstcall/core/read.py:37-39; firstcall/pipeline/process.py:189-190"
+       "at": "firstcall/core/read.py:37"
       },
       {
        "claim": "200,000 characters, 4,000 lines, 4,000 characters per line",
-       "at": "firstcall/core/read.py:45-47,272-284"
+       "at": "firstcall/core/read.py:45"
       },
       {
        "claim": "64,000 characters of headers; listed parsed headers capped at 4,000 each; others count only toward the total",
-       "at": "firstcall/core/read.py:48,53-58,441-456"
+       "at": "firstcall/core/read.py:48"
       },
       {
        "claim": "At most 100 parts including the message; at most 10 levels with the message first",
-       "at": "firstcall/core/read.py:49,59,459-469,478-495"
+       "at": "firstcall/core/read.py:49"
       },
       {
        "claim": "Stack-overflowing nesting in email or JSON refused the same way",
-       "at": "firstcall/core/read.py:171-174,490-491"
+       "at": "firstcall/core/read.py:171"
       },
       {
        "claim": "Default policy with a hook that checks each header before it is parsed",
-       "at": "firstcall/core/read.py:434-456,486-488"
+       "at": "firstcall/core/read.py:434"
       }
      ]
     },
@@ -169,15 +169,15 @@
      "claims": [
       {
        "claim": "Default policy picks the plain or HTML body",
-       "at": "firstcall/core/read.py:362-375"
+       "at": "firstcall/core/read.py:362"
       },
       {
        "claim": "Policy hook checks every header of every part before parsing; part factory counts parts",
-       "at": "firstcall/core/read.py:434-456,478-484"
+       "at": "firstcall/core/read.py:434"
       },
       {
        "claim": "Intake runs a raw-byte header check and a headers-only compat32 parse only for the Message-ID",
-       "at": "firstcall/intake/store.py:27-37; firstcall/core/read.py:185-211"
+       "at": "firstcall/intake/store.py:27"
       }
      ]
     }
@@ -195,11 +195,11 @@
      "claims": [
       {
        "claim": "Compatible-name rule amended to one direction",
-       "at": "firstcall/core/match.py:30-37"
+       "at": "firstcall/core/match.py:30"
       },
       {
        "claim": "Phone to one lead and email to another: no join, flagged",
-       "at": "firstcall/core/match.py:47-48"
+       "at": "firstcall/core/match.py:47"
       }
      ]
     },
@@ -208,7 +208,7 @@
      "claims": [
       {
        "claim": "ADR-003 result recorded and rule amended",
-       "at": "firstcall/core/match.py:30-37"
+       "at": "firstcall/core/match.py:30"
       }
      ]
     },
@@ -217,7 +217,7 @@
      "claims": [
       {
        "claim": "Compatible name: both first names equal, or the message has no name",
-       "at": "firstcall/core/match.py:35-37"
+       "at": "firstcall/core/match.py:35"
       }
      ]
     }
@@ -247,15 +247,15 @@
       },
       {
        "claim": "Seed 13 refuses to run until config/field_methods.yaml is committed",
-       "at": "firstcall/evaluation/run.py:341-363"
+       "at": "firstcall/evaluation/run.py:341"
       },
       {
        "claim": "Safety floors: wrong attaches, wrong merges, injection, agent contact; quality floors: field accuracy, recall, team, category",
-       "at": "firstcall/evaluation/report.py:51-84"
+       "at": "firstcall/evaluation/report.py:51"
       },
       {
        "claim": "A rerun gives the same bytes and verify.sh checks it",
-       "at": "verify.sh:40-41; scripts/check_replay_report.py:1-7"
+       "at": "verify.sh:40"
       }
      ]
     },
@@ -264,11 +264,11 @@
      "claims": [
       {
        "claim": "Six attack sentences in injection_text",
-       "at": "firstcall/corpus/generate.py:496-510"
+       "at": "firstcall/corpus/generate.py:496"
       },
       {
        "claim": "Twin processed just before the real message, then rolled back",
-       "at": "firstcall/evaluation/run.py:99-135"
+       "at": "firstcall/evaluation/run.py:99"
       }
      ]
     },
@@ -277,7 +277,7 @@
      "claims": [
       {
        "claim": "Entry 0001 covers hard negatives inside the team",
-       "at": "firstcall/corpus/generate.py:372,519-521; firstcall/core/match.py:43"
+       "at": "firstcall/corpus/generate.py:372"
       }
      ]
     }
@@ -324,6 +324,28 @@
     "web/vite.config.ts"
    ],
    "none": "Setup and build files; the README Try it steps already describe how to run them (verified against cli.py and docker-compose.yml)."
+  },
+  {
+   "behavior": "Generated test data: messages, labels and clean injection twins for seeds 7, 11 and 13",
+   "files": [
+    "evals/gold/seed-11/injection_twins.jsonl",
+    "evals/gold/seed-11/labels.jsonl",
+    "evals/gold/seed-11/messages.jsonl",
+    "evals/gold/seed-13/injection_twins.jsonl",
+    "evals/gold/seed-13/labels.jsonl",
+    "evals/gold/seed-13/messages.jsonl",
+    "evals/gold/seed-7/injection_twins.jsonl",
+    "evals/gold/seed-7/labels.jsonl",
+    "evals/gold/seed-7/messages.jsonl"
+   ],
+   "none": "Generated by firstcall/corpus/generate.py; tests/test_corpus.py checks the generator reproduces these bytes and the manifest matches. Documented in the README and evals/gold/CHANGELOG.md."
+  },
+  {
+   "behavior": "License changed from MIT to Apache-2.0",
+   "files": [
+    "LICENSE"
+   ],
+   "none": "The license text is the documentation; it matches the sibling projects."
   }
  ]
 }
