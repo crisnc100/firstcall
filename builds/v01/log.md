@@ -505,3 +505,27 @@ its model call must be logged without a message id (the log row's foreign key wo
 - **Alert latency (F28),** 50 rules-path leads on compose, intake commit to push request,
   both read on the host clock: p50 0.27 s, p95 0.50 s, max 0.55 s
   (`tests/fault/test_alert_latency.py`).
+
+## Phase 1 review fixes
+
+- **Password change** ends every session of that user's but the one making the change.
+- **Locks.** Claim and reassign share-lock the user who will own the lead, before the
+  lead; deactivating and changing teams update-lock the user first. One order, so no
+  deadlock, and a lead never ends owned by an inactive user or a non-member.
+- **Escalation per stay.** Levels count from `pool_since` and fire once per stay
+  (migration 0006 adds `escalations.stay`). Released, returned, moved and placed leads
+  escalate again from when they re-entered. Time to claim still counts from arrival.
+- **Bad team config.** Seed refuses bad hours, time zone or escalation minutes.
+  `escalate()` logs and skips a team whose config does not read.
+- **Sends never crash a process.** Each push runs in its own savepoint; any exception is a
+  failed attempt for that device. An SMTP error leaves the digest pending. Each alert step
+  in the scheduler is logged and contained. Subscribe checks the keys are a P-256 point and
+  a 16-byte secret, with `cryptography`, which pywebpush already brings.
+- **One plain address.** A user's email is stored as one bare, lowercased address. The
+  allowlist reads a recipient the way a mail library reads a To header and refuses anything
+  that is not exactly one plain address.
+- **Who is a buyer (product choice).** A buyer is an identity or contact of a lead. A
+  sender whose only message sits in the Not-a-lead tray is not one: vendor and spam senders
+  are often colleagues, and refusing them would silence a user for good over one stray
+  message. A rescue makes the sender a buyer from then on.
+- **Test leads** each get a unique name and phone; the helper asserts `lead_created`.
