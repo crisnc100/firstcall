@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import secrets
 import threading
 import time
 import uuid
@@ -36,6 +37,15 @@ from tests.helpers import Pipeline
 PASSWORD = "correct horse battery"  # pragma: allowlist secret
 LISTINGS = {"north": "Cedar Point Lofts", "south": "Saltmarsh Terrace", "east": "Beacon Square"}
 MAILPIT_API = os.environ.get("FIRSTCALL_TEST_MAILPIT", "http://127.0.0.1:8025")
+
+
+def _letters(n: int) -> str:
+    """n in lowercase letters (1 is a, 27 is aa), to make first names that differ."""
+    out = ""
+    while n:
+        n, rest = divmod(n - 1, 26)
+        out = chr(ord("a") + rest) + out
+    return out
 
 
 class FakeMonotonic:
@@ -175,6 +185,8 @@ class Board:
     settings: Settings = field(default_factory=lambda: Settings(env="test"))
     pipe: Pipeline = field(init=False)
     monotonic: FakeMonotonic = field(default_factory=FakeMonotonic)
+    made: int = 0
+    phone_base: int = field(default_factory=lambda: secrets.randbelow(10000))
 
     def __post_init__(self) -> None:
         self.pipe = Pipeline(self.sessions, self.clock)
@@ -217,18 +229,22 @@ class Board:
         client.headers["X-CSRF-Token"] = answer.json()["csrf"]
         return client
 
-    def lead(self, team: str | None, name: str = "Ana Ruiz", **fields: Any) -> uuid.UUID:
-        """A new pool lead from a site-form post, in `team` or Unassigned."""
+    def lead(self, team: str | None, name: str | None = None, **fields: Any) -> uuid.UUID:
+        """A new pool lead from a site-form post, in `team` or Unassigned. Each call gets a
+        name, phone and email no earlier lead in the test has, so it never joins one by
+        accident; the check below fails loudly if it does."""
+        self.made += 1
         payload = {
-            "name": name,
-            "phone": fields.pop("phone", f"202-555-{uuid.uuid4().int % 10000:04d}"),
+            "name": name or f"Ana{_letters(self.made)} Ruiz",
+            "phone": fields.pop("phone", f"202-555-{(self.phone_base + self.made) % 10000:04d}"),
             "email": fields.pop("email", f"{uuid.uuid4().hex[:10]}@buyers.example"),
             "message": "Is it still available?",
         }
         if team is not None:
             payload["listing"] = LISTINGS[team]
         message = self.pipe.deliver_form("site-form", payload)
-        assert message.lead_id is not None, message.reason
+        assert message.status == "lead_created", message.reason
+        assert message.lead_id is not None
         return message.lead_id
 
     def set_lead(self, lead_id: uuid.UUID, **values: Any) -> None:
