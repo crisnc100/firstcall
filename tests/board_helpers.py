@@ -207,6 +207,8 @@ class Board:
             headers={"X-CSRF-Token": csrf},
         )
         assert answer.status_code == 200, answer.text
+        # Each test client shares one address, so the next sign-in starts a fresh minute.
+        self.monotonic.value += 61
         client.headers["X-CSRF-Token"] = answer.json()["csrf"]
         return client
 

@@ -90,8 +90,8 @@ class RefusedError(Exception):
 
 def check(
     action: str,
-    source: State,
-    target: State,
+    source: str,
+    target: str,
     relations: frozenset[Relation],
     unassigned: bool = False,
 ) -> str:

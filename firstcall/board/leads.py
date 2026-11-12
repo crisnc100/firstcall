@@ -62,17 +62,27 @@ def _locked(session: Session, viewer: Viewer, lead_id: uuid.UUID, action: str) -
     lead = session.get(Lead, lead_id, with_for_update=True)
     if lead is None or str(lead.org_id) != viewer.org_id:
         raise NotFoundError
-    if not _who(action) & relations(viewer, ref(lead)):
+    if not _who(action) & _relations(viewer, lead, action):
         raise NotFoundError
     return lead
+
+
+def _relations(viewer: Viewer, lead: Lead, action: str) -> frozenset[states.Relation]:
+    """How the viewer relates to the lead for this action. A teammate who loses a claim race
+    can no longer see the lead, yet must hear "already claimed" (409), not 404: they saw it
+    in their own pool a moment ago, so that answer leaks nothing new."""
+    found = relations(viewer, ref(lead))
+    if action == "claim" and viewer.in_team(str(lead.team_id) if lead.team_id else None):
+        found |= {"team_member"}
+    return found
 
 
 def _check(lead: Lead, action: str, target: str, rels: frozenset[states.Relation]) -> str:
     try:
         return states.check(
             action,
-            lead.state,  # type: ignore[arg-type]
-            target,  # type: ignore[arg-type]
+            lead.state,
+            target,
             rels,
             unassigned=lead.team_id is None,
         )
@@ -92,7 +102,7 @@ class Done:
 
 def claim(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) -> Done:
     lead = _locked(session, viewer, lead_id, "claim")
-    event = _check(lead, "claim", "owned", relations(viewer, ref(lead)))
+    event = _check(lead, "claim", "owned", _relations(viewer, lead, "claim"))
     now = clock.now()
     user_id = uuid.UUID(viewer.user_id)
     lead.state, lead.owner_id, lead.pool_since = "owned", user_id, None
@@ -208,7 +218,7 @@ def owner_left(
         query = query.where(Lead.team_id == team_id)
     done: list[Done] = []
     for lead in session.scalars(query.order_by(Lead.id).with_for_update()):
-        event = states.check("owner_left", lead.state, "pool", frozenset({"system"}))  # type: ignore[arg-type]
+        event = states.check("owner_left", lead.state, "pool", frozenset({"system"}))
         payload = {"reason": "owner_left", "owner_id": str(user_id)}
         done.append(_to_pool(session, lead, event, "owner_left", payload, clock))
     return done
@@ -228,7 +238,7 @@ def allowed_actions(viewer: Viewer, lead: Lead) -> list[str]:
     found: list[str] = []
     for action, target in targets.items():
         try:
-            states.check(action, lead.state, target, rels, lead.team_id is None)  # type: ignore[arg-type]
+            states.check(action, lead.state, target, rels, lead.team_id is None)
         except states.RefusedError:
             continue
         found.append(action)
