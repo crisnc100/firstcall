@@ -29,6 +29,7 @@ from firstcall.core.access import Viewer, can_see_team
 from firstcall.core.clock import Clock
 from firstcall.core.read import Reference, UnparseableError, read
 from firstcall.db import (
+    Escalation,
     InboxEmail,
     Lead,
     LeadEvent,
@@ -183,6 +184,7 @@ def board_router(
             "possible_duplicates": list(lead.possible_duplicates),
             "flags": list(lead.flags),
             "actions": leads.allowed_actions(viewer, lead),
+            **leads.urgency(lead, team, clock.now()),
         }
 
     def message_text(db: Session, message: Message) -> str:
@@ -381,6 +383,31 @@ def board_router(
         return lead_action(
             request, lambda db, who: leads.place(db, who.viewer, lead_id, body.team_id, clock)
         )
+
+    @router.get("/escalations")
+    def escalations(request: Request) -> list[dict[str, Any]]:
+        """Escalations that fired, newest first, for monitors and admins. `current` says
+        whether the lead still sits unclaimed in the same pool stay the level fired for."""
+        with caller(request, writes=False) as (db, who):
+            if not (who.viewer.monitor or who.viewer.admin):
+                _not_found()
+            rows = db.execute(
+                select(Escalation, Lead)
+                .join(Lead, Lead.id == Escalation.lead_id)
+                .where(Escalation.org_id == who.user.org_id)
+                .order_by(Escalation.fired_at.desc(), Escalation.id)
+                .limit(LIST_LIMIT)
+            ).all()
+            return [
+                {
+                    "level": fired.level,
+                    "fired_at": fired.fired_at.isoformat(),
+                    "stay": fired.stay.isoformat(),
+                    "current": lead.state == "pool" and lead.pool_since == fired.stay,
+                    "lead": lead_json(db, lead, who.viewer),
+                }
+                for fired, lead in rows
+            ]
 
     # --- the Not-a-lead tray ----------------------------------------------------------
 

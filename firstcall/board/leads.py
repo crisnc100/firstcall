@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -19,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from firstcall import events
 from firstcall.board import alerts
-from firstcall.core import states
+from firstcall.core import escalation, states
 from firstcall.core.access import LeadRef, Viewer, can_see, relations
 from firstcall.core.clock import Clock
 from firstcall.core.hours import Hours, business_minutes, hours_from, wall_minutes
@@ -243,6 +244,33 @@ def owner_left(
         payload = {"reason": "owner_left", "owner_id": str(user_id)}
         done.append(_to_pool(session, lead, event, "owner_left", payload, clock))
     return done
+
+
+def urgency(lead: Lead, team: Team | None, now: datetime) -> dict[str, Any]:
+    """How long a pool lead has waited since arrival, in its team's business minutes, with
+    the minutes at which its team escalates, so a page shows "Late" when escalation does.
+    Unassigned has no hours, so its wait is wall-clock. Nothing for a lead not in a pool,
+    or for a team whose config does not read."""
+    if lead.state != "pool":
+        return {"wait_business_minutes": None, "thresholds": None}
+    if team is None:
+        waited = wall_minutes(lead.arrival_at, now)
+        late, very_late = (
+            escalation.DEFAULTS[escalation.UNASSIGNED],
+            escalation.DEFAULTS[escalation.ADMINS],
+        )
+    else:
+        try:
+            hours, minutes = team_hours(team), escalation.overrides_from(team.escalation or {})
+        except (ValueError, KeyError, TypeError):
+            return {"wait_business_minutes": None, "thresholds": None}
+        waited = business_minutes(lead.arrival_at, now, hours)
+        late = minutes.get(escalation.TEAM_LEADS, escalation.DEFAULTS[escalation.TEAM_LEADS])
+        very_late = minutes.get(escalation.ADMINS, escalation.DEFAULTS[escalation.ADMINS])
+    return {
+        "wait_business_minutes": round(waited, 1),
+        "thresholds": {"late": late, "very_late": very_late},
+    }
 
 
 def allowed_actions(viewer: Viewer, lead: Lead) -> list[str]:
