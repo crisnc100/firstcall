@@ -12,10 +12,11 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from firstcall.board import alerts
 from firstcall.board.escalate import escalate
-from firstcall.db import Alert, Message, PushSend, PushSubscription, User
+from firstcall.db import Alert, Lead, Message, PushSend, PushSubscription, User
 from firstcall.outbound import allowlist
-from firstcall.outbound.mail import SmtpMailer
+from firstcall.outbound.mail import Line, SmtpMailer, label, render
 from firstcall.pipeline.worker import alert_tick, work
 from firstcall.settings import Settings
 from tests.board_helpers import Board, FakePushService, Mailpit, vapid_keys
@@ -295,3 +296,32 @@ def test_push_only_to_the_recipients_own_https_device(board: Board, push: FakePu
         with pytest.raises(allowlist.RefusedError, match="https"):
             allowlist.check_push(session, mine, seller.id, allow_http=False)
         allowlist.check_push(session, mine, seller.id, allow_http=True)
+
+
+# --- edges of queueing and rendering ----------------------------------------------------
+
+
+def test_queueing_the_same_cause_twice_adds_nothing_and_a_gone_owner_gets_no_activity(
+    board: Board,
+) -> None:
+    owner = board.user("owner@larkspur.example", teams={"north": "salesperson"})
+    lead_id = board.lead("north")
+    board.own(lead_id, owner)
+    with board.sessions.begin() as session:
+        lead = session.get_one(Lead, lead_id)
+        assert alerts.queue(session, lead, "assigned", "test:1", [owner], board.clock.now()) == 1
+        assert alerts.queue(session, lead, "assigned", "test:1", [owner], board.clock.now()) == 0
+        session.get_one(User, owner.id).active = False
+        session.flush()
+        assert alerts.activity(session, lead, "test:2", board.clock.now()) == 0
+
+
+def test_the_digest_subject_for_mixed_alerts_and_an_escalation_label() -> None:
+    lines = [
+        Line("new_lead", "Ana Ruiz", None, "https://x.example/leads/1"),
+        Line("escalation:team_unclaimed", "Bo Lin", "Alder Ridge", "https://x.example/leads/2"),
+    ]
+    mail = render("North", lines)
+    assert mail.subject == "2 alerts in North"
+    assert "Still unclaimed: Bo Lin (Alder Ridge)" in mail.text
+    assert label("something_new") == "Alert"

@@ -54,7 +54,7 @@ def test_a_user_with_no_password_or_deactivated_cannot_sign_in(board: Board) -> 
 
 def test_a_short_password_is_refused(board: Board) -> None:
     with pytest.raises(accounts.AccountError, match="at least 12"):
-        board.user("short@larkspur.example", password="short")
+        board.user("short@larkspur.example", password="x" * 11)
 
 
 def test_ten_tries_a_minute_per_address_then_429(board: Board) -> None:

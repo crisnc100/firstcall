@@ -45,6 +45,8 @@ services:
     image: firstcall-v01-app
     command: ["firstcall", "worker"]
     environment: *app-environment
+    # The alert-latency test runs a fake push service on the host.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
       migrate:
         condition: service_completed_successfully

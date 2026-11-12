@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 
@@ -182,6 +182,80 @@ def eval_command(
         paths = write_model(evaluate_models(seed, url, run), day)
     for path in paths:
         typer.echo(f"wrote {path}")
+
+
+user_app = typer.Typer(no_args_is_help=True, help="Users and passwords.")
+app.add_typer(user_app, name="user")
+
+
+def _one_org(session: Session) -> Any:
+    from sqlalchemy import select
+
+    from firstcall.db import Org
+
+    orgs = list(session.scalars(select(Org)))
+    if len(orgs) != 1:
+        raise typer.BadParameter("these commands expect exactly one org; run `firstcall seed`")
+    return orgs[0]
+
+
+@user_app.command("add")
+def user_add(
+    email: str,
+    name: str = typer.Option(..., help="The name the board shows"),
+    role: Annotated[
+        list[str] | None, typer.Option(help="An org role: monitor or admin; repeatable")
+    ] = None,
+    team: Annotated[
+        list[str] | None, typer.Option(help="slug=salesperson or slug=team_lead; repeatable")
+    ] = None,
+) -> None:
+    """Add a user with no password. Set one with `firstcall user password`."""
+    from sqlalchemy import select
+
+    from firstcall.board import accounts
+    from firstcall.db import Team
+    from firstcall.runtime import SystemClock
+
+    with _sessions().begin() as session:
+        org = _one_org(session)
+        slugs = {t.slug: t.id for t in session.scalars(select(Team).where(Team.org_id == org.id))}
+        wanted = {}
+        for entry in team or []:
+            slug, sep, team_role = entry.partition("=")
+            if not sep:
+                raise typer.BadParameter(f"--team takes slug=role, not {entry}")
+            if slug not in slugs:
+                raise typer.BadParameter(f"no team {slug}")
+            wanted[slugs[slug]] = team_role
+        try:
+            user = accounts.create_user(session, org.id, email, name, role or [])
+            accounts.set_memberships(session, user, wanted, SystemClock())
+        except accounts.AccountError as error:
+            raise typer.BadParameter(str(error)) from error
+        typer.echo(f"added {user.email}")
+
+
+@user_app.command("password")
+def user_password(email: str) -> None:
+    """Set a user's password. It is typed at a prompt, never passed as an argument."""
+    from sqlalchemy import select
+
+    from firstcall.board import accounts
+    from firstcall.db import User
+
+    with _sessions().begin() as session:
+        org = _one_org(session)
+        address = accounts.normal_email(email)
+        user = session.scalar(select(User).where(User.org_id == org.id, User.email == address))
+        if user is None:
+            raise typer.BadParameter(f"no user {address}")
+        password = typer.prompt("New password", hide_input=True, confirmation_prompt=True)
+        try:
+            accounts.set_password(user, password)
+        except accounts.AccountError as error:
+            raise typer.BadParameter(str(error)) from error
+        typer.echo(f"password set for {user.email}")
 
 
 corpus_app = typer.Typer(no_args_is_help=True, help="The synthetic corpus.")
