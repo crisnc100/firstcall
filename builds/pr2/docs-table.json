@@ -116,7 +116,7 @@
       },
       {
        "claim": "The API answers a lost claim with 'already claimed'",
-       "at": "firstcall/board/routes.py:658"
+       "at": "firstcall/board/routes.py:648"
       },
       {
        "claim": "Only a member of the lead's team can claim",
