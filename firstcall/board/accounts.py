@@ -30,6 +30,7 @@ from firstcall.db import (
     ORG_ROLES,
     TEAM_ROLES,
     Alert,
+    Lead,
     Membership,
     PushSend,
     Team,
@@ -139,33 +140,42 @@ def set_memberships(
     leads.lock_user(session, user.id, share=False)
     rows = session.scalars(select(Membership).where(Membership.user_id == user.id))
     current = {m.team_id: m for m in rows}
-    for team_id, membership in current.items():
-        if team_id not in wanted:
-            session.delete(membership)
-            leads.owner_left(session, user.id, clock, team_id)
-            _cancel_alerts(session, user.id, team_id)
+    left = [team_id for team_id in current if team_id not in wanted]
+    for team_id in left:
+        session.delete(current[team_id])
+        leads.owner_left(session, user.id, clock, team_id)
     for team_id, role in wanted.items():
         if team_id in current:
             current[team_id].role = role
         else:
             session.add(Membership(org_id=user.org_id, user_id=user.id, team_id=team_id, role=role))
     session.flush()
+    if left:
+        _cancel_alerts(session, user, left)
 
 
-def _cancel_alerts(session: Session, user_id: uuid.UUID, team_id: uuid.UUID) -> None:
-    """Pending alerts about a team's leads stop when the user leaves the team; the senders
-    check again at send time for anything this misses."""
-    queued = (
-        select(Alert.id).where(Alert.user_id == user_id, Alert.team_id == team_id).scalar_subquery()
-    )
+def _cancel_alerts(session: Session, user: User, left: list[uuid.UUID]) -> None:
+    """Pending alerts about the left teams' leads stop, but only for leads the user can no
+    longer see with the teams and roles they have now. A monitor or admin still sees every
+    lead and is still the audience for admin escalations, so theirs stay. The senders check
+    again at send time for anything this misses."""
+    viewer_now = viewer(session, user)
+    pending = session.execute(
+        select(Alert, Lead)
+        .join(Lead, Lead.id == Alert.lead_id)
+        .where(Alert.user_id == user.id, Alert.team_id.in_(left))
+    ).all()
+    lost = [alert.id for alert, lead in pending if not leads.visible(viewer_now, lead)]
+    if not lost:
+        return
     session.execute(
         update(PushSend)
-        .where(PushSend.alert_id.in_(queued), PushSend.state == "pending")
+        .where(PushSend.alert_id.in_(lost), PushSend.state == "pending")
         .values(state="failed")
     )
     session.execute(
         update(Alert)
-        .where(Alert.user_id == user_id, Alert.team_id == team_id, Alert.email_state == "pending")
+        .where(Alert.id.in_(lost), Alert.email_state == "pending")
         .values(email_state="refused")
     )
 
