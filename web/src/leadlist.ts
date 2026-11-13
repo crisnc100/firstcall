@@ -39,9 +39,12 @@ export function stateBadge(state: string): HTMLElement {
   return h("span", { class: "badge", text: STATE_WORD[state] ?? state });
 }
 
+/** The lead's name, or its phone or email when it has none. A list row's only link is
+ * this one, so a nameless lead still needs it to be opened. */
 export function leadName(lead: Lead, href?: string): HTMLElement {
-  if (!lead.name) return h("span", { class: "name none", text: "No name given" });
-  return href ? link(href, lead.name, "name") : h("span", { class: "name", text: lead.name });
+  const label = lead.name ?? lead.phone ?? lead.email ?? "No name given";
+  const className = lead.name ? "name" : "name none";
+  return href ? link(href, label, className) : h("span", { class: className, text: label });
 }
 
 /** When the lead's current pool stay began. Waits, urgency and escalation all count from
@@ -122,6 +125,15 @@ export class LeadList {
       } else if (entry.lostAt === undefined) {
         entry.lead = lead;
         this.refreshRow(entry);
+      } else if (now - entry.lostAt >= LOST_HOLD_MS) {
+        // Still listed after the hold: the lead came back (released, returned) and can be
+        // claimed again, so the lost row gives way to a fresh one.
+        const fresh = this.row(lead);
+        const hadFocus = entry.li.contains(document.activeElement);
+        entry.li.replaceWith(fresh);
+        entry = { li: fresh, lead };
+        this.entries.set(lead.id, entry);
+        if (hadFocus) fresh.querySelector<HTMLElement>(".act button, .act select")?.focus();
       }
       const after: ChildNode | null = previous ? previous.nextSibling : this.element.firstChild;
       if (after !== entry.li) this.element.insertBefore(entry.li, after);
