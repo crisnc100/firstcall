@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     smtp_port: int = 1025
     email_from: str = "Firstcall <alerts@firstcall.localhost>"
     digest_seconds: int = 60
-    # A digest that fails waits digest_seconds, doubling each time, and after this many
-    # retries its alerts are marked failed.
+    # A digest that fails waits digest_seconds x 2 after the first failure, doubling after
+    # each one after that, and after this many retries its alerts are marked failed.
     email_retries: int = 3
     # Links in alerts point here: the address people open the board at.
     base_url: str = LOCAL_BASE_URL
@@ -67,6 +67,8 @@ class Settings(BaseSettings):
         "updates.push.services.mozilla.com",
         "web.push.apple.com",
         ".notify.windows.com",
+        # Chrome's Beta, Dev and Canary channels subscribe here rather than at FCM.
+        "jmt17.google.com",
     ]
     # Plain-http push endpoints, for the fake push service in tests and compose only.
     push_allow_http: bool = False
