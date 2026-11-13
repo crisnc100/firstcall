@@ -6,8 +6,9 @@ with a timer running.
 
 **Status.** Early work on v0.1. Leads come in by email, web form or call service. Each message
 is stored as it arrived, read by fixed rules and, when a model is switched on, by Claude Haiku
-5.5, then placed into a team and matched to the buyer's earlier leads. There are no users or
-alerts yet. Every message, name and number in this repo is made up.
+5.5, then placed into a team and matched to the buyer's earlier leads. People sign in to a
+board where salespeople claim leads, and alerts go to an in-app inbox and web push. Every
+message, name and number in this repo is made up.
 
 ## Try it
 
@@ -27,6 +28,33 @@ a second. Form sources take JSON; [examples/form.html](examples/form.html) is a 
 a spam trap. A form source's URL ends in a form key. The key is public, since any visitor can
 read it in the page, so a form source is protected by its honeypot, its rate limits and the
 spam check, not by the key. Sources that must refuse strangers use basic auth or a signature.
+
+To use the board, add yourself as a user and open <http://localhost:8020>:
+
+```sh
+uv run firstcall user add you@example.com --name "Your Name" --role admin --role monitor
+uv run firstcall user password you@example.com   # asks for a password of 12 or more characters
+```
+
+## The board
+
+- **Who signs in.** Salespeople and team leads belong to teams and see their teams' pools
+  and their own leads; a team lead sees every lead in their teams. Monitors and admins see
+  the whole company, and admins also manage users.
+- **Claiming.** A new lead waits in its team's pool. The first person to press Claim gets
+  it; a teammate who pressed too late sees "Already claimed by a teammate".
+- **Urgency.** Each waiting lead shows a timer and a label: New, Waiting, Late, Very late.
+  The timer counts the team's business minutes from when the lead last entered a pool, and
+  turns Late when the team leads are alerted. Time to claim still counts from arrival.
+- **Unassigned and the Not-a-lead tray.** Leads with no team wait in Unassigned until a
+  monitor or admin places them. Vendor, support and spam messages go to the tray, where a
+  monitor or admin can rescue one that is really a lead.
+- **Alerts.** Alerts arrive as email digests, kept on the in-app Inbox page by default, and
+  as web push. An allowlist means Firstcall never emails a buyer, and push goes only to the
+  push services on the `FIRSTCALL_PUSH_HOSTS` list.
+
+[docs/board.md](docs/board.md) explains each of these, the settings, and how to run the
+pages locally.
 
 ## How good are the rules and the model?
 

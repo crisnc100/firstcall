@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+LOCAL_BASE_URL = "http://localhost:8020"
 LOCAL_DATABASE_URL = (
     "postgresql+psycopg://firstcall:firstcall@127.0.0.1:57432/firstcall"  # pragma: allowlist secret
 )
@@ -41,9 +42,43 @@ class Settings(BaseSettings):
     model_timeout_seconds: float = 8.0
     model_max_output_tokens: int = 400
     model_recordings: str = "evals/recordings"
+    session_days: int = 7
+    signin_rate_per_minute: int = 10
+    # Alerts. The inbox backend keeps email in the app; smtp sends to a mail server, which is
+    # Mailpit locally.
+    email_backend: Literal["smtp", "inbox"] = "inbox"
+    smtp_host: str = "127.0.0.1"
+    smtp_port: int = 1025
+    email_from: str = "Firstcall <alerts@firstcall.localhost>"
+    digest_seconds: int = 60
+    # A digest that fails waits digest_seconds x 2 after the first failure, doubling after
+    # each one after that, and after this many retries its alerts are marked failed.
+    email_retries: int = 3
+    # Links in alerts point here: the address people open the board at.
+    base_url: str = LOCAL_BASE_URL
+    # Web push. With no private key, push is off and email still goes out.
+    vapid_private_key: SecretStr = SecretStr("")
+    vapid_public_key: str = ""
+    vapid_subject: str = "mailto:alerts@firstcall.localhost"
+    push_retries: int = 3
+    # The push services browsers hand out endpoints on. A leading "." matches subdomains.
+    push_hosts: list[str] = [
+        "fcm.googleapis.com",
+        "updates.push.services.mozilla.com",
+        "web.push.apple.com",
+        ".notify.windows.com",
+        # Chrome's Beta, Dev and Canary channels subscribe here rather than at FCM.
+        "jmt17.google.com",
+    ]
+    # Plain-http push endpoints, for the fake push service in tests and compose only.
+    push_allow_http: bool = False
 
     @model_validator(mode="after")
     def _no_failpoints_in_beta(self) -> Settings:
         if self.env == "beta" and self.failpoint:
             raise ValueError("FIRSTCALL_FAILPOINT is refused when FIRSTCALL_ENV=beta")
+        if self.env == "beta" and self.push_allow_http:
+            raise ValueError("FIRSTCALL_PUSH_ALLOW_HTTP is refused when FIRSTCALL_ENV=beta")
+        if self.env == "beta" and self.base_url == LOCAL_BASE_URL:
+            raise ValueError("set FIRSTCALL_BASE_URL to the board's public address in beta")
         return self

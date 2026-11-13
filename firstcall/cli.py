@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 
@@ -64,36 +64,44 @@ def rotate_secret(slug: str) -> None:
 @app.command()
 def worker(until_idle: bool = typer.Option(False, help="Stop when the queue is empty.")) -> None:
     """Process stored messages."""
+    from firstcall.outbound.dispatch import Outbound
     from firstcall.pipeline.worker import model_reader, work
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
     reader = model_reader(sessions, clock, settings)
-    work(sessions, clock, settings, until_idle=until_idle, reader=reader)
+    outbound = Outbound.from_settings(sessions, clock, settings)
+    work(sessions, clock, settings, until_idle=until_idle, reader=reader, outbound=outbound)
 
 
 @app.command()
 def scheduler() -> None:
     """Run `tick` every 30 seconds."""
+    from firstcall.outbound.dispatch import Outbound
     from firstcall.pipeline.worker import model_reader, schedule
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
-    schedule(sessions, clock, settings, model_reader(sessions, clock, settings))
+    outbound = Outbound.from_settings(sessions, clock, settings)
+    schedule(sessions, clock, settings, model_reader(sessions, clock, settings), outbound)
 
 
 @app.command()
 def tick() -> None:
-    """One scheduler pass: return jobs whose lease ran out, then reread rules-path messages."""
-    from firstcall.pipeline.worker import model_reader
+    """One scheduler pass: reap expired jobs, escalate, send due alerts, then reread
+    rules-path messages."""
+    from firstcall.outbound.dispatch import Outbound
+    from firstcall.pipeline.worker import alert_tick, model_reader
     from firstcall.pipeline.worker import tick as run_tick
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
-    typer.echo(run_tick(sessions, clock, settings, model_reader(sessions, clock, settings)))
+    outbound = Outbound.from_settings(sessions, clock, settings)
+    reader = model_reader(sessions, clock, settings)
+    typer.echo(run_tick(sessions, clock, settings, reader) | alert_tick(sessions, clock, outbound))
 
 
 @app.command()
@@ -174,6 +182,80 @@ def eval_command(
         paths = write_model(evaluate_models(seed, url, run), day)
     for path in paths:
         typer.echo(f"wrote {path}")
+
+
+user_app = typer.Typer(no_args_is_help=True, help="Users and passwords.")
+app.add_typer(user_app, name="user")
+
+
+def _one_org(session: Session) -> Any:
+    from sqlalchemy import select
+
+    from firstcall.db import Org
+
+    orgs = list(session.scalars(select(Org)))
+    if len(orgs) != 1:
+        raise typer.BadParameter("these commands expect exactly one org; run `firstcall seed`")
+    return orgs[0]
+
+
+@user_app.command("add")
+def user_add(
+    email: str,
+    name: str = typer.Option(..., help="The name the board shows"),
+    role: Annotated[
+        list[str] | None, typer.Option(help="An org role: monitor or admin; repeatable")
+    ] = None,
+    team: Annotated[
+        list[str] | None, typer.Option(help="slug=salesperson or slug=team_lead; repeatable")
+    ] = None,
+) -> None:
+    """Add a user with no password. Set one with `firstcall user password`."""
+    from sqlalchemy import select
+
+    from firstcall.board import accounts
+    from firstcall.db import Team
+    from firstcall.runtime import SystemClock
+
+    with _sessions().begin() as session:
+        org = _one_org(session)
+        slugs = {t.slug: t.id for t in session.scalars(select(Team).where(Team.org_id == org.id))}
+        wanted = {}
+        for entry in team or []:
+            slug, sep, team_role = entry.partition("=")
+            if not sep:
+                raise typer.BadParameter(f"--team takes slug=role, not {entry}")
+            if slug not in slugs:
+                raise typer.BadParameter(f"no team {slug}")
+            wanted[slugs[slug]] = team_role
+        try:
+            user = accounts.create_user(session, org.id, email, name, role or [])
+            accounts.set_memberships(session, user, wanted, SystemClock())
+        except accounts.AccountError as error:
+            raise typer.BadParameter(str(error)) from error
+        typer.echo(f"added {user.email}")
+
+
+@user_app.command("password")
+def user_password(email: str) -> None:
+    """Set a user's password. It is typed at a prompt, never passed as an argument."""
+    from sqlalchemy import select
+
+    from firstcall.board import accounts
+    from firstcall.db import User
+
+    with _sessions().begin() as session:
+        org = _one_org(session)
+        address = accounts.normal_email(email)
+        user = session.scalar(select(User).where(User.org_id == org.id, User.email == address))
+        if user is None:
+            raise typer.BadParameter(f"no user {address}")
+        password = typer.prompt("New password", hide_input=True, confirmation_prompt=True)
+        try:
+            accounts.set_password(session, user, password)
+        except accounts.AccountError as error:
+            raise typer.BadParameter(str(error)) from error
+        typer.echo(f"password set for {user.email}")
 
 
 corpus_app = typer.Typer(no_args_is_help=True, help="The synthetic corpus.")

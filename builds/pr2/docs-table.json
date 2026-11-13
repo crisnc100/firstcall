@@ -1,0 +1,644 @@
+{
+ "rows": [
+  {
+   "behavior": "Sign-in, sessions, roles and the pages each role gets",
+   "files": [
+    "firstcall/board/accounts.py",
+    "firstcall/board/routes.py",
+    "firstcall/core/access.py",
+    "firstcall/db.py",
+    "firstcall/cli.py",
+    "web/src/pages/signin.ts",
+    "web/src/pages/users.ts",
+    "web/src/pages/account.ts",
+    "web/src/shell.ts",
+    "web/src/main.ts",
+    "web/src/api.ts"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "A password needs at least 12 characters",
+       "at": "firstcall/board/accounts.py:41"
+      },
+      {
+       "claim": "A user with no password cannot sign in",
+       "at": "firstcall/board/accounts.py:203"
+      },
+      {
+       "claim": "A session lasts FIRSTCALL_SESSION_DAYS days, default 7",
+       "at": "firstcall/settings.py:45"
+      },
+      {
+       "claim": "Setting a password ends the user's other sessions",
+       "at": "firstcall/board/accounts.py:115"
+      },
+      {
+       "claim": "Sign-in allows FIRSTCALL_SIGNIN_RATE_PER_MINUTE tries, default 10",
+       "at": "firstcall/settings.py:46"
+      },
+      {
+       "claim": "The sign-in limit applies per client address and per email",
+       "at": "firstcall/board/routes.py:248"
+      },
+      {
+       "claim": "Team members get Pool and My leads",
+       "at": "web/src/shell.ts:39"
+      },
+      {
+       "claim": "Monitors and admins get Unassigned, Waiting longest and the tray",
+       "at": "web/src/shell.ts:40"
+      },
+      {
+       "claim": "Admins get Users",
+       "at": "web/src/shell.ts:41"
+      },
+      {
+       "claim": "Everyone gets Inbox and Alerts on this device",
+       "at": "web/src/shell.ts:54"
+      },
+      {
+       "claim": "Admins add, edit roles and teams, set passwords and deactivate on the Users page",
+       "at": "web/src/pages/users.ts:1"
+      },
+      {
+       "claim": "Deactivating ends sessions and returns open leads to their pools",
+       "at": "firstcall/board/accounts.py:190"
+      },
+      {
+       "claim": "Removing someone from a team returns their open leads there to its pool",
+       "at": "firstcall/board/accounts.py:146"
+      }
+     ]
+    },
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "Salespeople see their teams' pools and their own leads; team leads see every lead in their teams; monitors and admins see the whole org",
+       "at": "firstcall/core/access.py:49"
+      },
+      {
+       "claim": "user add and user password create the first admin; the password is prompted",
+       "at": "firstcall/cli.py:253"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Claiming: first claim wins, members only, owner and team lead actions",
+   "files": [
+    "firstcall/board/leads.py",
+    "firstcall/core/states.py",
+    "firstcall/events.py",
+    "web/src/leadlist.ts",
+    "web/src/pages/lists.ts",
+    "web/src/pages/detail.ts",
+    "web/src/poller.ts",
+    "web/src/router.ts",
+    "web/src/dom.ts",
+    "web/src/toast.ts"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Every member of the team is alerted for a new lead",
+       "at": "firstcall/board/alerts.py:96"
+      },
+      {
+       "claim": "A lost claim reads 'Already claimed by a teammate'",
+       "at": "web/src/leadlist.ts:214"
+      },
+      {
+       "claim": "The API answers a lost claim with 'already claimed'",
+       "at": "firstcall/board/routes.py:648"
+      },
+      {
+       "claim": "Only a member of the lead's team can claim",
+       "at": "firstcall/board/leads.py:138"
+      },
+      {
+       "claim": "Claim needs a team, so Unassigned leads are placed first",
+       "at": "firstcall/core/states.py:53"
+      },
+      {
+       "claim": "The owner can release",
+       "at": "firstcall/core/states.py:54"
+      },
+      {
+       "claim": "A team lead or admin can return",
+       "at": "firstcall/core/states.py:55"
+      },
+      {
+       "claim": "A team lead or admin can move a lead to another team",
+       "at": "firstcall/core/states.py:64"
+      },
+      {
+       "claim": "Reassign goes only to an active member of the lead's team",
+       "at": "firstcall/board/leads.py:240"
+      },
+      {
+       "claim": "Lists refresh every 15 seconds while visible",
+       "at": "web/src/poller.ts:8"
+      }
+     ]
+    },
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "The first claim wins; a loser sees Already claimed by a teammate",
+       "at": "web/src/leadlist.ts:214"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Wait, urgency labels and escalation count business minutes from the current pool stay",
+   "files": [
+    "firstcall/core/hours.py",
+    "firstcall/core/escalation.py",
+    "firstcall/board/escalate.py",
+    "firstcall/seed.py",
+    "web/src/format.ts",
+    "web/src/pages/waiting.ts"
+   ],
+   "docs": [
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "Every return to a pool starts a new stay",
+       "at": "firstcall/board/leads.py:181"
+      },
+      {
+       "claim": "A rescue starts the stay at the rescue",
+       "at": "firstcall/pipeline/process.py:283"
+      },
+      {
+       "claim": "The wait counts from pool_since, or arrival",
+       "at": "firstcall/board/leads.py:277"
+      },
+      {
+       "claim": "A team wait is business minutes",
+       "at": "firstcall/board/leads.py:289"
+      },
+      {
+       "claim": "An Unassigned wait is wall-clock minutes",
+       "at": "firstcall/board/leads.py:279"
+      },
+      {
+       "claim": "Waiting from 5 minutes",
+       "at": "web/src/format.ts:71"
+      },
+      {
+       "claim": "Late at the team's first escalation level",
+       "at": "firstcall/board/leads.py:290"
+      },
+      {
+       "claim": "Very late at the team's second level",
+       "at": "firstcall/board/leads.py:291"
+      },
+      {
+       "claim": "Unassigned Late at 15",
+       "at": "firstcall/board/leads.py:281"
+      },
+      {
+       "claim": "Default minutes 15 and 60",
+       "at": "firstcall/core/escalation.py:33"
+      },
+      {
+       "claim": "Escalation counts from the stay",
+       "at": "firstcall/board/escalate.py:60"
+      },
+      {
+       "claim": "Unassigned escalation counts wall-clock minutes",
+       "at": "firstcall/core/escalation.py:84"
+      },
+      {
+       "claim": "Team config keys team_unclaimed and team_still_unclaimed",
+       "at": "firstcall/core/escalation.py:30"
+      },
+      {
+       "claim": "Team escalation minutes come from the team's config",
+       "at": "firstcall/seed.py:51"
+      },
+      {
+       "claim": "Each escalation is stored once per lead, level and stay",
+       "at": "firstcall/board/escalate.py:82"
+      },
+      {
+       "claim": "A team whose config does not read is logged and skipped",
+       "at": "firstcall/board/escalate.py:49"
+      },
+      {
+       "claim": "Time to claim is set once, at the first claim",
+       "at": "firstcall/board/leads.py:144"
+      },
+      {
+       "claim": "Time to claim counts from arrival",
+       "at": "firstcall/board/leads.py:148"
+      }
+     ]
+    },
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Labels use the escalation minutes, so Late matches escalation",
+       "at": "firstcall/board/leads.py:290"
+      },
+      {
+       "claim": "The Waiting longest page lists Late and Very late leads, then escalations",
+       "at": "web/src/pages/waiting.ts:1"
+      },
+      {
+       "claim": "The escalation log is for monitors and admins",
+       "at": "firstcall/board/routes.py:401"
+      }
+     ]
+    },
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "The timer counts business minutes from when the lead last entered a pool",
+       "at": "firstcall/board/leads.py:277"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Unassigned placement and the Not-a-lead tray rescue",
+   "files": [
+    "firstcall/board/tray.py",
+    "firstcall/pipeline/process.py",
+    "web/src/pages/tray.ts",
+    "web/src/labels.ts"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Monitors are alerted when a lead arrives in Unassigned",
+       "at": "firstcall/board/alerts.py:27"
+      },
+      {
+       "claim": "A monitor or admin places a lead",
+       "at": "firstcall/core/states.py:52"
+      },
+      {
+       "claim": "Only monitors and admins use the tray",
+       "at": "firstcall/board/tray.py:27"
+      },
+      {
+       "claim": "A rescue rereads stored bytes and the stored model answer, no new call",
+       "at": "firstcall/board/tray.py:3"
+      },
+      {
+       "claim": "A rescued message is treated as a lead",
+       "at": "firstcall/board/tray.py:50"
+      },
+      {
+       "claim": "The history records the rescue and who did it",
+       "at": "firstcall/pipeline/process.py:316"
+      }
+     ]
+    },
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "A monitor or admin can rescue, which records lead.rescued",
+       "at": "firstcall/pipeline/process.py:317"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Alerts: inbox digests, retries, the send-time access check and the allowlist",
+   "files": [
+    "firstcall/board/alerts.py",
+    "firstcall/outbound/__init__.py",
+    "firstcall/outbound/dispatch.py",
+    "firstcall/outbound/mail.py",
+    "firstcall/outbound/allowlist.py",
+    "firstcall/core/identity.py",
+    "firstcall/pipeline/worker.py",
+    "web/src/pages/inbox.ts"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Back in a pool, placed or moved alerts the new pool",
+       "at": "firstcall/board/leads.py:185"
+      },
+      {
+       "claim": "A reassigned lead alerts the new owner",
+       "at": "firstcall/board/leads.py:249"
+      },
+      {
+       "claim": "New activity alerts only the owner of an owned lead",
+       "at": "firstcall/board/alerts.py:101"
+      },
+      {
+       "claim": "Escalations alert the level's audience",
+       "at": "firstcall/board/escalate.py:90"
+      },
+      {
+       "claim": "One digest per person and team once the oldest alert has waited",
+       "at": "firstcall/outbound/dispatch.py:158"
+      },
+      {
+       "claim": "FIRSTCALL_DIGEST_SECONDS defaults to 60",
+       "at": "firstcall/settings.py:53"
+      },
+      {
+       "claim": "A failed digest waits a doubling time",
+       "at": "firstcall/outbound/dispatch.py:193"
+      },
+      {
+       "claim": "After FIRSTCALL_EMAIL_RETRIES its alerts are marked failed",
+       "at": "firstcall/outbound/dispatch.py:190"
+      },
+      {
+       "claim": "Email retries default to 3",
+       "at": "firstcall/settings.py:56"
+      },
+      {
+       "claim": "The email backend defaults to inbox",
+       "at": "firstcall/settings.py:49"
+      },
+      {
+       "claim": "smtp sends to FIRSTCALL_SMTP_HOST and PORT",
+       "at": "firstcall/outbound/dispatch.py:55"
+      },
+      {
+       "claim": "The Inbox shows only the plain-text body",
+       "at": "web/src/pages/inbox.ts:1"
+      },
+      {
+       "claim": "Inbox links are server-built lead paths",
+       "at": "firstcall/board/routes.py:622"
+      },
+      {
+       "claim": "Each push is checked against current access before sending",
+       "at": "firstcall/outbound/dispatch.py:122"
+      },
+      {
+       "claim": "Each digest line is checked against current access before sending",
+       "at": "firstcall/outbound/dispatch.py:227"
+      },
+      {
+       "claim": "The recipient must be active and able to see the lead",
+       "at": "firstcall/outbound/dispatch.py:254"
+      },
+      {
+       "claim": "Leaving a team cancels only alerts for leads the user can no longer see",
+       "at": "firstcall/board/accounts.py:168"
+      },
+      {
+       "claim": "Email goes only to an active user of the org",
+       "at": "firstcall/outbound/allowlist.py:69"
+      },
+      {
+       "claim": "A buyer's address is refused",
+       "at": "firstcall/outbound/allowlist.py:61"
+      },
+      {
+       "claim": "An address carrying a buyer's phone is refused",
+       "at": "firstcall/outbound/allowlist.py:64"
+      },
+      {
+       "claim": "Anything but one plain address is refused",
+       "at": "firstcall/outbound/allowlist.py:59"
+      },
+      {
+       "claim": "Display names and lists are refused",
+       "at": "firstcall/core/identity.py:87"
+      },
+      {
+       "claim": "Encoded words are refused",
+       "at": "firstcall/core/identity.py:72"
+      },
+      {
+       "claim": "A tray sender is not a buyer; a rescued one is",
+       "at": "firstcall/outbound/allowlist.py:4"
+      }
+     ]
+    },
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "An allowlist means Firstcall never emails a buyer",
+       "at": "firstcall/outbound/allowlist.py:61"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Web push: VAPID keys, the push host list, endpoint checks and bounded sends",
+   "files": [
+    "firstcall/outbound/push.py",
+    "firstcall/settings.py",
+    "web/public/sw.js",
+    "web/public/manifest.webmanifest",
+    "web/src/pages/alerts.ts",
+    "pyproject.toml"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Without the private key push is off",
+       "at": "firstcall/outbound/dispatch.py:60"
+      },
+      {
+       "claim": "FIRSTCALL_VAPID_PUBLIC_KEY is a setting",
+       "at": "firstcall/settings.py:61"
+      },
+      {
+       "claim": "Permission is asked only from the button",
+       "at": "web/src/pages/alerts.ts:1"
+      },
+      {
+       "claim": "On iPhone, Firstcall must be on the Home Screen first",
+       "at": "web/src/pages/alerts.ts:15"
+      },
+      {
+       "claim": "The worker pushes right after each job",
+       "at": "firstcall/pipeline/worker.py:113"
+      },
+      {
+       "claim": "The scheduler sends pushes escalation queued",
+       "at": "firstcall/pipeline/worker.py:78"
+      },
+      {
+       "claim": "A notification opens only this app's pages",
+       "at": "web/public/sw.js:27"
+      },
+      {
+       "claim": "FIRSTCALL_PUSH_HOSTS is a list setting with four defaults",
+       "at": "firstcall/settings.py:65"
+      },
+      {
+       "claim": "A leading dot matches subdomains",
+       "at": "firstcall/outbound/push.py:80"
+      },
+      {
+       "claim": "https, port 443, never an IP",
+       "at": "firstcall/outbound/push.py:58"
+      },
+      {
+       "claim": "The host must be on the list",
+       "at": "firstcall/outbound/push.py:60"
+      },
+      {
+       "claim": "Checked at subscribe",
+       "at": "firstcall/board/routes.py:503"
+      },
+      {
+       "claim": "Checked again before every send",
+       "at": "firstcall/outbound/allowlist.py:89"
+      },
+      {
+       "claim": "The send uses the rebuilt address",
+       "at": "firstcall/outbound/push.py:64"
+      },
+      {
+       "claim": "Each send waits at most 5 s and reads at most 16 KB",
+       "at": "firstcall/outbound/push.py:129"
+      },
+      {
+       "claim": "404 or 410 removes the device",
+       "at": "firstcall/outbound/dispatch.py:139"
+      },
+      {
+       "claim": "FIRSTCALL_PUSH_ALLOW_HTTP is refused in beta",
+       "at": "firstcall/settings.py:79"
+      },
+      {
+       "claim": "Alert links point at FIRSTCALL_BASE_URL",
+       "at": "firstcall/outbound/dispatch.py:64"
+      },
+      {
+       "claim": "Beta refuses the local default base URL",
+       "at": "firstcall/settings.py:81"
+      }
+     ]
+    },
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "Push goes only to the services on FIRSTCALL_PUSH_HOSTS",
+       "at": "firstcall/outbound/push.py:60"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Pages served by the api, and running them locally",
+   "files": [
+    "firstcall/api.py",
+    "web/index.html",
+    "docker-compose.yml",
+    "web/src/icons.ts",
+    "web/src/styles/app.css",
+    "web/src/styles/tokens.css"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "The image builds the pages",
+       "at": "Dockerfile:6"
+      },
+      {
+       "claim": "The built pages are copied into the app image",
+       "at": "Dockerfile:18"
+      },
+      {
+       "claim": "The api serves the pages",
+       "at": "firstcall/api.py:193"
+      },
+      {
+       "claim": "The api is at localhost:8020",
+       "at": "docker-compose.yml:36"
+      },
+      {
+       "claim": "user add takes --team slug=role",
+       "at": "firstcall/cli.py:210"
+      },
+      {
+       "claim": "north is a demo team",
+       "at": "config/demo.yaml:13"
+      },
+      {
+       "claim": "user password prompts for the password",
+       "at": "firstcall/cli.py:253"
+      },
+      {
+       "claim": "Compose sets no email backend or VAPID key, so inbox and no push",
+       "at": "docker-compose.yml:20"
+      }
+     ]
+    },
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "user add creates a user",
+       "at": "firstcall/cli.py:202"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Migrations for users, sessions, memberships, pool stays, digest retries, owned_since and inbox links",
+   "files": [
+    "migrations/versions/0005_users_claim_and_board.py",
+    "migrations/versions/0006_escalation_per_pool_stay.py",
+    "migrations/versions/0007_digest_retries.py",
+    "migrations/versions/0008_owned_since_and_inbox_links.py"
+   ],
+   "none": "schema only; the behavior they store is documented in the rows above"
+  },
+  {
+   "behavior": "Build, test and coverage tooling for the board",
+   "files": [
+    "scripts/check_coverage.py",
+    "verify.sh",
+    ".github/workflows/verify.yml",
+    "firstcall/board/__init__.py"
+   ],
+   "none": "coverage floors, the Playwright browser install and an empty package marker; README already says ./verify.sh runs every check"
+  },
+  {
+   "behavior": "Fonts for the pages",
+   "files": [
+    "web/public/fonts/OFL.txt",
+    "web/public/fonts/atkinson-next-latin-ext.woff2",
+    "web/public/fonts/atkinson-next-latin.woff2"
+   ],
+   "none": "font files and their licence; no behavior to document"
+  }
+ ]
+}

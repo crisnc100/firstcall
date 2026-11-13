@@ -12,10 +12,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from firstcall import failpoints
+from firstcall import events, failpoints
+from firstcall.board import alerts
 from firstcall.core import delivery
 from firstcall.core.clock import Clock
 from firstcall.core.identity import first_name
@@ -23,14 +24,12 @@ from firstcall.core.match import Candidate, decide, gate
 from firstcall.core.model_read import combine
 from firstcall.core.place import place, team_key
 from firstcall.core.read import AgentRef, Reading, Reference, SourceRules, UnparseableError, read
-from firstcall.core.uuid7 import uuid7
 from firstcall.db import (
     TERMINAL_STATUSES,
     Activity,
     Agent,
     Identity,
     Lead,
-    LeadEvent,
     Message,
     Source,
     Team,
@@ -138,23 +137,6 @@ def _candidates(
     ]
 
 
-def _event(
-    session: Session, lead: Lead, event_type: str, cause: str, payload: dict[str, Any], at: datetime
-) -> None:
-    last = session.scalar(select(func.max(LeadEvent.seq)).where(LeadEvent.lead_id == lead.id))
-    session.add(
-        LeadEvent(
-            id=uuid7(at),
-            org_id=lead.org_id,
-            lead_id=lead.id,
-            seq=(last or 0) + 1,
-            type=event_type,
-            payload=payload,
-            cause=cause,
-        )
-    )
-
-
 def _add_identities(session: Session, lead: Lead, keys: list[tuple[str, str]]) -> None:
     rows = session.execute(select(Identity.kind, Identity.value).where(Identity.lead_id == lead.id))
     existing = {(kind, value) for kind, value in rows}
@@ -232,6 +214,20 @@ def process(
     message.source_time = reading.source_time
     if source.kind == "email":
         message.clean_body_sha256 = delivery.clean_body_sha256(reading.text)
+    return settle(session, message, source, view, reading, clock)
+
+
+def settle(
+    session: Session,
+    message: Message,
+    source: Source,
+    view: OrgView,
+    reading: Reading,
+    clock: Clock,
+    rescued_by: uuid.UUID | None = None,
+) -> str:
+    """Place, match, gate, then create or attach, write the event and queue the alerts. A
+    rescue passes the monitor who moved the message out of the Not-a-lead tray."""
     default_team = view.team_slugs.get(source.default_team_id) if source.default_team_id else None
     placed = place(reading.item, reading.team_hint, default_team, view.item_teams, view.team_names)
     keys = identities(reading, view)
@@ -242,6 +238,7 @@ def process(
     outcome = gate(decision, reading.category)
     cause = f"message:{message.id}"
     now = clock.now()
+    rescue = {"rescued_by": str(rescued_by)} if rescued_by else {}
 
     if outcome == "not_a_lead":
         signals = ", ".join(reading.spam_signals) or "no signal"
@@ -265,7 +262,11 @@ def process(
             return message.status
         session.add(Activity(org_id=lead.org_id, lead_id=lead.id, message_id=message.id))
         _add_identities(session, lead, keys)
-        _event(session, lead, "lead.activity", cause, {"message_id": str(message.id)}, now)
+        payload = {"message_id": str(message.id), **rescue}
+        events.write(session, lead, "lead.activity", cause, payload, now)
+        if rescued_by:
+            _rescued(session, lead, message, rescued_by, now)
+        alerts.activity(session, lead, cause, now)
         message.status, message.reason = "attached", "matched a known buyer"
         return message.status
 
@@ -277,6 +278,9 @@ def process(
         state="pool",
         created_by_message_id=message.id,
         arrival_at=message.received_at,
+        # A rescue starts the pool stay now: the lead was never in a pool before, so its
+        # wait and escalation count from here, while time to claim counts from arrival.
+        pool_since=now if rescued_by else message.received_at,
         name=reading.name,
         phone=reading.phone if ("phone", reading.phone) in keys else None,
         email=reading.email if ("email", reading.email) in keys else None,
@@ -291,10 +295,23 @@ def process(
         "message_id": str(message.id),
         "team": decision.team,
         "possible_duplicates": list(decision.possible_duplicates),
+        **rescue,
     }
-    _event(session, lead, "lead.created", cause, payload, now)
+    created = events.write(session, lead, "lead.created", cause, payload, now)
+    if rescued_by:
+        # The history shows the arrival at the buyer's receipt time, then the rescue.
+        created.created_at = message.received_at
+        _rescued(session, lead, message, rescued_by, now)
+    alerts.entered_pool(session, lead, "new_lead", cause, now)
     message.lead_id = lead.id
     message.team_id = team_id
     message.status = "lead_created"
     message.reason = "new lead, possible duplicate" if decision.possible_duplicates else "new lead"
+    if rescued_by:
+        message.reason = "rescued from the Not-a-lead tray"
     return message.status
+
+
+def _rescued(session: Session, lead: Lead, message: Message, by: uuid.UUID, now: datetime) -> None:
+    payload = {"message_id": str(message.id), "by": str(by)}
+    events.write(session, lead, "lead.rescued", f"rescue:{message.id}", payload, now)

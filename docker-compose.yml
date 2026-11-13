@@ -20,6 +20,8 @@ services:
     environment: &app-environment
       FIRSTCALL_DATABASE_URL: postgresql+psycopg://firstcall:firstcall@postgres:5432/firstcall # pragma: allowlist secret (local-only credential)
       FIRSTCALL_ENV: local
+      # Links in alert email; set it to wherever the board is opened.
+      FIRSTCALL_BASE_URL: ${FIRSTCALL_BASE_URL:-http://localhost:8020}
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,6 +47,8 @@ services:
     image: firstcall-v01-app
     command: ["firstcall", "worker"]
     environment: *app-environment
+    # The alert-latency test runs a fake push service on the host.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -70,7 +74,8 @@ services:
   # Catches local email, so nothing sent in development leaves the machine.
   mailpit:
     image: axllent/mailpit:v1.27
-    ports: ["127.0.0.1:8025:8025"]
+    # 8025 is the web page and API; 1025 takes SMTP.
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 3s

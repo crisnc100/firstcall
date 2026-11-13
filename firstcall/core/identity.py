@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from email.utils import getaddresses
 
 import phonenumbers
 
@@ -65,6 +66,29 @@ def find_emails(text: str) -> list[str]:
         if local.strip(QUOTES) and TOP_LEVEL.fullmatch(domain.rsplit(".", 1)[-1]):
             found.append(address.lower())
     return found
+
+
+# Narrower than RFC 5322 on purpose: dot-separated runs of the characters every mail system
+# reads the same way. "=" and "?" would let an RFC 2047 encoded word through, which a
+# mail library decodes into a different address than the one checked.
+_ATOM = r"[A-Za-z0-9_%+-]+"
+_LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+BARE_ADDRESS = re.compile(
+    rf"(?=[^@]{{1,64}}@){_ATOM}(?:\.{_ATOM})*@(?:{_LABEL}\.){{1,9}}[A-Za-z]{{2,63}}"
+)
+
+
+def bare_address(text: str) -> str | None:
+    """One plain address, lowercased, or None for anything a mail server could read as more
+    or other: a display name, a list, a comment, quotes or angle brackets."""
+    stripped = text.strip()
+    # Parsed the way a mail library would read a To header, then held to a plain shape.
+    parsed = getaddresses([stripped])
+    if len(parsed) != 1 or parsed[0] != ("", stripped):
+        return None
+    if not BARE_ADDRESS.fullmatch(stripped):
+        return None
+    return stripped.lower()
 
 
 def email_domain(email: str) -> str:

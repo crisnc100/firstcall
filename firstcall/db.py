@@ -44,6 +44,10 @@ TERMINAL_STATUSES = (
     "failed",
 )
 LEAD_STATES = ("pool", "owned", "nurture", "won", "lost", "not_real")
+TEAM_ROLES = ("salesperson", "team_lead")
+ORG_ROLES = ("monitor", "admin")
+PUSH_STATES = ("pending", "sent", "failed", "gone")
+EMAIL_STATES = ("pending", "sent", "refused", "failed")
 # duplicate_delivery is a terminal answer, not a row: a repeat delivery stores nothing new.
 MESSAGE_STATUSES = WORKING_STATUSES + TERMINAL_STATUSES
 
@@ -82,6 +86,8 @@ class Team(Base):
     business_hours: Mapped[dict[str, Any]] = mapped_column(JSON)
     # Items of interest (listings, products) that place a message into this team.
     items: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    # Minutes per escalation level, overriding the defaults in core/escalation.py.
+    escalation: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
 class Agent(Base):
@@ -186,6 +192,15 @@ class Lead(Base):
     # Notes for the monitor, such as the reread finding that the message is not a lead.
     flags: Mapped[list[Any]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), index=True)
+    # When the lead last entered a pool. Arrival never moves; this does.
+    pool_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Time to claim, set by the first claim only: a return or reopen keeps the first figures.
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_minutes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    claim_business_minutes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    # When the current owner took the lead; claimed_at is the first claim only.
+    owned_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Identity(Base):
@@ -276,6 +291,138 @@ class BudgetLedger(Base):
     day: Mapped[date] = mapped_column(Date)
     spent_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
     calls: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class User(Base):
+    __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("org_id", "email"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    # Stored lowercased; sign-in lowercases what is typed.
+    email: Mapped[str] = mapped_column(String(320))
+    name: Mapped[str] = mapped_column(String(200))
+    # None until an admin sets a password; such a user cannot sign in.
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    # Org-wide roles: monitor, admin. Team roles live on memberships.
+    roles: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Membership(Base):
+    __tablename__ = "memberships"
+    __table_args__ = (
+        UniqueConstraint("user_id", "team_id"),
+        CheckConstraint(_in("role", TEAM_ROLES), name="membership_role"),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("teams.id"), index=True)
+    role: Mapped[str] = mapped_column(String(16))
+
+
+class UserSession(Base):
+    """A signed-in browser. The cookie holds a random token; only its hash is stored."""
+
+    __tablename__ = "user_sessions"
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    csrf_token: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Alert(Base):
+    """One alert for one user. Push goes out at once; email waits for the digest."""
+
+    __tablename__ = "alerts"
+    __table_args__ = (
+        UniqueConstraint("lead_id", "kind", "user_id", "cause"),
+        CheckConstraint(_in("email_state", EMAIL_STATES), name="alert_email_state"),
+        Index("alerts_email_pending", "email_state", "user_id"),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # The lead's team when the alert was made; None is Unassigned. Push tags and email
+    # digests group by it.
+    team_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("teams.id"))
+    kind: Mapped[str] = mapped_column(String(32))
+    cause: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    email_state: Mapped[str] = mapped_column(String(16), default="pending")
+    email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    email_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # A failed digest is not tried again before this.
+    email_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    endpoint: Mapped[str] = mapped_column(Text, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(200))
+    auth: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PushSend(Base):
+    """One alert to one device. A subscription the push service calls gone leaves its sends
+    behind with no subscription, so the record of what was tried survives."""
+
+    __tablename__ = "push_sends"
+    __table_args__ = (
+        UniqueConstraint("alert_id", "subscription_id"),
+        CheckConstraint(_in("state", PUSH_STATES), name="push_state"),
+        Index("push_sends_pending", "state"),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    alert_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("alerts.id"), index=True)
+    subscription_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("push_subscriptions.id", ondelete="SET NULL")
+    )
+    state: Mapped[str] = mapped_column(String(16), default="pending")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    last_status: Mapped[int | None] = mapped_column(Integer)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Escalation(Base):
+    """A level that fired for one stay of a lead in a pool. The unique key stops a second
+    tick sending it again; a lead that re-enters a pool starts a new stay."""
+
+    __tablename__ = "escalations"
+    __table_args__ = (UniqueConstraint("lead_id", "level", "stay"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    level: Mapped[str] = mapped_column(String(32))
+    # The lead's pool_since when the level fired: which stay it belongs to.
+    stay: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    fired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class InboxEmail(Base):
+    """The in-app inbox: where alert email lands when the email backend is the inbox."""
+
+    __tablename__ = "inbox_emails"
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    subject: Mapped[str] = mapped_column(String(300))
+    text_body: Mapped[str] = mapped_column(Text)
+    html_body: Mapped[str] = mapped_column(Text)
+    # In-app paths the page may link, built by the server; the page never links text.
+    links: Mapped[list[Any]] = mapped_column(JSON, default=list, server_default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Heartbeat(Base):

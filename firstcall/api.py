@@ -1,4 +1,4 @@
-"""The HTTP app: health, intake routes and the built web pages."""
+"""The HTTP app: health, intake routes, the board's JSON API and the built web pages."""
 
 from __future__ import annotations
 
@@ -9,13 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from starlette.concurrency import run_in_threadpool
 
+from firstcall.board.routes import board_router
 from firstcall.core.clock import Clock
 from firstcall.db import Source, make_engine, make_sessions
 from firstcall.intake import auth
@@ -187,6 +187,23 @@ def create_app(
     async def preflight_with_token(request: Request, slug: str, token: str) -> Response:
         return await preflight(request, slug)
 
+    app.include_router(board_router(settings, sessions, clock, monotonic, client_ip))
+
     if WEB_DIST.is_dir():
-        app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
+        serve_pages(app, WEB_DIST)
     return app
+
+
+def serve_pages(app: FastAPI, dist: Path) -> None:
+    """The built pages. Any path that is not a file and not an API or intake route gets
+    index.html, so a reload on a page's own address works."""
+    root = dist.resolve()
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def page(path: str) -> Response:
+        if path.split("/", 1)[0] in ("api", "intake", "healthz"):
+            return _error(404, "not found")
+        target = (root / path).resolve()
+        if path and target.is_file() and root in target.parents:
+            return FileResponse(target)
+        return FileResponse(root / "index.html", headers={"Cache-Control": "no-cache"})

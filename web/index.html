@@ -2,14 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="preload" href="/fonts/atkinson-next-latin.woff2" as="font" type="font/woff2" crossorigin />
     <title>Firstcall</title>
   </head>
   <body>
-    <main>
-      <h1>Firstcall</h1>
-      <p id="health">Checking the API…</p>
-    </main>
+    <div id="app"></div>
+    <div id="live" class="sr" aria-live="polite"></div>
+    <div id="toast" aria-live="polite"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -451,3 +451,130 @@ its model call must be logged without a message id (the log row's foreign key wo
   | Seed 11, record | $0.1155 |
   | Seed 13, record | $0.1155 |
   | **Total** | **$0.3464** |
+
+# PR2 build log
+
+## Phase 1: the backend (no pages yet)
+
+- **Dependencies.** pywebpush and Jinja2, both named in the plan's stack. pywebpush brings
+  aiohttp, cryptography, py-vapid and http-ece.
+- **Where the rules live.** `core/states.py` holds the whole transition table, PR3's rows
+  included, so F22's table test covers every row now. PR2 wires place, claim, release,
+  return, owner left, reassign and move team. `core/access.py` is the access rule,
+  `core/hours.py` business minutes, `core/escalation.py` the levels.
+- **404 or 409.** A user who cannot see a lead, or whose role has no row for the action,
+  gets 404 with the same body as a missing lead. A role that may act, on a lead it can see,
+  in the wrong state or place, gets 409. One exception: a teammate who loses a claim race
+  can no longer see the lead but gets 409 "already claimed", as F21 needs.
+- **Monitor.** Sees every lead in the org, read-only, so its escalations link somewhere. It
+  acts only on Unassigned (place) and the tray (rescue).
+- **Events.** Owner left writes `lead.returned` with reason `owner_left`. A rescue writes
+  `lead.created` (or `lead.activity` if it matches a lead) with `rescued_by`. Nurture is a
+  `lead.outcome`, resume a `lead.reopened`, a buyer writing again a `lead.activity`.
+- **Alerts.** Any lead entering a pool alerts that pool: created, placed, moved, released,
+  returned, owner left. The Unassigned pool belongs to the monitors, which covers the "on
+  arrival" escalation row. Reassign alerts the new owner. Activity alerts only the owner of
+  an owned or nurture lead.
+- **Push** goes out after each job in the worker, then on idle passes and each tick. Tag
+  `team-<slug>` or `unassigned`. A 5xx or no answer is retried on later passes, 3 retries
+  after the first try. A 404 or 410 deletes the subscription and keeps the send row.
+  Redirects are not followed.
+- **Email.** One digest per user and team once the oldest pending alert is 60 seconds old.
+  Text and HTML from Jinja2, HTML autoescaped. The subject carries at most a first name,
+  with control characters removed. Backends: SMTP (Mailpit, whose SMTP port compose now
+  publishes on localhost) and the in-app inbox, the default.
+- **Allowlist.** Email only to an active user of the org, and never to an address found on
+  any lead, identity or message, nor to one whose local part is a buyer's phone (email-to-
+  text gateways). Push only to the alert user's own device, HTTPS unless
+  `FIRSTCALL_PUSH_ALLOW_HTTP=1`, which is refused in beta.
+- **Import scan.** No module outside `firstcall/outbound/` may import a mail, push or HTTP
+  client. `firstcall/model/anthropic.py` is the one named exception: it calls the model
+  provider and addresses no person. A test pins it: its only URL is `API_URL` on
+  api.anthropic.com, and every HTTP call in it targets that constant.
+- **Escalation clocks** run from arrival. Team levels count business minutes, Unassigned
+  counts wall-clock (it has no hours). Each (lead, level) fires once ever. Teams can set
+  their own minutes in `teams.escalation`. The "owned, no real contact" row waits for PR3,
+  which builds real contacts.
+- **Sessions.** A random token in an HttpOnly, SameSite=Lax cookie (Secure outside local),
+  stored as a SHA-256, 7 days. CSRF: a per-session token in `X-CSRF-Token`; before sign-in a
+  double-submit cookie covers the sign-in post. Unknown emails are checked against a decoy
+  hash, so timing does not tell which accounts exist. Passwords need 12 characters.
+- **First admin.** `firstcall user add` and `firstcall user password` (typed at a prompt).
+- **`tick` is unchanged.** Escalation and alert sending run in a separate `alert_tick`, so
+  the scheduler and `firstcall tick` run both and no existing test changed.
+- **Alert latency (F28),** 50 rules-path leads on compose, intake commit to push request,
+  both read on the host clock: p50 0.27 s, p95 0.50 s, max 0.55 s
+  (`tests/fault/test_alert_latency.py`).
+
+## Phase 1 review fixes
+
+- **Password change** ends every session of that user's but the one making the change.
+- **Locks.** Claim and reassign share-lock the user who will own the lead, before the
+  lead; deactivating and changing teams update-lock the user first. One order, so no
+  deadlock, and a lead never ends owned by an inactive user or a non-member.
+- **Escalation per stay.** Levels count from `pool_since` and fire once per stay
+  (migration 0006 adds `escalations.stay`). Released, returned, moved and placed leads
+  escalate again from when they re-entered. Time to claim still counts from arrival.
+- **Bad team config.** Seed refuses bad hours, time zone or escalation minutes.
+  `escalate()` logs and skips a team whose config does not read.
+- **Sends never crash a process.** Each push runs in its own savepoint; any exception is a
+  failed attempt for that device. An SMTP error leaves the digest pending. Each alert step
+  in the scheduler is logged and contained. Subscribe checks the keys are a P-256 point and
+  a 16-byte secret, with `cryptography`, which pywebpush already brings.
+- **One plain address.** A user's email is stored as one bare, lowercased address. The
+  allowlist reads a recipient the way a mail library reads a To header and refuses anything
+  that is not exactly one plain address.
+- **Who is a buyer (product choice).** A buyer is an identity or contact of a lead. A
+  sender whose only message sits in the Not-a-lead tray is not one: vendor and spam senders
+  are often colleagues, and refusing them would silence a user for good over one stray
+  message. A rescue makes the sender a buyer from then on.
+- **Test leads** each get a unique name and phone; the helper asserts `lead_created`.
+
+## Phase 2: pages
+
+- **Pages** follow `builds/pr2/pages-design.md` and the comp: pool (team picker; team
+  leads also see who owns what), mine, unassigned, lead detail, waiting longest, the
+  Not-a-lead tray, inbox, users, alerts and account. Vanilla TypeScript with no framework;
+  every string goes in through `textContent`, never `innerHTML`.
+- **Urgency** uses the business-minute wait and the team's thresholds from the lead JSON.
+  Waiting longest lists the leads whose escalations fired and still stand, and a log of
+  every escalation sent (`GET /api/escalations`, monitors and admins).
+- **Serving.** The api serves `web/dist` and falls back to `index.html` for page paths,
+  so a reload on `/leads/<id>` works. API, intake and health paths never fall back.
+- **Push.** `sw.js` shows one notification per lead (tagged, so a repeat replaces it) and
+  a click opens only a same-origin path. Permission is asked from the button, never on load.
+- **Deviation.** On phones, Unassigned places a lead with an inline team select and a Place
+  button on the row, not the design's bottom panel: one tap fewer, and no focus trap.
+- **Rescue copy** says the lead is waiting in its pool, since the rescue may also place it.
+- **Hidden means hidden.** A class `display` rule beat the `hidden` attribute and left the
+  closed account menu taking clicks over the pool. F29 caught it; `[hidden]` now wins.
+- **F29** runs Chromium against an api and a worker container on their own database:
+  two salespeople claim one lead and the second is told it was taken, the monitor places
+  from Unassigned and rescues from the tray, and a `<script>` buyer name shows as text.
+  Playwright is a dev dependency; verify.sh installs Chromium, CI its system libraries.
+- verify.sh: 510 passed.
+
+## QA round and fix checks
+
+- **One stay clock.** Urgency, the page timers and escalation all count the current pool
+  stay; time to claim still counts from arrival. Waiting longest lists exactly the leads
+  whose label reads Late or Very late, so a lead placed from Unassigned starts again at New.
+  The wait is rounded down, so the label never turns before the timer's minute.
+- **Owned in a team** (`view=team`) lists owned and nurture leads only.
+- **Plain addresses** are dot-separated runs of letters, digits and `_%+-` at a domain of
+  well-formed labels. An RFC 2047 encoded word needs `=` and `?`, so it is refused at store
+  time and in the allowlist.
+- **Digest retries.** A failed digest counts on its alerts and waits `digest_seconds`,
+  doubling each time; after `email_retries` (3) its alerts are `failed` (migration 0007).
+- **Locks.** Team changes and deactivation take `FOR NO KEY UPDATE` on the user, which
+  alert inserts' key-share locks pass. `set_password` locks the user row first, and
+  `start_session` re-checks the hash and active flag under a share lock, so a sign-in that
+  checked the old password never outlives the reset.
+- **A claim under a bad team config** claims and logs; its business minutes stay empty.
+- **Base URL.** Beta refuses the local default; compose passes `FIRSTCALL_BASE_URL`.
+- **Pages.** Show sits inside the password field (`.signin .btn` had stretched it to the
+  full row). The alerts page keeps its card and says alerts aren't set up when the server
+  has no push keys. Reading mail updates the top-bar count. A lost claim moves focus to
+  the row's message, since the busy button's disable had dropped it to the body.
+- Three existing tests changed in their own commit (a32ae0e); `test_pages_qa.py` checks
+  the page fixes in Chromium on compose. verify.sh: 532 passed.
