@@ -42,7 +42,6 @@ class Settings(BaseSettings):
     model_timeout_seconds: float = 8.0
     model_max_output_tokens: int = 400
     model_recordings: str = "evals/recordings"
-    # Sign-in.
     session_days: int = 7
     signin_rate_per_minute: int = 10
     # Alerts. The inbox backend keeps email in the app; smtp sends to a mail server, which is

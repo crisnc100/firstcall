@@ -99,7 +99,8 @@ These terms are fixed. Code, tests and docs use them with exactly these meanings
   `failed` (with a reason: retries exhausted or unparseable).
 - The raw message and its job are written in one transaction, so a message never exists without a job.
 - Every message ends in a terminal status with a non-empty reason. Nothing leaves a terminal status,
-  except that a monitor can move a `not_a_lead` message into the leads ("rescue"), which records an event.
+  except that a monitor or admin can move a `not_a_lead` message into the leads ("rescue"), which
+  records a `lead.rescued` event.
 
 ## The lead
 
@@ -153,11 +154,22 @@ Any transition not in this table is refused. Every transition writes one **lead 
   arrives outside business hours starts counting at the next opening. The dashboard headline is
   business minutes; wall-clock is one click away.
 - **Returned to pool or reopened:** the first figures stand. The board shows when the lead re-entered the pool.
-- **Placed from Unassigned:** arrival stays the same, so time spent in Unassigned counts.
+- **Placed from Unassigned:** arrival stays the same, so time spent in Unassigned counts toward time to claim.
+- **Pool stay:** one spell of a lead in a pool. It starts at arrival, and again each time the lead
+  goes back into a pool: released, returned, moved, placed, sent back because its owner left, or
+  rescued from the Not-a-lead tray.
+- **Wait:** business minutes since the current pool stay started. For a lead in Unassigned, which
+  has no hours, it is wall-clock minutes.
+- **Urgency label:** what a pool lead's wait reads as. New under 5 minutes, Waiting from 5, Late
+  from the team's first escalation level, Very late from its second. In Unassigned, Late is 15
+  minutes and Very late 60. The labels use the escalation clock, so a lead turns Late when its
+  team leads are told.
 
 ## Escalation
 
-All times are business minutes of the lead's team, set per team.
+Times are business minutes of the lead's team, counted from the start of the current pool stay.
+Unassigned has no hours, so its times are wall-clock minutes. A team changes its minutes under
+`escalation` in its config, with `team_unclaimed` and `team_still_unclaimed`.
 
 | Situation | After (default) | Who is told | How |
 |---|---|---|---|
@@ -167,7 +179,10 @@ All times are business minutes of the lead's team, set per team.
 | Still in Unassigned | 15 min | Admins | Push and email |
 | Owned, no real contact | 240 min | Owner, then team leads 60 min later | Push and email |
 
-Each escalation is stored once per lead and level, so a repeated scheduler run cannot send it twice.
+Each escalation is stored once per lead, level and pool stay, so a repeated scheduler run cannot
+send it twice, and a lead that goes back into a pool can escalate again. A team whose hours or
+escalation minutes do not read is logged and skipped, and the other teams still escalate.
+The owned, no real contact level is not built yet.
 There is no automatic release: taking a lead away from a salesperson is a team lead's call.
 
 ## Cadence and follow-ups
@@ -203,7 +218,7 @@ append-only history, so a reopen never erases one.
 - **Lead event:** an append-only row written in the same transaction as the change it records. It has
   an event id (UUIDv7), the org, the lead, a per-lead sequence number, a type and a payload.
 - **Types:** `lead.created`, `lead.placed`, `lead.claimed`, `lead.released`, `lead.returned`,
-  `lead.reassigned`, `lead.moved_team`, `lead.activity`, `note.added`, `contact.logged`,
+  `lead.reassigned`, `lead.moved_team`, `lead.rescued`, `lead.activity`, `note.added`, `contact.logged`,
   `followup.created`, `followup.done`, `lead.outcome`, `lead.reopened`, `lead.deleted`.
 - The lead events table is the outbox: because each event commits with its change, a crash after
   commit loses nothing. Webhook delivery reads from it.
