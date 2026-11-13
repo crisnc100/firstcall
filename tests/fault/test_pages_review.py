@@ -106,8 +106,9 @@ def test_the_review_fixes_in_a_browser(compose_db: tuple[sessionmaker[Session], 
         _wait_for(processed, "the worker to process the messages")
         _wait_for(api_up, "the api container")
         _wait_for(lure_mailed, "the digest naming the hostile buyer")
-        # Half a minute past 5, so whole-second clock skew from the Date header cannot read 4.
-        five_ago = datetime.now(UTC) - timedelta(minutes=5, seconds=30)
+        # 25 s short of 6 minutes: the row first reads 5 min, then turns to 6 on its own
+        # within the wait below, which only a row that refreshes can show.
+        five_ago = datetime.now(UTC) - timedelta(minutes=5, seconds=35)
         long_ago = datetime.now(UTC) - timedelta(days=2)
         with sessions.begin() as session:
             lead_id = session.get_one(Message, owned).lead_id
@@ -128,14 +129,14 @@ def test_the_review_fixes_in_a_browser(compose_db: tuple[sessionmaker[Session], 
             browser = playwright.chromium.launch()
 
             one = browser.new_context(base_url=base).new_page()
-            one.clock.install(time=datetime.now(UTC))
             _sign_in(one, "one@larkspur.example")
             expect(one).not_to_have_url(SIGNIN)
             one.goto("/mine")
             row = one.locator("li.row", has=one.get_by_role("link", name="Olive Owned"))
+            # Real time, not the page clock: each poll re-reads the server's time from the
+            # Date header, which would undo a fast-forward.
             expect(row.get_by_text("Claimed 5 min ago")).to_be_visible()
-            one.clock.fast_forward("02:00")
-            expect(row.get_by_text("Claimed 7 min ago")).to_be_visible()
+            expect(row.get_by_text("Claimed 6 min ago")).to_be_visible(timeout=45_000)
 
             one.goto("/inbox")
             one.get_by_role("button", name=subject[0]).first.click()
