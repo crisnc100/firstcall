@@ -36,3 +36,11 @@ any change to a gold file that the manifest does not record.
   lean towards a favourite per team; and a hard-negative label needs an earlier, different
   lead in the same matching pool. Every seed now has at least 22 same-pool cases of each kind.
   All three seeds were regenerated, with their clean twins. Seed 13 has still never been run.
+
+## 2026-11-13
+- Added the note scripts for the note eval: `notes/seed-7` (tuning) and `notes/seed-11` (held
+  out), 150 scripts each with gold labels, and their own manifest, `notes/MANIFEST.json`. They
+  come from their own random stream, so every message, label and twin file is unchanged. The
+  note scorer (`firstcall/evaluation/note_score.py`) and ADR-007 were committed with them,
+  before any note reader code. From here the scorer changes only with an entry in this file,
+  and never once the seed-11 note run has started.

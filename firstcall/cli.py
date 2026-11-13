@@ -276,5 +276,18 @@ def corpus_generate(seed: int = typer.Option(..., help="7, 11 or 13")) -> None:
         typer.echo(f"seed {seed} {name} {digest}")
 
 
+@corpus_app.command("notes")
+def corpus_notes(seed: int = typer.Option(..., help="7 or 11")) -> None:
+    """Write evals/gold/notes/seed-N and record its hashes in the notes manifest."""
+    from firstcall.corpus.notes import NOTE_SEEDS, record_notes_seed, write_notes
+
+    if seed not in NOTE_SEEDS:
+        raise typer.BadParameter(f"seed must be one of {NOTE_SEEDS}")
+    hashes = write_notes(seed)
+    record_notes_seed(seed, hashes)
+    for name, digest in hashes.items():
+        typer.echo(f"notes seed {seed} {name} {digest}")
+
+
 if __name__ == "__main__":
     app()

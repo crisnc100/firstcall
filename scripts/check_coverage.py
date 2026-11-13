@@ -27,6 +27,7 @@ FLOORS: dict[str, float] = {
     "firstcall/core/access.py": CORE,
     "firstcall/core/hours.py": CORE,
     "firstcall/core/escalation.py": CORE,
+    "firstcall/evaluation/note_score.py": CORE,
     "firstcall/api.py": EDGE,
     "firstcall/intake/auth.py": EDGE,
     "firstcall/intake/limits.py": EDGE,

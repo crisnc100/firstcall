@@ -13,3 +13,4 @@ shows the prediction came first.
 | [ADR-004: lead events as the outbox](ADR-004-lead-events-outbox.md) | Prediction only |
 | [ADR-005: local transcription and the Whisper size](ADR-005-local-transcription.md) | Prediction only |
 | [ADR-006: the no-model fallback](ADR-006-no-model-fallback.md) | Rules-only result recorded |
+| [ADR-007: the note reader](ADR-007-note-reader.md) | Prediction only |
