@@ -93,7 +93,6 @@ h2 {
   align-items: flex-start;
 }
 
-/* shell */
 .topbar {
   position: sticky;
   top: 0;
@@ -215,7 +214,6 @@ main {
   display: none;
 }
 
-/* controls */
 .btn {
   font: inherit;
   font-weight: 600;
@@ -329,7 +327,6 @@ label {
   }
 }
 
-/* badges */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -350,7 +347,6 @@ label {
   height: 12px;
 }
 
-/* lead rows */
 ul.leads {
   list-style: none;
   margin: 0;
@@ -527,7 +523,6 @@ a.name:hover {
   margin: var(--s4) 0;
 }
 
-/* detail */
 .detail {
   display: grid;
   grid-template-columns: 1fr 280px;
@@ -643,7 +638,6 @@ dd {
   flex: none;
 }
 
-/* tables */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -676,7 +670,6 @@ tr.inactive td {
   color: var(--text-muted);
 }
 
-/* sign in */
 .signin {
   max-width: 360px;
   margin: 18vh auto 0;
@@ -691,7 +684,6 @@ tr.inactive td {
   width: 100%;
 }
 
-/* toast */
 .toast {
   position: fixed;
   right: 24px;

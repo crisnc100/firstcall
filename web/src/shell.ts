@@ -96,7 +96,6 @@ export function setTitle(title: string): void {
   if (slot) slot.textContent = title;
 }
 
-/** Draw the frame and return the main element. */
 export function frame(root: HTMLElement): HTMLElement {
   const s = session();
   if (!s) throw new Error("frame needs a session");

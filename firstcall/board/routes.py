@@ -230,8 +230,6 @@ def board_router(
         except InvalidError as invalid:
             raise HTTPException(422, str(invalid)) from invalid
 
-    # --- sign-in ----------------------------------------------------------------------
-
     @router.get("/csrf")
     def csrf(response: Response) -> dict[str, str]:
         """A token for the sign-in form, sent back both as a cookie and in the header."""
@@ -272,8 +270,6 @@ def board_router(
         with caller(request, writes=True) as (db, _):
             accounts.end_session(db, request.cookies.get(SESSION_COOKIE))
         response.delete_cookie(SESSION_COOKIE, path="/")
-
-    # --- teams and pools --------------------------------------------------------------
 
     @router.get("/teams")
     def teams(request: Request) -> list[dict[str, Any]]:
@@ -418,8 +414,6 @@ def board_router(
                 for fired, lead in rows
             ]
 
-    # --- the Not-a-lead tray ----------------------------------------------------------
-
     @router.get("/tray")
     def tray_list(request: Request) -> list[dict[str, Any]]:
         with caller(request, writes=False) as (db, who):
@@ -456,8 +450,6 @@ def board_router(
             _not_found()
         except ConflictError as conflict:
             raise HTTPException(409, str(conflict)) from conflict
-
-    # --- alerts: the in-app inbox and push devices ------------------------------------
 
     @router.get("/inbox")
     def inbox(request: Request) -> list[dict[str, Any]]:
@@ -541,8 +533,6 @@ def board_router(
             )
             if existing is not None:
                 db.delete(existing)
-
-    # --- users (admin) ----------------------------------------------------------------
 
     def admin_user(db: Session, who: Caller, user_id: uuid.UUID) -> User:
         if not who.viewer.admin:

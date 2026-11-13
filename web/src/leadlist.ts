@@ -59,7 +59,6 @@ export function leadUrgency(lead: Lead): Urgency {
   return urgency(lead.wait_business_minutes, minutesSince(stayStart(lead)), lead.thresholds);
 }
 
-/** The wait timer with its urgency word and icon. */
 export function waitTimer(lead: Lead): HTMLElement {
   const box = h("div", { class: "timer" });
   fillTimer(box, lead);
