@@ -69,6 +69,13 @@ def upgrade() -> None:
         "model_calls", sa.Column("note_id", sa.Uuid(), sa.ForeignKey("notes.id"), nullable=True)
     )
     op.add_column("followups", sa.Column("moved_at", sa.DateTime(timezone=True), nullable=True))
+    # A follow-up already moved past its first step has no record of when. The upgrade time
+    # is the safe stand-in: only contacts after it can close the newer step. A UTC date can
+    # run a day behind a team's local one east of UTC, which errs the same safe way.
+    op.execute(
+        "UPDATE followups SET moved_at = now() "
+        "WHERE state = 'open' AND due_on > (created_at AT TIME ZONE 'UTC')::date"
+    )
 
 
 def downgrade() -> None:

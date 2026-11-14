@@ -134,3 +134,51 @@ def test_the_cli_keeps_the_record_pass_then_fails_with_it_printed(
     assert "$0.020000 on the ledger" in result.output
     assert "unanswered: s1" in result.output
     assert not list(tmp_path.glob("*-notes-seed-7.json"))
+
+
+def test_a_follow_up_moved_before_the_upgrade_ignores_older_contacts() -> None:
+    from types import SimpleNamespace
+    from typing import cast
+    from uuid import uuid4
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import Session as OrmSession
+
+    from firstcall.board.followups import _meets  # pyright: ignore[reportPrivateUsage]
+    from firstcall.db import Lead
+    from tests.conftest import create_database, drop_database
+
+    name = f"firstcall_migrate_{uuid4().hex[:12]}"
+    url = create_database(name)
+    moved, first = uuid4(), uuid4()
+    try:
+        config = Config("alembic.ini")
+        config.attributes["url"] = url
+        command.upgrade(config, "0010")
+        engine = create_engine(url)
+        with engine.begin() as conn:
+            # Only the follow-ups matter; the replica role skips the foreign keys.
+            conn.execute(text("SET LOCAL session_replication_role = replica"))
+            for followup_id, due_on in ((moved, "2026-03-05"), (first, "2026-03-03")):
+                conn.execute(
+                    text("INSERT INTO followups (id, org_id, lead_id, owner_id, due_on, step, "
+                         "next_step, state, created_at) VALUES (:i, :o, :l, :u, :d, 'day 1', "
+                         "'Call.', 'open', '2026-03-03 10:00+00')"),
+                    {"i": followup_id, "o": uuid4(), "l": uuid4(), "u": uuid4(), "d": due_on},
+                )  # fmt: skip
+        command.upgrade(config, "head")
+        with OrmSession(engine) as session:
+            found = session.get_one(Followup, moved)
+            untouched = session.get_one(Followup, first)
+            assert found.moved_at is not None
+            assert untouched.moved_at is None
+            no_team = cast(Lead, SimpleNamespace(team_id=None))
+            older_note = datetime(2026, 3, 4, 15, 0, tzinfo=UTC)
+            assert not _meets(session, no_team, found, older_note)
+            assert _meets(session, no_team, found, datetime.now(UTC))
+            assert _meets(session, no_team, untouched, older_note)
+        engine.dispose()
+    finally:
+        drop_database(name)
