@@ -1,0 +1,1 @@
+{"x1":{"status":"deferred","reason":"MEDIUM: leaving a team cancelled role-based alerts. Fixed in 9a315f0 (cancel only leads the user can no longer see), reviewed as its own slice at the tip.","fix":"See 9a315f0."}}
