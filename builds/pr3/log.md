@@ -134,3 +134,27 @@ Nine MEDIUM findings, no HIGH, each with a failing test first in `tests/test_pr3
   number only by a scale the script writes. Script text is unchanged; labels regenerated;
   manifest, gold CHANGELOG and ADR-007 updated. No note reader or model run exists yet.
 - verify.sh: 767 passed, every floor met.
+
+## Phase 4: pages
+
+Plain, logic first; the redesign comes later. Every buyer and note string goes in with
+textContent.
+- **Lead page** (`web/src/pages/work.ts`, wired into `detail.ts`): the time to first contact
+  in business and clock minutes; the open follow-up (due or overdue since, and its next-step
+  line); the notes, each with the contacts it logged; a note form whose "This note records"
+  select (Called, Texted, Emailed, Met) appears only when the viewer may log a contact; the
+  buyer profile and an editor that sends only the fields the person changed, so the rest stay
+  open to the model.
+- **Actions column**, under More actions: Mark won, Mark lost (reason, other text,
+  competitor), Mark not real, Move to nurture, Resume, Reopen, and for admins Delete lead,
+  behind a second confirm, which goes back to the list. Each shows only when the lead's
+  `work` list allows it.
+- **History** reads the new events as sentences (note added, contact logged, outcome with
+  reason, reopened and why, follow-up due, done and closed).
+- **Lists**: a follow-up due or overdue badge, beside the possible-duplicate badge.
+- **Test**: `tests/fault/test_pages_notes.py` on compose in Chromium. The owner claims, adds a
+  note logging a call and sees the contact badge, the first-contact line and the history
+  line; a note holding a script tag shows as text and never runs; the owner marks it lost
+  for timing; the team lead reopens it to its owner; the admin deletes it and leaves the
+  page, and the row is a scrubbed tombstone.
+- verify.sh: 768 passed, every floor met.

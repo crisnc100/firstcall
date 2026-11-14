@@ -186,14 +186,17 @@ export class LeadList {
           stateBadge(lead.state),
           h("span", { class: "meta num owned-since", text: ownedText(lead) }),
         );
-    const notices = lead.possible_duplicates.length
-      ? h("span", { class: "badge" }, icon("copy"), "Possible duplicate")
-      : null;
+    const notices: HTMLElement[] = [];
+    if (lead.possible_duplicates.length) notices.push(h("span", { class: "badge" }, icon("copy"), "Possible duplicate"));
+    if (lead.followup) {
+      const due = lead.followup.overdue ? `Follow-up overdue since ${lead.followup.due_on}` : `Follow-up due ${lead.followup.due_on}`;
+      notices.push(h("span", { class: "badge", text: due }));
+    }
     const who = h(
       "div",
       { class: "who" },
       leadName(lead, `/leads/${lead.id}?from=${from}`),
-      h("div", { class: "meta" }, lead.item ?? "No details yet", notices ? " " : null, notices),
+      h("div", { class: "meta" }, lead.item ?? "No details yet", ...notices.flatMap((badge) => [" ", badge])),
     );
     const where = h("div", { class: "where meta num" }, ...this.whereParts(lead));
     const act = h("div", { class: "act" });

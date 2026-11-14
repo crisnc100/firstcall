@@ -260,7 +260,8 @@ main {
   min-width: 104px;
 }
 input,
-select {
+select,
+textarea {
   font: inherit;
   font-size: var(--text-md);
   min-height: 44px;
@@ -594,6 +595,25 @@ dd {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
+}
+textarea {
+  padding: var(--s2) var(--s3);
+  resize: vertical;
+}
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: var(--s3) 0 var(--s4);
+}
+.notes {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--s3);
+}
+.notes li {
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--border);
 }
 .history {
   list-style: none;
