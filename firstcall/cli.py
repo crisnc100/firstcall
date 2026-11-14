@@ -205,10 +205,12 @@ def eval_notes_command(
     from decimal import Decimal
 
     from firstcall.evaluation.note_eval import (
+        IncompleteRecordingError,
         NoteRun,
         evaluate_notes,
         record_and_report,
         write_notes,
+        write_record_pass,
     )
     from firstcall.settings import Settings
 
@@ -230,16 +232,24 @@ def eval_notes_command(
         for note_id, kinds in read_unit_notes(url, run).items():
             typer.echo(f"{note_id}: {', '.join(kinds) or 'no suggestion'}")
         return
+    day = date or datetime.now(UTC).date().isoformat()
     if mode == "record":
-        report = record_and_report(seed, url, run, limit or None)
-        paid = report["record_pass"]
-        typer.echo(
-            f"recorded seed {seed}: {paid['calls']} calls ({paid['failed']} failed), "
-            f"${paid['ledger_usd']} on the ledger"
-        )
+
+        def keep(paid: dict[str, Any]) -> None:
+            path = write_record_pass(paid, seed, day)
+            typer.echo(
+                f"recorded seed {seed}: {paid['calls']} calls ({paid['failed']} failed), "
+                f"${paid['ledger_usd']} on the ledger; wrote {path}"
+            )
+
+        try:
+            report = record_and_report(seed, url, run, limit or None, on_recorded=keep)
+        except IncompleteRecordingError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
     else:
         report = evaluate_notes(seed, url, run, limit or None)
-    for path in write_notes(report, date or datetime.now(UTC).date().isoformat()):
+    for path in write_notes(report, day):
         typer.echo(f"wrote {path}")
 
 

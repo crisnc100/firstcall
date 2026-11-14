@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
@@ -25,7 +26,7 @@ from firstcall.db import BudgetLedger, ModelCall
 from firstcall.evaluation.note_score import all_met, baselines, floors, score, score_part
 from firstcall.evaluation.report import REPORTS
 from firstcall.evaluation.run import REPO_ROOT, FixedClock, throwaway_database
-from firstcall.model.gateway import Gateway, GatewayConfig
+from firstcall.model.gateway import Gateway, GatewayConfig, ReplayMissError
 from firstcall.model.prices import Price
 from firstcall.model.prompts import READ_NOTE, SYSTEM_PROMPTS
 from firstcall.model.recordings import Recordings
@@ -144,16 +145,51 @@ def evaluate_notes(
     }
 
 
+class IncompleteRecordingError(Exception):
+    """Recording left scripts unanswered, so the replay could not score them. Carries the
+    record pass's summary, since its calls were paid for either way."""
+
+    def __init__(self, record_pass: dict[str, Any], cause: str) -> None:
+        self.record_pass = record_pass
+        paid = record_pass
+        super().__init__(
+            f"recording is incomplete ({cause}); record pass: {paid['calls']} calls, "
+            f"{paid['failed']} failed attempts, ${paid['cost_usd']} logged, "
+            f"${paid['ledger_usd']} on the ledger; unanswered: "
+            f"{', '.join(paid['unanswered']) or 'none'}"
+        )
+
+
 def record_and_report(
-    seed: int, server_url: str, run: NoteRun, limit: int | None = None
+    seed: int,
+    server_url: str,
+    run: NoteRun,
+    limit: int | None = None,
+    on_recorded: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """The paid path: record every answer, then score from the recordings in replay mode.
     The report keeps the record pass's calls, failed attempts and ledger spend, which the
-    replay cannot know."""
+    replay cannot know. `on_recorded` gets that summary before the replay starts, so it is
+    kept even when the replay fails."""
     recorded = evaluate_notes(seed, server_url, run, limit)
-    report = evaluate_notes(seed, server_url, replace(run, mode="replay"), limit)
-    report["record_pass"] = {**recorded["calls"], "unanswered": recorded["unanswered"]}
+    record_pass = {**recorded["calls"], "unanswered": recorded["unanswered"]}
+    if on_recorded is not None:
+        on_recorded(record_pass)
+    try:
+        report = evaluate_notes(seed, server_url, replace(run, mode="replay"), limit)
+    except ReplayMissError as error:
+        raise IncompleteRecordingError(record_pass, str(error)) from error
+    report["record_pass"] = record_pass
     return report
+
+
+def write_record_pass(
+    record_pass: dict[str, Any], seed: int, date: str, root: Path = REPORTS
+) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / f"{date}-notes-seed-{seed}-record-pass.json"
+    path.write_text(json.dumps(record_pass, indent=2, sort_keys=True) + "\n")
+    return path
 
 
 UNIT_NOTES = REPO_ROOT / "evals" / "gold" / "unit-notes.jsonl"

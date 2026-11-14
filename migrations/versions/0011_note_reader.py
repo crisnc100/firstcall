@@ -68,9 +68,11 @@ def upgrade() -> None:
     op.add_column(
         "model_calls", sa.Column("note_id", sa.Uuid(), sa.ForeignKey("notes.id"), nullable=True)
     )
+    op.add_column("followups", sa.Column("moved_at", sa.DateTime(timezone=True), nullable=True))
 
 
 def downgrade() -> None:
+    op.drop_column("followups", "moved_at")
     op.drop_column("model_calls", "note_id")
     op.drop_constraint("job_subject", "jobs", type_="check")
     op.drop_constraint("jobs_note_id_kind_key", "jobs", type_="unique")

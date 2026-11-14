@@ -583,6 +583,8 @@ class Followup(Base):
     next_step: Mapped[str] = mapped_column(Text)
     state: Mapped[str] = mapped_column(String(16), default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # When a nightly run last moved it to a newer step; null while it is on its first.
+    moved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

@@ -137,12 +137,17 @@ function sentence(
 export function detailPage(main: HTMLElement, params: Record<string, string>): Cleanup {
   const from = new URLSearchParams(window.location.search).get("from") ?? "pool";
   let stopped = false;
+  // Every load and poll takes the next number, and only the newest may draw: an answer that
+  // comes back after a newer one has started is dropped.
+  let latest = 0;
   const load = async (): Promise<void> => {
+    const mine = ++latest;
+    window.clearTimeout(timer);
     let lead: LeadDetail;
     try {
       lead = await api<LeadDetail>("GET", `/leads/${params.id}`);
     } catch (error) {
-      if (stopped) return;
+      if (stopped || mine !== latest) return;
       if (error instanceof ApiError && error.status === 404) {
         setTitle("Lead not available");
         main.replaceChildren(
@@ -156,19 +161,36 @@ export function detailPage(main: HTMLElement, params: Record<string, string>): C
       return;
     }
     const teams = await allTeams().catch(() => [] as Team[]);
-    if (stopped) return;
-    await draw(main, lead, teams, from, load);
+    if (stopped || mine !== latest) return;
+    if (!(await draw(main, lead, teams, from, load, () => !stopped && mine === latest))) return;
+    drawn = controls();
     watch(lead, teams);
   };
 
   // While a note waits for the model, look again every poll. The page is redrawn only when a
-  // note's read has changed and nothing is being typed, so no unsaved input is lost.
+  // note's read has changed and nothing is being edited, so no unsaved input is lost.
   let timer = 0;
+  let drawn = new Map<Element, string>();
   const reads = (lead: LeadDetail): string =>
     JSON.stringify((lead.notes ?? []).map((n) => [n.id, n.read_state, n.suggestions.length]));
-  const typing = (): boolean => {
-    const text = main.querySelector<HTMLTextAreaElement>("#note-text");
-    return Boolean(text?.value.trim()) || main.querySelector(".panel") !== null;
+  // Each form control's state as drawn. A value set by code (a profile field filled in, a
+  // select set to the saved choice) is part of the drawn state, not an edit.
+  const controls = (): Map<Element, string> => {
+    const found = new Map<Element, string>();
+    for (const field of main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input, textarea, select")) {
+      const checkable = field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio");
+      found.set(field, checkable ? String(field.checked) : field.value);
+    }
+    return found;
+  };
+  const editing = (): boolean => {
+    if (main.querySelector(".panel")) return true;
+    const active = document.activeElement;
+    if (active && main.contains(active) && active.matches("input, textarea, select")) return true;
+    const now = controls();
+    if (now.size !== drawn.size) return true;
+    for (const [field, value] of now) if (drawn.get(field) !== value) return true;
+    return false;
   };
   const watch = (lead: LeadDetail, teams: Team[]): void => {
     window.clearTimeout(timer);
@@ -176,12 +198,18 @@ export function detailPage(main: HTMLElement, params: Record<string, string>): C
     if (!waiting || stopped) return;
     timer = window.setTimeout(() => {
       void (async () => {
+        const mine = ++latest;
         const fresh = await api<LeadDetail>("GET", `/leads/${params.id}`).catch(() => null);
-        if (stopped) return;
-        if (fresh && reads(fresh) !== reads(lead) && !typing()) {
-          await draw(main, fresh, teams, from, load);
-          watch(fresh, teams);
-          return;
+        // A newer load owns the page now, and it keeps the polling going.
+        if (stopped || mine !== latest) return;
+        if (fresh && reads(fresh) !== reads(lead) && !editing()) {
+          // Drawing waits on the team's member list; anything typed meanwhile still wins.
+          if (await draw(main, fresh, teams, from, load, () => !stopped && mine === latest && !editing())) {
+            drawn = controls();
+            watch(fresh, teams);
+            return;
+          }
+          if (stopped || mine !== latest) return;
         }
         watch(lead, teams);
       })();
@@ -200,7 +228,8 @@ async function draw(
   teams: Team[],
   from: string,
   reload: () => Promise<void>,
-): Promise<void> {
+  still: () => boolean,
+): Promise<boolean> {
   const s = session();
   const names = new Map<string, string>(Object.entries(lead.people ?? {}));
   if (s) names.set(s.user.id, s.user.name);
@@ -209,6 +238,7 @@ async function draw(
   if (lead.team && (lead.actions.includes("reassign") || s?.user.roles.includes("admin"))) {
     members = await api<{ id: string; name: string }[]>("GET", `/teams/${lead.team.id}/members`).catch(() => []);
   }
+  if (!still()) return false;
   for (const member of members) names.set(member.id, member.name);
 
   const teamName = lead.team?.name ?? "Unassigned";
@@ -291,6 +321,7 @@ async function draw(
   const column = h("div", {}, ...header, ...notices, facts, ...work, ...messages, h("h2", { text: "History" }), history);
   const actions = actionColumn(lead, teams, members, reload, from);
   main.replaceChildren(h("div", { class: actions ? "detail" : "" }, column, actions));
+  return true;
 }
 
 function actionColumn(
