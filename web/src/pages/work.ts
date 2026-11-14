@@ -254,7 +254,7 @@ function profileEditor(lead: LeadDetail, reload: () => Promise<void>): HTMLEleme
     const [timelineLabel, timeline] = input("timeline", "Timeline, in words", profile?.timeline_text);
     const [monthLabel, month] = input("month", "Timeline month", profile?.timeline_month, "month");
     // A textarea: the model writes one line per note, and a single-line input would drop
-    // the line breaks and so send Notes as changed with every edit.
+    // the line breaks.
     const notes = h("textarea", { attrs: { id: "profile-notes", rows: "3" } });
     notes.value = profile?.notes ?? "";
     const notesLabel = h("label", { text: "Notes", attrs: { for: "profile-notes" } });
@@ -269,27 +269,27 @@ function profileEditor(lead: LeadDetail, reload: () => Promise<void>): HTMLEleme
       h("div", { class: "row-buttons" }, save),
       status,
     );
+    // A field is sent only when the person changed its control. Comparing with the profile
+    // instead would send any value a control cannot hold as drawn, such as a line break in
+    // a single-line input, and mark it person-set.
+    const whole = (text: string): number | null => (text.trim() === "" ? null : Number(text));
+    const controls: [string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, (text: string) => unknown][] = [
+      ["budget_text", budget, (text) => text],
+      ["budget_min", min, whole],
+      ["budget_max", max, whole],
+      ["authority", who, (text) => text],
+      ["authority_others", others, (text) => text],
+      ["need", need, (text) => text],
+      ["timeline_text", timeline, (text) => text],
+      ["timeline_month", month, (text) => text || null],
+      ["notes", notes, (text) => text],
+    ];
+    const drawn = new Map(controls.map(([, control]) => [control, control.value]));
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      const whole = (text: string): number | null => (text.trim() === "" ? null : Number(text));
-      const wanted: Record<string, unknown> = {
-        budget_text: budget.value,
-        budget_min: whole(min.value),
-        budget_max: whole(max.value),
-        authority: who.value,
-        authority_others: others.value,
-        need: need.value,
-        timeline_text: timeline.value,
-        timeline_month: month.value || null,
-        notes: notes.value,
-      };
-      // Only fields the person changed are sent, so the rest stay open to the model.
-      const before: Record<string, unknown> = { ...(profile ?? {}) };
       const changes: Record<string, unknown> = {};
-      for (const [name, next] of Object.entries(wanted)) {
-        const old = before[name] ?? (name === "authority" ? "unknown" : null);
-        const empty = next === "" ? null : next;
-        if (empty !== old) changes[name] = next;
+      for (const [name, control, read] of controls) {
+        if (control.value !== drawn.get(control)) changes[name] = read(control.value);
       }
       void attempt(save, "Saving…", "Save profile", status, () => api("PUT", `/leads/${lead.id}/profile`, changes), "Profile saved.", "save the profile", reload);
     });

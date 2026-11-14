@@ -1,6 +1,7 @@
 """The page fixes from the phases 5-6 fix check, in a real browser on compose: a refresh
-never wipes a picked "Called", and a poll answer that arrives after a newer save is dropped
-without stopping the polling."""
+never wipes a picked "Called", a poll answer that arrives after a newer save is dropped
+without stopping the polling, and saving one profile field leaves a two-line model field
+alone."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board import accounts
-from firstcall.db import Lead, Message, Note, Team
+from firstcall.db import Lead, LeadProfile, Message, Note, Team
 from firstcall.seed import seed
 from tests.conftest import FakeClock
 from tests.fault.test_pages import PASSWORD, _free_port, _store, _wait_for
@@ -146,6 +147,77 @@ def test_a_refresh_keeps_a_picked_action_and_drops_a_stale_poll(
             _wait_for(lambda: waiting(THIRD), "the third note to wait")
             _set_read(sessions, THIRD, "Sent the plans.")
             expect(page.get_by_text("Tidied: Sent the plans.")).to_be_visible(timeout=POLL_WAIT_MS)
+            browser.close()
+    finally:
+        for name in names:
+            subprocess.run(["docker", "stop", name], capture_output=True, timeout=60)
+
+
+def test_editing_the_budget_leaves_a_two_line_model_need_alone(
+    compose_db: tuple[sessionmaker[Session], str],
+) -> None:
+    sessions, container_url = compose_db
+    seed(sessions)
+    with sessions.begin() as session:
+        north = session.scalars(select(Team).where(Team.slug == "north")).one()
+        owner = accounts.create_user(
+            session, north.org_id, "owner@larkspur.example", "Owner", [], PASSWORD
+        )
+        accounts.set_memberships(session, owner, {north.id: "salesperson"}, FakeClock())
+        owner_id = owner.id
+    stored = _store(sessions, {"name": "Dana Draft", "listing": "Alder Ridge"})
+
+    run = uuid.uuid4().hex[:8]
+    port = _free_port()
+    base = f"http://127.0.0.1:{port}"
+    names = [f"firstcall-need-worker-{run}", f"firstcall-need-api-{run}"]
+    _run(names[0], container_url, "worker", ["worker"], {})
+    _run(names[1], container_url, "api", ["api", "--host", ALL_INTERFACES, "--port", "8000"],
+         {}, port=port)  # fmt: skip
+    need = "three bedrooms\na garage"
+    try:
+
+        def processed() -> bool:
+            with sessions() as session:
+                return session.get_one(Message, stored).status == "lead_created"
+
+        def api_up() -> bool:
+            try:
+                return httpx.get(f"{base}/healthz", timeout=2).status_code == 200
+            except httpx.HTTPError:
+                return False
+
+        _wait_for(processed, "the worker to process the message")
+        _wait_for(api_up, "the api container")
+        now = datetime.now(UTC)
+        with sessions.begin() as session:
+            lead = session.get_one(Lead, session.get_one(Message, stored).lead_id)
+            lead_id = lead.id
+            session.execute(
+                update(Lead)
+                .where(Lead.id == lead_id)
+                .values(state="owned", owner_id=owner_id, pool_since=None, claimed_at=now)
+            )
+            session.add(
+                LeadProfile(id=uuid.uuid4(), org_id=lead.org_id, lead_id=lead_id,
+                            authority="unknown", need=need, person_fields=[],
+                            model_from={"need": now.isoformat()}, updated_at=now)
+            )  # fmt: skip
+
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch()
+            page = browser.new_context(base_url=base).new_page()
+            _signed_in(page, "owner@larkspur.example")
+            page.goto(f"/leads/{lead_id}")
+            page.get_by_role("button", name="Edit profile").click()
+            page.get_by_label("Budget, in words").fill("about $500k")
+            page.get_by_role("button", name="Save profile").click()
+            expect(page.get_by_text("Profile saved.").first).to_be_visible()
+            with sessions() as session:
+                profile = session.scalars(select(LeadProfile)).one()
+                assert profile.person_fields == ["budget_text"]
+                assert profile.budget_text == "about $500k"
+                assert profile.need == need
             browser.close()
     finally:
         for name in names:
