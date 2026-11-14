@@ -16,7 +16,7 @@ from typing import Literal
 
 from firstcall.core.hours import Hours, business_minutes, wall_minutes
 
-Audience = Literal["team_leads", "admins_and_monitors", "admins"]
+Audience = Literal["team_leads", "admins_and_monitors", "admins", "owner"]
 
 
 @dataclass(frozen=True)
@@ -38,11 +38,18 @@ AUDIENCES: Mapping[str, Audience] = {
 }
 
 
+# An owned lead with no real contact: its owner is told first, then the team leads. These
+# count business minutes from the start of the lead's uncontacted stretch.
+CONTACT_OWNER = "contact_owner"
+CONTACT_TEAM_LEADS = "contact_team_leads"
+CONTACT_DEFAULTS: Mapping[str, float] = {CONTACT_OWNER: 240, CONTACT_TEAM_LEADS: 300}
+
+
 def overrides_from(config: Mapping[str, object]) -> dict[str, float]:
     """A team's escalation minutes, checked: known level names and positive numbers only."""
     found: dict[str, float] = {}
     for name, value in config.items():
-        if name not in DEFAULTS:
+        if name not in DEFAULTS and name not in CONTACT_DEFAULTS:
             raise ValueError(f"unknown escalation level {name}")
         if isinstance(value, bool) or not isinstance(value, int | float) or value <= 0:
             raise ValueError(f"escalation minutes for {name} must be a positive number")
@@ -86,3 +93,31 @@ def due(
         if waited >= level.minutes:
             found.append(level)
     return found
+
+
+def contact_levels(overrides: Mapping[str, float] | None = None) -> tuple[Level, ...]:
+    minutes = {**CONTACT_DEFAULTS, **(overrides or {})}
+    return (
+        Level(CONTACT_OWNER, minutes[CONTACT_OWNER], "owner", True),
+        Level(CONTACT_TEAM_LEADS, minutes[CONTACT_TEAM_LEADS], "team_leads", True),
+    )
+
+
+def contact_due(
+    state: str,
+    since: datetime | None,
+    now: datetime,
+    hours: Hours,
+    fired: frozenset[str],
+    overrides: Mapping[str, float] | None = None,
+) -> list[Level]:
+    """Contact levels whose time has come in this uncontacted stretch. Only an owned lead
+    is watched: nurture is a slow rhythm by choice, and a contact ends the stretch."""
+    if state != "owned" or since is None:
+        return []
+    waited = business_minutes(since, now, hours)
+    return [
+        level
+        for level in contact_levels(overrides)
+        if level.name not in fired and waited >= level.minutes
+    ]

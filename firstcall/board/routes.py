@@ -16,26 +16,33 @@ import uuid
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 from typing import Any, NoReturn
 
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import APIRouter, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from firstcall.board import accounts, leads, tray
+from firstcall.board import accounts, delete, leads, notes, tray
 from firstcall.board.leads import ConflictError, InvalidError, NotFoundError
+from firstcall.core import escalation
 from firstcall.core.access import Viewer, can_see_team
 from firstcall.core.clock import Clock
+from firstcall.core.outcomes import may_read_notes
 from firstcall.core.read import Reference, UnparseableError, read
 from firstcall.db import (
+    Contact,
     Escalation,
     InboxEmail,
     Lead,
     LeadEvent,
     Membership,
     Message,
+    Note,
+    Outcome,
     PushSubscription,
     Source,
     Team,
@@ -66,6 +73,30 @@ class ToUser(BaseModel):
 
 class ToTeam(BaseModel):
     team_id: uuid.UUID
+
+
+class NewNote(BaseModel):
+    text: str = Field(max_length=5000)
+    action: str | None = None
+
+
+class SetOutcome(BaseModel):
+    outcome: str
+    reason: str | None = None
+    reason_text: str | None = Field(default=None, max_length=1000)
+    competitor: str | None = Field(default=None, max_length=200)
+
+
+class ProfileChange(BaseModel):
+    budget_text: str | None = Field(default=None, max_length=1000)
+    budget_min: StrictInt | None = None
+    budget_max: StrictInt | None = None
+    authority: str | None = None
+    authority_others: str | None = Field(default=None, max_length=1000)
+    need: str | None = Field(default=None, max_length=2000)
+    timeline_text: str | None = Field(default=None, max_length=1000)
+    timeline_month: str | None = Field(default=None, max_length=7)
+    notes: str | None = Field(default=None, max_length=5000)
 
 
 class PushKeys(BaseModel):
@@ -184,10 +215,71 @@ def board_router(
             "claim_business_minutes": float(lead.claim_business_minutes)
             if lead.claim_business_minutes is not None
             else None,
+            "first_contact_at": iso(lead.first_contact_at),
+            "first_contact_minutes": number(lead.first_contact_minutes),
+            "first_contact_business_minutes": number(lead.first_contact_business_minutes),
+            "uncontacted_since": iso(lead.uncontacted_since),
             "possible_duplicates": list(lead.possible_duplicates),
             "flags": list(lead.flags),
             "actions": leads.allowed_actions(viewer, lead),
+            "work": leads.work_actions(viewer, lead),
             **leads.urgency(lead, team, clock.now()),
+        }
+
+    def follow_through(db: Session, lead: Lead, viewer: Viewer) -> dict[str, Any]:
+        """Notes, contacts, the profile and outcomes, for the lead's team and admins only.
+        A monitor gets none of them, not even empty lists."""
+        if not may_read_notes(viewer, leads.ref(lead)):
+            return {}
+        names = dict(db.execute(select(User.id, User.name).where(User.org_id == lead.org_id)).all())
+        found_notes = db.scalars(
+            select(Note).where(Note.lead_id == lead.id).order_by(Note.created_at, Note.id)
+        )
+        found_contacts = db.scalars(
+            select(Contact).where(Contact.lead_id == lead.id).order_by(Contact.at, Contact.id)
+        )
+        found_outcomes = db.scalars(
+            select(Outcome).where(Outcome.lead_id == lead.id).order_by(Outcome.at, Outcome.id)
+        )
+        row = notes.profile(db, lead)
+        return {
+            "notes": [
+                {
+                    "id": str(n.id),
+                    "text": n.text,
+                    "author": names.get(n.author_id),
+                    "created_at": n.created_at.isoformat(),
+                }
+                for n in found_notes
+            ],
+            "contacts": [
+                {
+                    "id": str(c.id),
+                    "note_id": str(c.note_id),
+                    "kind": c.kind,
+                    "made_by": names.get(c.made_by),
+                    "source": c.source,
+                    "at": c.at.isoformat(),
+                }
+                for c in found_contacts
+            ],
+            "profile": None
+            if row is None
+            else {
+                **{name: getattr(row, name) for name in notes.PROFILE_FIELDS},
+                "person_fields": list(row.person_fields),
+            },
+            "outcomes": [
+                {
+                    "outcome": o.outcome,
+                    "reason": o.reason,
+                    "reason_text": o.reason_text,
+                    "competitor": o.competitor,
+                    "by": names.get(o.by),
+                    "at": o.at.isoformat(),
+                }
+                for o in found_outcomes
+            ],
         }
 
     def message_text(db: Session, message: Message) -> str:
@@ -302,7 +394,7 @@ def board_router(
     ) -> list[dict[str, Any]]:
         with caller(request, writes=False) as (db, who):
             viewer = who.viewer
-            query = select(Lead).where(Lead.org_id == who.user.org_id)
+            query = select(Lead).where(Lead.org_id == who.user.org_id, Lead.deleted_at.is_(None))
             if view == "mine":
                 query = query.where(
                     Lead.owner_id == who.user.id, Lead.state.in_(("owned", "nurture"))
@@ -353,6 +445,7 @@ def board_router(
                     for e in history
                 ],
                 "people": people_named(db, who.user.org_id, history),
+                **follow_through(db, lead, who.viewer),
             }
 
     @router.post("/leads/{lead_id}/claim")
@@ -389,6 +482,76 @@ def board_router(
             request, lambda db, who: leads.place(db, who.viewer, lead_id, body.team_id, clock)
         )
 
+    @router.post("/leads/{lead_id}/notes", status_code=201)
+    def add_note(request: Request, lead_id: uuid.UUID, body: NewNote) -> dict[str, Any]:
+        try:
+            with caller(request, writes=True) as (db, who):
+                added = notes.add_note(db, who.viewer, lead_id, body.text, body.action, clock)
+                lead = db.get_one(Lead, lead_id)
+                return {
+                    "note_id": str(added.note_id),
+                    "contact_id": str(added.contact_id) if added.contact_id else None,
+                    "lead": lead_json(db, lead, who.viewer),
+                }
+        except NotFoundError:
+            _not_found()
+        except InvalidError as invalid:
+            raise HTTPException(422, str(invalid)) from invalid
+
+    @router.put("/leads/{lead_id}/profile")
+    def edit_profile(request: Request, lead_id: uuid.UUID, body: ProfileChange) -> dict[str, Any]:
+        try:
+            with caller(request, writes=True) as (db, who):
+                changes = body.model_dump(exclude_unset=True)
+                row = notes.edit_profile(db, who.viewer, lead_id, changes, clock)
+                return {
+                    **{name: getattr(row, name) for name in notes.PROFILE_FIELDS},
+                    "person_fields": list(row.person_fields),
+                }
+        except NotFoundError:
+            _not_found()
+        except InvalidError as invalid:
+            raise HTTPException(422, str(invalid)) from invalid
+
+    @router.post("/leads/{lead_id}/outcome")
+    def set_outcome(request: Request, lead_id: uuid.UUID, body: SetOutcome) -> dict[str, Any]:
+        return lead_action(
+            request,
+            lambda db, who: leads.set_outcome(
+                db,
+                who.viewer,
+                lead_id,
+                body.outcome,
+                body.reason,
+                body.reason_text,
+                body.competitor,
+                clock,
+            ),
+        )
+
+    @router.post("/leads/{lead_id}/nurture")
+    def set_nurture(request: Request, lead_id: uuid.UUID) -> dict[str, Any]:
+        return lead_action(
+            request, lambda db, who: leads.set_nurture(db, who.viewer, lead_id, clock)
+        )
+
+    @router.post("/leads/{lead_id}/resume")
+    def resume(request: Request, lead_id: uuid.UUID) -> dict[str, Any]:
+        return lead_action(request, lambda db, who: leads.resume(db, who.viewer, lead_id, clock))
+
+    @router.post("/leads/{lead_id}/reopen")
+    def reopen(request: Request, lead_id: uuid.UUID) -> dict[str, Any]:
+        return lead_action(request, lambda db, who: leads.reopen(db, who.viewer, lead_id, clock))
+
+    @router.delete("/leads/{lead_id}", status_code=204)
+    def delete_lead(request: Request, lead_id: uuid.UUID) -> Response:
+        try:
+            with caller(request, writes=True) as (db, who):
+                delete.delete_lead(db, who.viewer, lead_id, clock)
+        except NotFoundError:
+            _not_found()
+        return Response(status_code=204)
+
     @router.get("/escalations")
     def escalations(request: Request) -> list[dict[str, Any]]:
         """Escalations that fired, newest first, for monitors and admins. `current` says
@@ -399,7 +562,7 @@ def board_router(
             rows = db.execute(
                 select(Escalation, Lead)
                 .join(Lead, Lead.id == Escalation.lead_id)
-                .where(Escalation.org_id == who.user.org_id)
+                .where(Escalation.org_id == who.user.org_id, Lead.deleted_at.is_(None))
                 .order_by(Escalation.fired_at.desc(), Escalation.id)
                 .limit(LIST_LIMIT)
             ).all()
@@ -408,7 +571,7 @@ def board_router(
                     "level": fired.level,
                     "fired_at": fired.fired_at.isoformat(),
                     "stay": fired.stay.isoformat(),
-                    "current": lead.state == "pool" and lead.pool_since == fired.stay,
+                    "current": still_standing(fired, lead),
                     "lead": lead_json(db, lead, who.viewer),
                 }
                 for fired, lead in rows
@@ -600,6 +763,22 @@ def board_router(
             raise account_error(error) from error
 
     return router
+
+
+def still_standing(fired: Escalation, lead: Lead) -> bool:
+    """Whether the lead is still in the stretch the level fired for: unclaimed in the same
+    pool stay, or for a contact level, owned with the same uncontacted stretch."""
+    if fired.level in escalation.CONTACT_DEFAULTS:
+        return lead.state == "owned" and lead.uncontacted_since == fired.stay
+    return lead.state == "pool" and lead.pool_since == fired.stay
+
+
+def iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value else None
+
+
+def number(value: Decimal | None) -> float | None:
+    return float(value) if value is not None else None
 
 
 def _b64url(text: str) -> bytes | None:

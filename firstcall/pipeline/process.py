@@ -10,14 +10,16 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from email.parser import BytesHeaderParser
+from email.policy import default
 from typing import Any
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from firstcall import events, failpoints
-from firstcall.board import alerts
-from firstcall.core import delivery
+from firstcall.board import alerts, leads
+from firstcall.core import delivery, states
 from firstcall.core.clock import Clock
 from firstcall.core.identity import first_name
 from firstcall.core.match import Candidate, decide, gate
@@ -247,7 +249,13 @@ def settle(
 
     if outcome == "attach":
         assert decision.attach_to is not None
-        lead = session.get_one(Lead, uuid.UUID(decision.attach_to), with_for_update=True)
+        target = uuid.UUID(decision.attach_to)
+        owner = leads.lock_owner(session, target)
+        lead = session.get_one(Lead, target, with_for_update=True)
+        if lead.deleted_at is not None:
+            # Delete took the identity locks this message waited on, so its candidates were
+            # read before the delete. A retry reads them again and finds none.
+            raise LookupError(f"lead {lead.id} was deleted while this message was matched")
         message.lead_id = lead.id
         message.team_id = lead.team_id
         # A message that waited in a retry can attach after a later one made the lead; the
@@ -262,11 +270,29 @@ def settle(
             return message.status
         session.add(Activity(org_id=lead.org_id, lead_id=lead.id, message_id=message.id))
         _add_identities(session, lead, keys)
-        payload = {"message_id": str(message.id), **rescue}
+        payload: dict[str, Any] = {"message_id": str(message.id), **rescue}
+        if lead.state == "nurture":
+            # The buyer writing again brings a nurture lead back; one event records both.
+            states.check("buyer_wrote", "nurture", "owned", frozenset({"system"}))
+            lead.state = "owned"
+            payload["to"] = "owned"
         events.write(session, lead, "lead.activity", cause, payload, now)
         if rescued_by:
             _rescued(session, lead, message, rescued_by, now)
-        alerts.activity(session, lead, cause, now)
+        owner_ok = leads.owner_still_here(session, lead, owner)
+        if lead.state in ("lost", "not_real") and _reopens(message, source, reading):
+            event = states.check("buyer_reopened", lead.state, "owned", frozenset({"system"}))
+            reopen_payload = {"message_id": str(message.id), "reason": "buyer_wrote"}
+            leads.reopen_to(session, lead, owner_ok, event, f"{cause}:reopen", reopen_payload, now)
+        if lead.state not in states.OPEN:
+            # A closed lead keeps its owner after they leave; the team leads hear instead.
+            if owner_ok:
+                alerts.owner(session, lead, "activity", cause, now)
+            elif lead.team_id is not None:
+                team_leads = alerts.team_leads(session, lead.team_id)
+                alerts.queue(session, lead, "activity", cause, team_leads, now)
+        else:
+            alerts.activity(session, lead, cause, now)
         message.status, message.reason = "attached", "matched a known buyer"
         return message.status
 
@@ -310,6 +336,18 @@ def settle(
     if rescued_by:
         message.reason = "rescued from the Not-a-lead tray"
     return message.status
+
+
+def _reopens(message: Message, source: Source, reading: Reading) -> bool:
+    """Only a buyer's real lead message reopens a lost or not-real lead: not an auto-reply,
+    and not one read as vendor, support or spam."""
+    if reading.category != "lead":
+        return False
+    if source.kind != "email":
+        return True
+    headers = BytesHeaderParser(policy=default).parsebytes(message.raw)
+    submitted = str(headers.get("Auto-Submitted", "no")).strip().lower()
+    return submitted in ("", "no")
 
 
 def _rescued(session: Session, lead: Lead, message: Message, by: uuid.UUID, now: datetime) -> None:

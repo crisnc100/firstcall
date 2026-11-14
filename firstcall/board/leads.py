@@ -26,7 +26,8 @@ from firstcall.core import escalation, states
 from firstcall.core.access import LeadRef, Viewer, can_see, relations
 from firstcall.core.clock import Clock
 from firstcall.core.hours import Hours, business_minutes, hours_from, wall_minutes
-from firstcall.db import Lead, Membership, Team, User
+from firstcall.core.outcomes import check_outcome, may_log_contact, may_note
+from firstcall.db import Lead, Membership, Outcome, Team, User
 
 log = logging.getLogger("firstcall.board")
 
@@ -89,7 +90,7 @@ def _member(session: Session, user_id: uuid.UUID, team_id: uuid.UUID | None) -> 
 
 def _locked(session: Session, viewer: Viewer, lead_id: uuid.UUID, action: str) -> Lead:
     lead = session.get(Lead, lead_id, with_for_update=True)
-    if lead is None or str(lead.org_id) != viewer.org_id:
+    if lead is None or str(lead.org_id) != viewer.org_id or lead.deleted_at is not None:
         raise NotFoundError
     if not _who(action) & _relations(viewer, lead, action):
         raise NotFoundError
@@ -141,6 +142,8 @@ def claim(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) ->
     now = clock.now()
     lead.state, lead.owner_id, lead.pool_since = "owned", user_id, None
     lead.owned_since = now
+    if lead.uncontacted_since is None:
+        lead.uncontacted_since = now
     if lead.claimed_at is None:
         assert lead.team_id is not None
         team = session.get_one(Team, lead.team_id)
@@ -307,6 +310,10 @@ def allowed_actions(viewer: Viewer, lead: Lead) -> list[str]:
         "move_team": "pool",
         "place": "pool",
     }
+    return _permitted(rels, lead, targets)
+
+
+def _permitted(rels: frozenset[states.Relation], lead: Lead, targets: dict[str, str]) -> list[str]:
     found: list[str] = []
     for action, target in targets.items():
         try:
@@ -317,5 +324,145 @@ def allowed_actions(viewer: Viewer, lead: Lead) -> list[str]:
     return found
 
 
+def work_actions(viewer: Viewer, lead: Lead) -> list[str]:
+    """What the viewer may do to work the lead: notes, contacts, outcomes, reopen and
+    delete. Kept apart from the board moves in allowed_actions."""
+    rels = relations(viewer, ref(lead))
+    targets = {"set_nurture": "nurture", "resume": "owned", "set_outcome": "won",
+               "reopen": "owned"}  # fmt: skip
+    found = _permitted(rels, lead, targets)
+    if may_note(viewer, ref(lead)):
+        found.append("note")
+    if may_log_contact(viewer, ref(lead)):
+        found.append("log_contact")
+    if viewer.admin:
+        found.append("delete")
+    return found
+
+
 def visible(viewer: Viewer, lead: Lead) -> bool:
-    return str(lead.org_id) == viewer.org_id and can_see(viewer, ref(lead))
+    return (
+        lead.deleted_at is None and str(lead.org_id) == viewer.org_id and can_see(viewer, ref(lead))
+    )
+
+
+def set_nurture(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) -> Done:
+    """Owned to nurture: the lead stays open on a monthly rhythm. Recorded as an outcome."""
+    lead = _locked(session, viewer, lead_id, "set_nurture")
+    event = _check(lead, "set_nurture", "nurture", relations(viewer, ref(lead)))
+    now = clock.now()
+    lead.state = "nurture"
+    _record_outcome(session, lead, "nurture", None, None, None, viewer, now)
+    payload = {"by": viewer.user_id, "outcome": "nurture"}
+    events.write(session, lead, event, _cause("set_nurture"), payload, now)
+    return Done(lead.id, event)
+
+
+def resume(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) -> Done:
+    lead = _locked(session, viewer, lead_id, "resume")
+    event = _check(lead, "resume", "owned", relations(viewer, ref(lead)))
+    now = clock.now()
+    lead.state = "owned"
+    payload = {"by": viewer.user_id, "reason": "resumed", "to": "owned"}
+    events.write(session, lead, event, _cause("resume"), payload, now)
+    return Done(lead.id, event)
+
+
+def set_outcome(
+    session: Session,
+    viewer: Viewer,
+    lead_id: uuid.UUID,
+    outcome: str,
+    reason: str | None,
+    reason_text: str | None,
+    competitor: str | None,
+    clock: Clock,
+) -> Done:
+    lead = _locked(session, viewer, lead_id, "set_outcome")
+    try:
+        check_outcome(outcome, reason, reason_text)
+    except ValueError as error:
+        raise InvalidError(str(error)) from error
+    event = _check(lead, "set_outcome", outcome, relations(viewer, ref(lead)))
+    now = clock.now()
+    lead.state = outcome
+    _record_outcome(session, lead, outcome, reason, reason_text, competitor, viewer, now)
+    payload = {"by": viewer.user_id, "outcome": outcome, "reason": reason}
+    events.write(session, lead, event, _cause("set_outcome"), payload, now)
+    return Done(lead.id, event)
+
+
+def _record_outcome(
+    session: Session,
+    lead: Lead,
+    outcome: str,
+    reason: str | None,
+    reason_text: str | None,
+    competitor: str | None,
+    viewer: Viewer,
+    now: datetime,
+) -> None:
+    session.add(
+        Outcome(
+            id=uuid.uuid4(),
+            org_id=lead.org_id,
+            lead_id=lead.id,
+            outcome=outcome,
+            reason=reason,
+            reason_text=(reason_text or "").strip() or None if reason == "other" else None,
+            competitor=(competitor or "").strip()[:200] or None if outcome == "lost" else None,
+            by=uuid.UUID(viewer.user_id),
+            at=now,
+        )
+    )
+
+
+def lock_owner(session: Session, lead_id: uuid.UUID) -> tuple[uuid.UUID | None, bool]:
+    """Share-lock a lead's current owner before the lead row, the order every path keeps
+    (see lock_user). Returns the owner read and whether they are active."""
+    owner_id = session.scalar(select(Lead.owner_id).where(Lead.id == lead_id))
+    if owner_id is None:
+        return None, False
+    return owner_id, bool(lock_user(session, owner_id, share=True))
+
+
+def owner_still_here(session: Session, lead: Lead, locked: tuple[uuid.UUID | None, bool]) -> bool:
+    """Whether the lead's owner, locked by lock_owner, is still active and in its team."""
+    owner_id, active = locked
+    if lead.owner_id is None or lead.owner_id != owner_id or not active:
+        return False
+    return _member(session, lead.owner_id, lead.team_id)
+
+
+def reopen_to(
+    session: Session,
+    lead: Lead,
+    owner_ok: bool,
+    event: str,
+    cause: str,
+    payload: dict[str, Any],
+    now: datetime,
+) -> str:
+    """Reopen a closed lead to its owner when they can take it back, else to its pool. A
+    reopen starts a new uncontacted stretch. Returns the state it reopened to."""
+    lead.uncontacted_since = now
+    if owner_ok:
+        lead.state = "owned"
+        events.write(session, lead, event, cause, {**payload, "to": "owned"}, now)
+        return "owned"
+    lead.state, lead.owner_id, lead.pool_since, lead.owned_since = "pool", None, now, None
+    events.write(session, lead, event, cause, {**payload, "to": "pool"}, now)
+    alerts.entered_pool(session, lead, "reopened", cause, now)
+    return "pool"
+
+
+def reopen(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clock) -> Done:
+    """A team lead's or admin's manual reopen of a won, lost or not-real lead."""
+    owner = lock_owner(session, lead_id)
+    lead = _locked(session, viewer, lead_id, "reopen")
+    rels = relations(viewer, ref(lead))
+    event = _check(lead, "reopen", "owned", rels)
+    owner_ok = owner_still_here(session, lead, owner)
+    payload = {"by": viewer.user_id}
+    reopen_to(session, lead, owner_ok, event, _cause("reopen"), payload, clock.now())
+    return Done(lead.id, event)

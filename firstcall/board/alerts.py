@@ -96,6 +96,16 @@ def entered_pool(session: Session, lead: Lead, kind: str, cause: str, now: datet
     return queue(session, lead, kind, cause, pool_members(session, lead.org_id, lead.team_id), now)
 
 
+def owner(session: Session, lead: Lead, kind: str, cause: str, now: datetime) -> int:
+    """Tell the lead's owner, when they are still active."""
+    if lead.owner_id is None:
+        return 0
+    user = session.get(User, lead.owner_id)
+    if user is None or not user.active:
+        return 0
+    return queue(session, lead, kind, cause, [user], now)
+
+
 def activity(session: Session, lead: Lead, cause: str, now: datetime) -> int:
     """New activity alerts only the owner. A pool lead's activity sends nothing fresh."""
     if lead.owner_id is None or lead.state not in ("owned", "nurture"):

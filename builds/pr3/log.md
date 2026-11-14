@@ -36,3 +36,43 @@
 - **Ruff.** `S311` is ignored for `note_score.py` in pyproject: the bootstrap uses a seeded
   `random.Random` so the report reproduces.
 - verify.sh: 652 passed; `note_score.py` branch coverage 98%.
+
+## Phase 2: notes, contacts, outcomes and delete (backend)
+
+- **Migration 0009.** `notes`, `contacts` (unique on note and kind), `lead_profiles` and
+  `outcomes`, plus lead columns for first contact, `uncontacted_since` and `deleted_at`.
+  Leads already owned start their uncontacted stretch at `owned_since`. A trigger makes
+  `outcomes` append-only: it refuses UPDATE always, and DELETE unless the lead is marked
+  deleted, which delete lead does first in the same transaction.
+- **Who.** `core/outcomes.py`: notes and contacts by the owner, a team lead of the lead's
+  team, or an admin; contacts only on owned or nurture leads (422 otherwise, since the person
+  may note the lead). Notes, contacts, profile and outcomes are read by the lead's team and
+  admins; a monitor's lead detail carries none of those keys.
+- **Work actions.** The lead JSON keeps `actions` for the board moves and adds `work` for
+  note, log_contact, set_nurture, resume, set_outcome, reopen and delete, so PR2's tests that
+  pin `actions` are unchanged.
+- **Contact time.** A typed action is timed when the note is saved. First contact is the
+  earliest contact, worked out again when an earlier one is logged, and never before arrival.
+- **Contact-due clock.** `uncontacted_since` is set on a claim when empty and on every reopen,
+  and cleared by any contact at or after it. Levels `contact_owner` (240) and
+  `contact_team_leads` (300) fire once per stretch, in business minutes, only while the lead is
+  owned. Teams can override both minutes in `teams.escalation`. The escalation log marks a
+  contact level current while the same stretch stands.
+- **Outcomes.** Lost reasons are the fixed list in `core/outcomes.py`; "other" needs text; a
+  competitor is kept only for lost. Event payloads carry the reason code, never the text or
+  competitor. Nurture writes an outcome row; resume writes `lead.reopened` with reason
+  `resumed`. Admins may reopen but not set outcomes, as the transition table says.
+- **Buyer writes again** (`pipeline/process.py`). A nurture lead goes back to owned in its one
+  `lead.activity` event (`to: owned`). A lost or not-real lead reopens on a lead-category
+  message that is not an auto-reply (`Auto-Submitted` other than `no`), with its own event
+  cause `message:<id>:reopen`. A closed lead whose owner is inactive or out of the team
+  alerts the team leads, or reopens to the pool. The owner's user row is share-locked before
+  the lead row, the order PR2 set for every path.
+- **Delete lead** (`board/delete.py`). As the plan says. It takes the lead's identity locks
+  before the lead row, as matching does; a message whose attach target was deleted while it
+  waited raises and retries, and its retry finds no match. Inbox emails are found by their
+  links, other leads' duplicate flags by their JSON text.
+- **Tests.** `test_notes_contacts.py`, `test_outcomes.py`, `test_delete_lead.py` (every table
+  classified; an unclassified one fails) and `test_note_access.py` (the new access matrix,
+  the monitor's detail, and an allowlist of event payload keys holding ids and codes only).
+  No existing test changed.
