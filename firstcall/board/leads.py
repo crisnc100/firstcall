@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from firstcall import events
-from firstcall.board import alerts
+from firstcall.board import alerts, followups
 from firstcall.core import escalation, states
 from firstcall.core.access import LeadRef, Viewer, can_see, relations
 from firstcall.core.clock import Clock
@@ -183,6 +183,7 @@ def _to_pool(
         lead.team_id = team_id
     lead.state, lead.owner_id, lead.pool_since = "pool", None, now
     lead.owned_since = None
+    followups.cancel(session, lead, now)
     cause = _cause(action)
     events.write(session, lead, event, cause, payload, now)
     alerts.entered_pool(session, lead, action, cause, now)
@@ -247,6 +248,7 @@ def reassign(
     now = clock.now()
     payload = {"by": viewer.user_id, "from": str(lead.owner_id), "to": str(member.id)}
     lead.owner_id, lead.owned_since = member.id, now
+    followups.moved(session, lead)
     cause = _cause("reassign")
     events.write(session, lead, event, cause, payload, now)
     alerts.queue(session, lead, "assigned", cause, [member], now)
@@ -386,6 +388,7 @@ def set_outcome(
     event = _check(lead, "set_outcome", outcome, relations(viewer, ref(lead)))
     now = clock.now()
     lead.state = outcome
+    followups.cancel(session, lead, now)
     _record_outcome(session, lead, outcome, reason, reason_text, competitor, viewer, now)
     payload = {"by": viewer.user_id, "outcome": outcome, "reason": reason}
     events.write(session, lead, event, _cause("set_outcome"), payload, now)

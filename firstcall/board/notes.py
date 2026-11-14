@@ -19,6 +19,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from firstcall import events
+from firstcall.board import followups
 from firstcall.board.leads import InvalidError, NotFoundError, ref, team_hours
 from firstcall.core.access import Viewer
 from firstcall.core.clock import Clock
@@ -132,6 +133,7 @@ def log_contact(
         "source": source,
     }
     events.write(session, lead, "contact.logged", f"contact:{contact_id}", payload, at)
+    followups.touched(session, lead, at)
     return contact_id
 
 

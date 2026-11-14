@@ -76,3 +76,38 @@
   classified; an unclassified one fails) and `test_note_access.py` (the new access matrix,
   the monitor's detail, and an allowlist of event payload keys holding ids and codes only).
   No existing test changed.
+
+## Phase 3: cadence and the nightly job
+
+- **Migration 0010.** `followups` (a partial unique index allows one open follow-up per
+  lead), `followup_runs` (unique on team and local date) and `teams.cadence` (empty means the
+  default).
+- **Cadence** (`core/cadence.py`, pure). Steps on arrival's local date plus 0, 1, 3, 7, 14
+  and 30; then the steady rhythm (daily 1, weekly 7, monthly 30) from the later of the last
+  step and the last touch; nurture monthly from the later of entering nurture (its latest
+  nurture outcome) and the last touch. A step on a closed day moves to the next open day;
+  when that puts two steps on one date, the later step names the follow-up.
+- **Due and on time.** The job opens a follow-up for the latest step whose date has come and
+  that no touch met (a touch on or after the step's date meets it). `due_on` is that date in
+  the team's time; the lead JSON shows `overdue` once the team's today is past it, and My
+  leads lists open follow-ups first, oldest due date at the top.
+- **Life.** A contact closes the open follow-up (`followup.done`). Release, return, owner
+  left, move team and a closed outcome cancel it (`followup.cancelled`, with the state it
+  went to). Reassign hands it to the new owner. Nurture keeps it. Delete lead deletes it.
+  `docs/definitions.md` gains `followup.cancelled` and the due-date rule (Cristian's D1).
+- **The run.** `run_nightly` runs each team once its local time reaches 05:00 and no run row
+  exists for its local date, so a missed night is one run the next tick. The run row and every
+  change commit in one transaction; each lead runs in a savepoint and a lead that raises is
+  logged and counted in `errors`. A team whose hours or cadence do not read is skipped and
+  counted. The failpoint `during_followup_run` fires after each lead.
+- **Where it runs.** A new `followup_tick` in the scheduler loop and `firstcall tick`, kept
+  apart from `tick` and `alert_tick` so their pinned results stay the same.
+- **Tests.** `test_cadence.py` (pure) and `test_followups.py`: the 05:00 start, a double run,
+  a missed night, one open follow-up, a touch on time, overdue and My leads order, cancel on
+  release and on an outcome, reassign, a team cadence and a broken one, a lead that raises,
+  zero gateway calls, spring forward and fall back, steps across the change, Pacific/Auckland
+  (local date ahead of UTC), and a killed run (exit 137 and the log line) redone whole.
+- **Two phase-2 tests changed**, in their own commit: the delete test classifies the two new
+  tables and checks a follow-up is deleted; the event payload test allows and expects the
+  three follow-up events.
+- verify.sh: 754 passed.

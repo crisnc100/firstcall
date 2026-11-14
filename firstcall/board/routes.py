@@ -36,6 +36,7 @@ from firstcall.core.read import Reference, UnparseableError, read
 from firstcall.db import (
     Contact,
     Escalation,
+    Followup,
     InboxEmail,
     Lead,
     LeadEvent,
@@ -223,7 +224,33 @@ def board_router(
             "flags": list(lead.flags),
             "actions": leads.allowed_actions(viewer, lead),
             "work": leads.work_actions(viewer, lead),
+            **followup_json(db, lead, viewer),
             **leads.urgency(lead, team, clock.now()),
+        }
+
+    def followup_json(db: Session, lead: Lead, viewer: Viewer) -> dict[str, Any]:
+        """The lead's open follow-up, for those who may read its notes. Overdue means its due
+        date, in the team's own time, has passed."""
+        if not may_read_notes(viewer, leads.ref(lead)):
+            return {}
+        found = db.scalar(
+            select(Followup).where(Followup.lead_id == lead.id, Followup.state == "open")
+        )
+        if found is None:
+            return {"followup": None}
+        team = db.get(Team, lead.team_id) if lead.team_id else None
+        try:
+            today = clock.now().astimezone(leads.team_hours(team).zone).date() if team else None
+        except (ValueError, KeyError, TypeError):
+            today = None
+        return {
+            "followup": {
+                "id": str(found.id),
+                "due_on": found.due_on.isoformat(),
+                "step": found.step,
+                "next_step": found.next_step,
+                "overdue": today is not None and today > found.due_on,
+            }
         }
 
     def follow_through(db: Session, lead: Lead, viewer: Viewer) -> dict[str, Any]:
@@ -416,7 +443,11 @@ def board_router(
             else:
                 raise HTTPException(422, "view is mine, unassigned, or pool or team with a team_id")
             rows = db.scalars(query.order_by(Lead.arrival_at).limit(LIST_LIMIT))
-            return [lead_json(db, lead, viewer) for lead in rows if leads.visible(viewer, lead)]
+            found = [lead_json(db, lead, viewer) for lead in rows if leads.visible(viewer, lead)]
+            if view == "mine":
+                # Due follow-ups first, the oldest due date at the top; the rest by arrival.
+                found.sort(key=lambda row: (row["followup"] is None, _due(row)))
+            return found
 
     @router.get("/leads/{lead_id}")
     def lead_detail(request: Request, lead_id: uuid.UUID) -> dict[str, Any]:
@@ -763,6 +794,10 @@ def board_router(
             raise account_error(error) from error
 
     return router
+
+
+def _due(row: dict[str, Any]) -> str:
+    return row["followup"]["due_on"] if row.get("followup") else ""
 
 
 def still_standing(fired: Escalation, lead: Lead) -> bool:

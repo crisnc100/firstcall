@@ -88,6 +88,8 @@ class Team(Base):
     items: Mapped[list[Any]] = mapped_column(JSON, default=list)
     # Minutes per escalation level, overriding the defaults in core/escalation.py.
     escalation: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # The follow-up cadence, overriding the defaults in core/cadence.py.
+    cadence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, server_default="{}")
 
 
 class Agent(Base):
@@ -507,6 +509,50 @@ class Outcome(Base):
     competitor: Mapped[str | None] = mapped_column(String(200))
     by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Followup(Base):
+    """A task for the lead's owner to get in touch. It never contacts the buyer. A lead has at
+    most one open follow-up; a touch closes it as done, and the lead leaving its owner closes
+    it as cancelled."""
+
+    __tablename__ = "followups"
+    __table_args__ = (
+        CheckConstraint(_in("state", ("open", "done", "cancelled")), name="followup_state"),
+        Index(
+            "followups_one_open",
+            "lead_id",
+            unique=True,
+            postgresql_where=text("state = 'open'"),
+        ),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # The team's local date the step fell due; done on or before it is on time.
+    due_on: Mapped[date] = mapped_column(Date)
+    step: Mapped[str] = mapped_column(String(32))
+    next_step: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(String(16), default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FollowupRun(Base):
+    """One nightly follow-up run for a team and its local date. The unique key makes a
+    second run that day do nothing."""
+
+    __tablename__ = "followup_runs"
+    __table_args__ = (UniqueConstraint("team_id", "local_date"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("teams.id"))
+    local_date: Mapped[date] = mapped_column(Date)
+    ran_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    leads: Mapped[int] = mapped_column(Integer, default=0)
+    opened: Mapped[int] = mapped_column(Integer, default=0)
+    errors: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Heartbeat(Base):

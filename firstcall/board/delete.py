@@ -22,6 +22,7 @@ from firstcall.db import (
     Alert,
     Contact,
     Escalation,
+    Followup,
     Identity,
     InboxEmail,
     Job,
@@ -35,7 +36,9 @@ from firstcall.db import (
 from firstcall.locks import lock_all
 
 # Tables whose rows for the lead are deleted outright, children before parents.
-DELETED = (PushSend, Alert, Escalation, Contact, Note, LeadProfile, Outcome, Activity, Identity)
+DELETED = (
+    PushSend, Alert, Escalation, Followup, Contact, Note, LeadProfile, Outcome, Activity, Identity,
+)  # fmt: skip
 # Message columns cleared; the delivery key and hashes stay.
 MESSAGE_SCRUB = {"raw": b"", "extracted": None, "model_answer": None, "source_time": None,
                  "category": None}  # fmt: skip
