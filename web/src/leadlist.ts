@@ -156,6 +156,8 @@ export class LeadList {
     if (where) where.replaceChildren(...this.whereParts(entry.lead));
     const owned = entry.li.querySelector<HTMLElement>(".owned-since");
     if (owned) owned.textContent = ownedText(entry.lead);
+    const line = entry.li.querySelector<HTMLElement>(".item-line");
+    if (line) line.replaceChildren(...itemLine(entry.lead));
   }
 
   private waits(): boolean {
@@ -186,17 +188,11 @@ export class LeadList {
           stateBadge(lead.state),
           h("span", { class: "meta num owned-since", text: ownedText(lead) }),
         );
-    const notices: HTMLElement[] = [];
-    if (lead.possible_duplicates.length) notices.push(h("span", { class: "badge" }, icon("copy"), "Possible duplicate"));
-    if (lead.followup) {
-      const due = lead.followup.overdue ? `Follow-up overdue since ${lead.followup.due_on}` : `Follow-up due ${lead.followup.due_on}`;
-      notices.push(h("span", { class: "badge", text: due }));
-    }
     const who = h(
       "div",
       { class: "who" },
       leadName(lead, `/leads/${lead.id}?from=${from}`),
-      h("div", { class: "meta" }, lead.item ?? "No details yet", ...notices.flatMap((badge) => [" ", badge])),
+      h("div", { class: "meta item-line" }, ...itemLine(lead)),
     );
     const where = h("div", { class: "where meta num" }, ...this.whereParts(lead));
     const act = h("div", { class: "act" });
@@ -343,4 +339,16 @@ export function unbusy(button: HTMLButtonElement, label: string): void {
 
 function reducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** The item, then the duplicate and follow-up badges: rebuilt on every refresh, so a
+ * follow-up done, moved or overdue elsewhere shows here without a reload. */
+function itemLine(lead: Lead): (string | HTMLElement)[] {
+  const notices: HTMLElement[] = [];
+  if (lead.possible_duplicates.length) notices.push(h("span", { class: "badge" }, icon("copy"), "Possible duplicate"));
+  if (lead.followup) {
+    const due = lead.followup.overdue ? `Follow-up overdue since ${lead.followup.due_on}` : `Follow-up due ${lead.followup.due_on}`;
+    notices.push(h("span", { class: "badge", text: due }));
+  }
+  return [lead.item ?? "No details yet", ...notices.flatMap((badge) => [" ", badge])];
 }

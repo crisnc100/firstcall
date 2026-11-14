@@ -62,3 +62,11 @@ any change to a gold file that the manifest does not record.
     passed against "two dogs". It now scales only by a scale the script itself writes.
   - No script text changed in either seed: `scripts.jsonl` hashes are as before. Both
     `labels.jsonl` files were regenerated and the notes manifest records their new hashes.
+
+## 2026-11-14, second entry
+- The fix check found the scorer change above incomplete: a written "$450k" was scaled again
+  to 450 million, and any scale in the script scaled every other number, so "two dogs"
+  beside "$450k" supported a two-thousand budget. Each script number now supports only its
+  written value, and a bare number joined to a scaled one ("380 and 420 thousand") shares
+  that scale. No gold file changed; the gold still meets every floor and the baselines
+  still miss them. No note reader or model run exists yet.

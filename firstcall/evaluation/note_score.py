@@ -180,21 +180,24 @@ def read_numbers(text: str) -> set[Decimal]:
     return found
 
 
-def magnitudes(script: str) -> set[int]:
-    """The scales the script itself writes, as a suffix ("450k", "1.2M") or a word
-    ("thousand", "grand", "million")."""
-    found = {SUFFIXES[m.group(3).lower()] for m in DIGITS.finditer(script) if m.group(3)}
-    words = re.findall(r"[a-z]+", script.casefold())
-    return found | {SUFFIXES[w] for w in words if w in SCALES or w == "grand"}
+# A bare number joined to a scaled one, as in "between 380 and 420 thousand": the scale
+# belongs to both.
+SHARED_SCALE = re.compile(
+    r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?\s*(?:and|to|-|\u2013)\s*\$?"
+    r"(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?\s*(k|m|mil|million|thousand|grand|bn|billion)\b",
+    re.IGNORECASE,
+)
 
 
 def supported_numbers(script: str) -> set[Decimal]:
-    """The script's numbers, each also scaled by every scale the script writes. A note that
-    says "between 380 and 420 thousand" supports 380000 as well as 380; "two dogs" alone
-    never supports two million."""
-    base = read_numbers(script)
-    scaled = {(v * m).normalize() for v in base for m in magnitudes(script)}
-    return base | scaled
+    """The script's numbers, each as the value it is written as. A bare number joined to a
+    scaled one takes that scale too: "between 380 and 420 thousand" supports 380000. Nothing
+    else is scaled, so "two dogs" never supports two thousand or two million."""
+    found = read_numbers(script)
+    for match in SHARED_SCALE.finditer(script):
+        value = Decimal(match.group(1).replace(",", "") + (match.group(2) or ""))
+        found.add((value * SUFFIXES[match.group(3).lower()]).normalize())
+    return found
 
 
 def names_in(text: str) -> set[str]:

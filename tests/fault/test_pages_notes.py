@@ -1,20 +1,22 @@
-"""Working a lead in a real browser on compose: the owner adds a note that logs a call and
-sees the contact and the time to first contact, marks the lead lost with a reason, a team
-lead reopens it, and an admin deletes it. A note holding a script tag shows as text."""
+"""Working a lead in a real browser on compose: a follow-up badge on My leads goes when the
+follow-up closes; the owner adds a note that logs a call and sees the contact and the time to
+first contact, and marks the lead lost with a reason; a team lead reopens it; an admin
+deletes it. A note holding a script tag shows as text."""
 
 from __future__ import annotations
 
 import re
 import subprocess
 import uuid
+from datetime import UTC, date, datetime
 
 import httpx
 from playwright.sync_api import Page, expect, sync_playwright
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board import accounts
-from firstcall.db import Lead, Message, Team
+from firstcall.db import Followup, Lead, Message, Team
 from firstcall.seed import seed
 from tests.conftest import FakeClock
 from tests.fault.test_pages import PASSWORD, _free_port, _store, _wait_for
@@ -22,6 +24,8 @@ from tests.fault.test_pages import compose_db as compose_db  # a fixture, found 
 from tests.fault.test_pages_qa import _sign_in, _start
 
 ALL_INTERFACES = "0.0.0.0"  # noqa: S104
+# Lists poll every 15 seconds.
+POLL_WAIT_MS = 25_000
 SCRIPT_NOTE = "<script>window.__pwned = 1</script>Left a voicemail."
 
 
@@ -83,6 +87,25 @@ def test_notes_outcome_reopen_and_delete_in_a_browser(
             _sign_in(owner, "owner@larkspur.example")
             owner.get_by_role("button", name="Claim Nora Notes").click()
             expect(owner.get_by_text("You own this lead now.").first).to_be_visible()
+
+            # A follow-up opened, then done elsewhere, shows and goes on the next poll.
+            followup_id = uuid.uuid4()
+            with sessions.begin() as session:
+                lead = session.get_one(Lead, lead_id)
+                session.add(
+                    Followup(id=followup_id, org_id=lead.org_id, lead_id=lead_id,
+                             owner_id=lead.owner_id, due_on=date(2026, 1, 5), step="day 0",
+                             next_step="No contact yet.", state="open",
+                             created_at=datetime.now(UTC))
+                )  # fmt: skip
+            owner.goto("/mine")
+            badge = owner.locator("li.row").get_by_text("Follow-up overdue since 2026-01-05")
+            expect(badge).to_be_visible()
+            with sessions.begin() as session:
+                session.execute(
+                    update(Followup).where(Followup.id == followup_id).values(state="done")
+                )
+            expect(badge).to_have_count(0, timeout=POLL_WAIT_MS)
 
             owner.goto(path)
             owner.get_by_label("Add a note").fill("Called Nora about the loft.")

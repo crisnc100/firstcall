@@ -210,6 +210,24 @@ def test_a_magnitude_the_script_never_used_is_unsupported() -> None:
     assert unsupported("Budget is 1.2 million, 3 kids.", answer(notes="1.2M budget")) == []
 
 
+def test_each_script_number_supports_only_its_own_value() -> None:
+    assert unsupported("Budget is $450k.", answer(notes="Budget is $450 million.")) == [
+        "notes: number 4.5E+8"
+    ]
+    script = "Budget is $450k. Has two dogs."
+    assert unsupported(script, answer(notes="Budget is $2,000.")) == ["notes: number 2E+3"]
+    assert unsupported(script, answer(notes="$450,000 and two dogs")) == []
+
+
+def test_a_range_shares_its_scale_with_the_bare_number_before_it() -> None:
+    script = "Between 380 and 420 thousand."
+    assert unsupported(script, answer(notes="$380,000 to $420,000")) == []
+    assert unsupported("Between $1.1 and 1.3M.", answer(notes="1,100,000")) == []
+    assert unsupported("Has 3 kids and 420 thousand saved.", answer(notes="3000")) == [
+        "notes: number 3E+3"
+    ]
+
+
 def answer(**fields: object) -> dict[str, object]:
     return {"clean_note": "", "budget": None, "authority": None, "need": None,
             "timeline": None, "notes": "", **fields}  # fmt: skip

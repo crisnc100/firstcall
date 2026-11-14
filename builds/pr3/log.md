@@ -158,3 +158,16 @@ textContent.
   for timing; the team lead reopens it to its owner; the admin deletes it and leaves the
   page, and the row is a scrubbed tombstone.
 - verify.sh: 768 passed, every floor met.
+
+## Fix check and phase 4 review fixes (917b21 x1, 13ee35 f1)
+
+- **Scorer numbers** (x1). Each script number supports only its written value, after
+  `read_numbers` expands its own suffix: "$450k" no longer supports 450 million, and "two dogs"
+  beside "$450k" no longer supports two thousand. A bare number joined by "and", "to" or a dash
+  to a scaled one shares that scale, so "between 380 and 420 thousand" supports 380,000. The
+  baseline floors test passes unchanged. ADR-007 and the gold CHANGELOG say so; no gold file
+  changed.
+- **Follow-up badges refresh** (f1). The item line and its badges are rebuilt on every list
+  refresh. The page test opens a follow-up, sees its badge on My leads, closes it in the
+  database and waits for the poll to remove it; that check failed on the old list code.
+- verify.sh: 770 passed, every floor met.
