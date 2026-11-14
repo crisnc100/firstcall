@@ -120,6 +120,19 @@ def work(
         time.sleep(0.5)
 
 
+def followup_tick(sessions: sessionmaker[Any], clock: Clock) -> dict[str, int]:
+    """The nightly follow-up job, for every team whose 05:00 has come and that has not run
+    today. A failure is logged so the scheduler keeps ticking."""
+    from firstcall.board.followups import run_nightly
+
+    try:
+        done = run_nightly(sessions, clock)
+    except Exception:
+        log.exception("the follow-up job failed")
+        return {"followup_teams": 0}
+    return {f"followup_{k}": v for k, v in done.items()}
+
+
 def schedule(
     sessions: sessionmaker[Any],
     clock: Clock,
@@ -130,6 +143,7 @@ def schedule(
     while True:
         beat(sessions, "scheduler")
         tick(sessions, clock, settings, reader)
+        followup_tick(sessions, clock)
         if outbound is not None:
             alert_tick(sessions, clock, outbound)
         time.sleep(TICK_SECONDS)

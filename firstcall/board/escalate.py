@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -21,6 +22,9 @@ log = logging.getLogger("firstcall.escalation")
 
 
 def _audience(session: Session, lead: Lead, level: escalation.Level) -> list[User]:
+    if level.audience == "owner":
+        owner = session.get(User, lead.owner_id) if lead.owner_id else None
+        return [owner] if owner is not None and owner.active else []
     if level.audience == "team_leads":
         assert lead.team_id is not None
         return alerts.team_leads(session, lead.team_id)
@@ -49,7 +53,7 @@ def escalate(sessions: sessionmaker[Any], clock: Clock) -> int:
                 log.error("team %s skipped by escalation: %s", team.slug, error)
         pool = session.scalars(
             select(Lead)
-            .where(Lead.state == "pool")
+            .where(Lead.state == "pool", Lead.deleted_at.is_(None))
             .order_by(Lead.arrival_at)
             .with_for_update(skip_locked=True)
         )
@@ -58,34 +62,65 @@ def escalate(sessions: sessionmaker[Any], clock: Clock) -> int:
                 continue
             hours, overrides = rules[lead.team_id] if lead.team_id else (None, {})
             stay = lead.pool_since or lead.arrival_at
-            fired = frozenset(
-                session.scalars(
-                    select(Escalation.level).where(
-                        Escalation.lead_id == lead.id, Escalation.stay == stay
-                    )
-                )
-            )
+            fired = _fired(session, lead, stay)
             due = escalation.due(
                 lead.state, lead.team_id is not None, stay, now, hours, fired, overrides
             )
-            for level in due:
-                stored = session.scalar(
-                    insert(Escalation)
-                    .values(
-                        id=uuid.uuid4(),
-                        org_id=lead.org_id,
-                        lead_id=lead.id,
-                        level=level.name,
-                        stay=stay,
-                        fired_at=now,
-                    )
-                    .on_conflict_do_nothing(index_elements=["lead_id", "level", "stay"])
-                    .returning(Escalation.id)
-                )
-                if stored is None:
-                    continue
-                fired_count += 1
-                kind = f"escalation:{level.name}"
-                cause = f"{kind}:{stay.isoformat()}"
-                alerts.queue(session, lead, kind, cause, _audience(session, lead, level), now)
+            fired_count += _fire(session, lead, due, stay, now)
+        owned = session.scalars(
+            select(Lead)
+            .where(
+                Lead.state == "owned",
+                Lead.uncontacted_since.is_not(None),
+                Lead.deleted_at.is_(None),
+            )
+            .order_by(Lead.uncontacted_since)
+            .with_for_update(skip_locked=True)
+        )
+        for lead in owned:
+            if lead.team_id not in rules:
+                continue
+            hours, overrides = rules[lead.team_id]
+            stay = lead.uncontacted_since
+            assert stay is not None
+            due = escalation.contact_due(
+                lead.state, stay, now, hours, _fired(session, lead, stay), overrides
+            )
+            fired_count += _fire(session, lead, due, stay, now)
     return fired_count
+
+
+def _fired(session: Session, lead: Lead, stay: datetime) -> frozenset[str]:
+    return frozenset(
+        session.scalars(
+            select(Escalation.level).where(Escalation.lead_id == lead.id, Escalation.stay == stay)
+        )
+    )
+
+
+def _fire(
+    session: Session, lead: Lead, due: list[escalation.Level], stay: datetime, now: datetime
+) -> int:
+    """Store each due level once for this stay and queue its alerts."""
+    fired = 0
+    for level in due:
+        stored = session.scalar(
+            insert(Escalation)
+            .values(
+                id=uuid.uuid4(),
+                org_id=lead.org_id,
+                lead_id=lead.id,
+                level=level.name,
+                stay=stay,
+                fired_at=now,
+            )
+            .on_conflict_do_nothing(index_elements=["lead_id", "level", "stay"])
+            .returning(Escalation.id)
+        )
+        if stored is None:
+            continue
+        fired += 1
+        kind = f"escalation:{level.name}"
+        cause = f"{kind}:{stay.isoformat()}"
+        alerts.queue(session, lead, kind, cause, _audience(session, lead, level), now)
+    return fired

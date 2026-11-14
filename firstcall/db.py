@@ -88,6 +88,8 @@ class Team(Base):
     items: Mapped[list[Any]] = mapped_column(JSON, default=list)
     # Minutes per escalation level, overriding the defaults in core/escalation.py.
     escalation: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # The follow-up cadence, overriding the defaults in core/cadence.py.
+    cadence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, server_default="{}")
 
 
 class Agent(Base):
@@ -201,6 +203,16 @@ class Lead(Base):
     claim_business_minutes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     # When the current owner took the lead; claimed_at is the first claim only.
     owned_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Time to first real contact: the earliest contact on the lead, from arrival.
+    first_contact_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    first_contact_minutes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    first_contact_business_minutes: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    # The start of the current stretch with no contact, which the contact-due escalation
+    # counts from. Set when the lead is first owned and on every reopen; a contact clears it.
+    # Release, reclaim and reassign leave it alone, so they cannot restart the clock.
+    uncontacted_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set by delete lead. The row stays, emptied of the buyer, as the anchor of its events.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Identity(Base):
@@ -423,6 +435,124 @@ class InboxEmail(Base):
     links: Mapped[list[Any]] = mapped_column(JSON, default=list, server_default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Note(Base):
+    """A note a person wrote on a lead. Notes are never edited; delete lead removes them."""
+
+    __tablename__ = "notes"
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Contact(Base):
+    """A real contact with the buyer, logged by a person from a note. One per note and kind,
+    so a typed action and a confirmed suggestion of the same kind log it once."""
+
+    __tablename__ = "contacts"
+    __table_args__ = (
+        UniqueConstraint("note_id", "kind"),
+        CheckConstraint(_in("kind", ("call", "text", "email", "meeting")), name="contact_kind"),
+        CheckConstraint(_in("source", ("typed", "suggestion")), name="contact_source"),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    note_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("notes.id"))
+    kind: Mapped[str] = mapped_column(String(16))
+    # Who was in touch with the buyer (the note's author) and who logged it.
+    made_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    logged_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    source: Mapped[str] = mapped_column(String(16))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class LeadProfile(Base):
+    """The buyer profile (BANT). `person_fields` lists fields a person set; the model never
+    changes those."""
+
+    __tablename__ = "lead_profiles"
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), unique=True)
+    budget_text: Mapped[str | None] = mapped_column(Text)
+    budget_min: Mapped[int | None] = mapped_column(BigInteger)
+    budget_max: Mapped[int | None] = mapped_column(BigInteger)
+    authority: Mapped[str] = mapped_column(String(32), default="unknown")
+    authority_others: Mapped[str | None] = mapped_column(Text)
+    need: Mapped[str | None] = mapped_column(Text)
+    timeline_text: Mapped[str | None] = mapped_column(Text)
+    timeline_month: Mapped[str | None] = mapped_column(String(7))
+    notes: Mapped[str | None] = mapped_column(Text)
+    person_fields: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Outcome(Base):
+    """An outcome set on a lead. Insert-only: a trigger refuses UPDATE, and refuses DELETE
+    unless the lead has been deleted, so a reopen never erases one."""
+
+    __tablename__ = "outcomes"
+    __table_args__ = (
+        CheckConstraint(_in("outcome", ("won", "lost", "not_real", "nurture")), name="outcome"),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    outcome: Mapped[str] = mapped_column(String(16))
+    reason: Mapped[str | None] = mapped_column(String(32))
+    reason_text: Mapped[str | None] = mapped_column(Text)
+    competitor: Mapped[str | None] = mapped_column(String(200))
+    by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Followup(Base):
+    """A task for the lead's owner to get in touch. It never contacts the buyer. A lead has at
+    most one open follow-up; a touch closes it as done, and the lead leaving its owner closes
+    it as cancelled."""
+
+    __tablename__ = "followups"
+    __table_args__ = (
+        CheckConstraint(_in("state", ("open", "done", "cancelled")), name="followup_state"),
+        Index(
+            "followups_one_open",
+            "lead_id",
+            unique=True,
+            postgresql_where=text("state = 'open'"),
+        ),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    # The team's local date the step fell due; done on or before it is on time.
+    due_on: Mapped[date] = mapped_column(Date)
+    step: Mapped[str] = mapped_column(String(32))
+    next_step: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(String(16), default="open")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FollowupRun(Base):
+    """One nightly follow-up run for a team and its local date. The unique key makes a
+    second run that day do nothing."""
+
+    __tablename__ = "followup_runs"
+    __table_args__ = (UniqueConstraint("team_id", "local_date"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    team_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("teams.id"))
+    local_date: Mapped[date] = mapped_column(Date)
+    ran_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    leads: Mapped[int] = mapped_column(Integer, default=0)
+    opened: Mapped[int] = mapped_column(Integer, default=0)
+    errors: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class Heartbeat(Base):

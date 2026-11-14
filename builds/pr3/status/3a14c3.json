@@ -1,0 +1,1 @@
+{"x1":{"status":"deferred","reason":"LOW, unverified: Chrome may hand out push endpoints on a host not in the default list (e.g. jmt17.google.com). The list is a setting (FIRSTCALL_PUSH_HOSTS).","fix":"Confirm current Chrome push hosts and add any missing one to the default list."}}

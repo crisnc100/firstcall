@@ -7,10 +7,11 @@ import { icon } from "../icons";
 import { categoryLabel, sourceLabel, statusLabel } from "../labels";
 import { busy, stateBadge, unbusy, waitTimer } from "../leadlist";
 import { loadFailed } from "../poller";
-import type { Cleanup } from "../router";
+import { navigate, type Cleanup } from "../router";
 import { setTitle } from "../shell";
 import { toast } from "../toast";
 import { allTeams } from "./lists";
+import { ACTION_WORD, reasonWord, workControls, workSections } from "./work";
 
 const BACK: Record<string, [string, (team: string) => string]> = {
   pool: ["/pool", (team) => `Back to ${team} pool`],
@@ -105,6 +106,29 @@ function sentence(
       return "New message from the buyer";
     case "lead.rescued":
       return `Rescued from Not-a-lead by ${who("by")}`;
+    case "note.added":
+      return `Note added by ${who("by")}`;
+    case "contact.logged":
+      return `${ACTION_WORD[String(p.kind)] ?? "Contact"}: logged by ${who("logged_by")}`;
+    case "lead.outcome": {
+      const outcome = String(p.outcome);
+      if (outcome === "nurture") return `Moved to nurture by ${who("by")}`;
+      const word = outcome === "won" ? "won" : outcome === "lost" ? "lost" : "not real";
+      const reason = reasonWord(typeof p.reason === "string" ? p.reason : null);
+      return `Marked ${word}${reason ? ` (${reason.toLowerCase()})` : ""} by ${who("by")}`;
+    }
+    case "lead.reopened": {
+      const where = p.to === "pool" ? "to the pool" : "to its owner";
+      if (p.reason === "buyer_wrote") return `Reopened ${where}: the buyer wrote again`;
+      if (p.reason === "resumed") return `Back from nurture, by ${who("by")}`;
+      return `Reopened ${where} by ${who("by")}`;
+    }
+    case "followup.created":
+      return "Follow-up due";
+    case "followup.done":
+      return "Follow-up done";
+    case "followup.cancelled":
+      return "Follow-up closed: the lead left its owner";
     default:
       return event.type.replace(/[._]/g, " ");
   }
@@ -234,8 +258,9 @@ async function draw(
       ),
   );
 
-  const column = h("div", {}, ...header, ...notices, facts, ...messages, h("h2", { text: "History" }), history);
-  const actions = actionColumn(lead, teams, members, reload);
+  const work = workSections(lead, reload);
+  const column = h("div", {}, ...header, ...notices, facts, ...work, ...messages, h("h2", { text: "History" }), history);
+  const actions = actionColumn(lead, teams, members, reload, from);
   main.replaceChildren(h("div", { class: actions ? "detail" : "" }, column, actions));
 }
 
@@ -244,8 +269,11 @@ function actionColumn(
   teams: Team[],
   members: { id: string; name: string }[],
   reload: () => Promise<void>,
+  from: string,
 ): HTMLElement | null {
-  if (!lead.actions.length) return null;
+  const gone = (): void => navigate(BACK[from]?.[0] ?? "/pool");
+  const controls = workControls(lead, reload, gone);
+  if (!lead.actions.length && !controls.length) return null;
   const status = h("div", { attrs: { role: "status" } });
   const aside = h("aside", { class: "actions", attrs: { "aria-label": "Actions" } });
   // Layout lives in the stylesheet: an inline display would beat the phone rule that hides it.
@@ -369,6 +397,7 @@ function actionColumn(
       else primary = place;
     }
   }
+  others.push(...controls);
   if (primary) aside.append(primary);
   if (others.length) {
     const more = h("button", { class: "btn secondary more", text: "More actions", attrs: { type: "button", "aria-expanded": "false" } });

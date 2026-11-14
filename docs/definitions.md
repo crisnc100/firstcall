@@ -192,8 +192,11 @@ There is no automatic release: taking a lead away from a salesperson is a team l
   team's steady rhythm (weekly by default). This front-loaded shape is common in published sales
   playbooks; it is a starting point each team can change.
 - **Steady rhythms:** daily, weekly or monthly. Nurture leads use monthly.
-- **Follow-up:** a task created when the owner is behind the cadence. It never contacts the buyer.
+- **Follow-up:** a task opened on the date a cadence step falls due, when no touch has happened
+  since that date. It never contacts the buyer. Done on or before its due date is on time.
   A lead has at most one open follow-up; a later run updates it instead of adding another.
+  A touch closes it as done. The lead leaving its owner (back to a pool, or closed) cancels it.
+  A step on a day the team is closed moves to its next open day.
   Its suggested next step is a rules-based line from the cadence step and the profile gaps (for
   example "No contact in 6 days. Budget not known yet."). No model call.
 
@@ -219,7 +222,8 @@ append-only history, so a reopen never erases one.
   an event id (UUIDv7), the org, the lead, a per-lead sequence number, a type and a payload.
 - **Types:** `lead.created`, `lead.placed`, `lead.claimed`, `lead.released`, `lead.returned`,
   `lead.reassigned`, `lead.moved_team`, `lead.rescued`, `lead.activity`, `note.added`, `contact.logged`,
-  `followup.created`, `followup.done`, `lead.outcome`, `lead.reopened`, `lead.deleted`.
+  `followup.created`, `followup.done`, `followup.cancelled`, `lead.outcome`, `lead.reopened`,
+  `lead.deleted`.
 - The lead events table is the outbox: because each event commits with its change, a crash after
   commit loses nothing. Webhook delivery reads from it.
 

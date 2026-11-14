@@ -26,6 +26,13 @@ export interface Lead {
   possible_duplicates: string[];
   flags: unknown[];
   actions: string[];
+  /** Notes, contacts, outcomes, reopen and delete this viewer may use on the lead. */
+  work: string[];
+  first_contact_at: string | null;
+  first_contact_minutes: number | null;
+  first_contact_business_minutes: number | null;
+  /** Absent for a viewer who may not read the lead's notes; null when none is open. */
+  followup?: Followup | null;
   wait_business_minutes: number | null;
   thresholds: { late: number; very_late: number } | null;
 }
@@ -45,7 +52,58 @@ export interface MessageRow {
   text?: string;
 }
 
+export interface Followup {
+  id: string;
+  due_on: string;
+  step: string;
+  next_step: string;
+  overdue: boolean;
+}
+
+export interface Note {
+  id: string;
+  text: string;
+  author: string | null;
+  created_at: string;
+}
+
+export interface ContactRow {
+  id: string;
+  note_id: string;
+  kind: string;
+  made_by: string | null;
+  source: string;
+  at: string;
+}
+
+export interface Profile {
+  budget_text: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  authority: string;
+  authority_others: string | null;
+  need: string | null;
+  timeline_text: string | null;
+  timeline_month: string | null;
+  notes: string | null;
+  person_fields: string[];
+}
+
+export interface OutcomeRow {
+  outcome: string;
+  reason: string | null;
+  reason_text: string | null;
+  competitor: string | null;
+  by: string | null;
+  at: string;
+}
+
 export interface LeadDetail extends Lead {
+  /** These four are absent for a viewer who may not read the lead's notes (a monitor). */
+  notes?: Note[];
+  contacts?: ContactRow[];
+  profile?: Profile | null;
+  outcomes?: OutcomeRow[];
   messages: MessageRow[];
   events: { seq: number; type: string; at: string; payload: Record<string, unknown> }[];
   people: Record<string, string>;
