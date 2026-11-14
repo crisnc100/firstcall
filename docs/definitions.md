@@ -195,7 +195,8 @@ There is no automatic release: taking a lead away from a salesperson is a team l
 - **Follow-up:** a task opened on the date a cadence step falls due, when no touch has happened
   since that date. It never contacts the buyer. Done on or before its due date is on time.
   A lead has at most one open follow-up; a later run updates it instead of adding another.
-  A touch closes it as done. The lead leaving its owner (back to a pool, or closed) cancels it.
+  A touch closes it as done when it happened after the follow-up opened, or on or after its due
+  date; a contact confirmed late from an older note keeps its own date and closes nothing newer. The lead leaving its owner (back to a pool, or closed) cancels it.
   A step on a day the team is closed moves to its next open day.
   Its suggested next step is a rules-based line from the cadence step and the profile gaps (for
   example "No contact in 6 days. Budget not known yet."). No model call.
@@ -211,7 +212,9 @@ The profile follows BANT, a public sales framework:
 
 The model fills the profile from typed notes and voice memos. A person's edit always wins over the model.
 Field by field, a model value from a newer note replaces one from an older note, an empty model
-value never clears a field, and each note's other facts add one line to Notes.
+value never clears a field, and each note's other facts add one line to Notes. The budget's lower
+and upper bounds come from one note together, so two notes never combine into a range neither
+gave.
 
 - **Suggested contact:** a call, text, email or meeting the model read in a note, with the note's
   own words that show it happened. It logs nothing until a person confirms it. Confirm logs one

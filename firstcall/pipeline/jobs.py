@@ -120,11 +120,16 @@ def run(
     together; on an error the job goes back in the queue or, out of attempts, fails."""
     try:
         with keep_lease(sessions, clock, claimed, lease_seconds), sessions.begin() as session:
-            job = session.get_one(Job, claimed.job_id, with_for_update=True)
             if claimed.note_id is not None:
+                # A note job takes the lead before its own row, the order delete lead uses,
+                # and holds no lock while the model reads. Delete may remove the job meanwhile.
                 notes = NoteReader(reader.gateway) if reader is not None else None
                 status = read_note_job(session, claimed.note_id, clock, notes)
+                job = session.get(Job, claimed.job_id, with_for_update=True)
+                if job is None:
+                    return status
             else:
+                job = session.get_one(Job, claimed.job_id, with_for_update=True)
                 assert claimed.message_id is not None
                 status = process(session, claimed.message_id, clock, reader)
             job.state = "done"
@@ -133,7 +138,10 @@ def run(
     except Exception as error:
         log.exception("job %s failed on attempt %s", claimed.job_id, claimed.attempt)
         with sessions.begin() as session:
-            job = session.get_one(Job, claimed.job_id, with_for_update=True)
+            job = session.get(Job, claimed.job_id, with_for_update=True)
+            if job is None:
+                # A note job whose lead was deleted while it ran: nothing is left to retry.
+                return None
             job.last_error = f"{type(error).__name__}: {error}"[:2000]
             if job.attempts >= max_attempts:
                 _fail(session, job, EXHAUSTED)

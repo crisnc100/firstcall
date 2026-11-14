@@ -26,13 +26,15 @@ from firstcall.core.note_terms import EMPTY_AUTHORITY
 from firstcall.core.outcomes import may_log_contact, may_note
 from firstcall.db import Contact, Lead, LeadProfile, Note, NoteSuggestion
 
+# The budget's bounds are one value: taken together from one note, or not at all, so bounds
+# from two notes never combine into a range neither note gave.
+BOUNDS = ("budget_min", "budget_max")
+
 
 def _model_values(answer: NoteAnswer) -> dict[str, Any]:
     budget = answer.budget
     return {
         "budget_text": budget.text if budget else None,
-        "budget_min": budget.min if budget else None,
-        "budget_max": budget.max if budget else None,
         "authority": None if answer.authority == EMPTY_AUTHORITY else answer.authority,
         "authority_others": answer.authority_others,
         "need": answer.need,
@@ -54,14 +56,21 @@ def merge_profile(
     person = set(row.person_fields)
     sources = dict(row.model_from or {})
     written = note.created_at.isoformat()
-    for name, value in _model_values(answer).items():
-        if value is None or name in person:
-            continue
+
+    def newest(name: str) -> bool:
         earlier = sources.get(name)
-        if earlier is not None and datetime.fromisoformat(earlier) > note.created_at:
+        return earlier is None or datetime.fromisoformat(earlier) <= note.created_at
+
+    for name, value in _model_values(answer).items():
+        if value is None or name in person or not newest(name):
             continue
         setattr(row, name, value)
         sources[name] = written
+    budget = answer.budget
+    has_bound = budget is not None and (budget.min is not None or budget.max is not None)
+    if budget is not None and has_bound and not person & set(BOUNDS) and newest("budget_range"):
+        row.budget_min, row.budget_max = budget.min, budget.max
+        sources["budget_range"] = written
     if answer.notes and "notes" not in person:
         row.notes = f"{row.notes}\n{answer.notes}" if row.notes else answer.notes
     row.model_from = sources

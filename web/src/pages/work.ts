@@ -253,7 +253,11 @@ function profileEditor(lead: LeadDetail, reload: () => Promise<void>): HTMLEleme
     const [needLabel, need] = input("need", "Needs", profile?.need);
     const [timelineLabel, timeline] = input("timeline", "Timeline, in words", profile?.timeline_text);
     const [monthLabel, month] = input("month", "Timeline month", profile?.timeline_month, "month");
-    const [notesLabel, notes] = input("notes", "Notes", profile?.notes);
+    // A textarea: the model writes one line per note, and a single-line input would drop
+    // the line breaks and so send Notes as changed with every edit.
+    const notes = h("textarea", { attrs: { id: "profile-notes", rows: "3" } });
+    notes.value = profile?.notes ?? "";
+    const notesLabel = h("label", { text: "Notes", attrs: { for: "profile-notes" } });
     const status = h("div", { attrs: { role: "status" } });
     const save = h("button", { class: "btn primary", text: "Save profile", attrs: { type: "submit" } });
     const form = h(

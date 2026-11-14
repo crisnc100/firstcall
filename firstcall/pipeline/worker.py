@@ -145,7 +145,12 @@ def schedule(
 ) -> None:
     while True:
         beat(sessions, "scheduler")
-        tick(sessions, clock, settings, reader)
+        try:
+            tick(sessions, clock, settings, reader)
+        except Exception:
+            # The reaper or a reread failed this pass; follow-ups and alerts still run, and
+            # the next pass tries again.
+            log.exception("the scheduler's tick failed")
         followup_tick(sessions, clock)
         if outbound is not None:
             alert_tick(sessions, clock, outbound)

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -21,7 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.corpus.notes import LABELS, SCRIPTS, read_jsonl
-from firstcall.db import ModelCall
+from firstcall.db import BudgetLedger, ModelCall
 from firstcall.evaluation.note_score import all_met, baselines, floors, score, score_part
 from firstcall.evaluation.report import REPORTS
 from firstcall.evaluation.run import REPO_ROOT, FixedClock, throwaway_database
@@ -82,6 +82,8 @@ def _gateway(sessions: sessionmaker[Session], run: NoteRun) -> Gateway:
 
 
 def _calls(session: Session) -> dict[str, Any]:
+    """The call log and the ledger. The ledger keeps failed attempts' reservations, so it
+    can read above the logged cost."""
     row = session.execute(
         select(
             func.count(),
@@ -91,12 +93,15 @@ def _calls(session: Session) -> dict[str, Any]:
             func.coalesce(func.sum(ModelCall.cost_usd), 0),
         )
     ).one()
+    ledger = session.scalar(select(func.coalesce(func.sum(BudgetLedger.spent_usd), 0)))
     return {
         "calls": row[0],
         "ok": row[1],
+        "failed": row[0] - row[1],
         "prompt_tokens": row[2],
         "completion_tokens": row[3],
         "cost_usd": f"{Decimal(row[4]):.6f}",
+        "ledger_usd": f"{Decimal(ledger or 0):.6f}",
     }
 
 
@@ -137,6 +142,18 @@ def evaluate_notes(
         "baselines": others,
         "calls": calls,
     }
+
+
+def record_and_report(
+    seed: int, server_url: str, run: NoteRun, limit: int | None = None
+) -> dict[str, Any]:
+    """The paid path: record every answer, then score from the recordings in replay mode.
+    The report keeps the record pass's calls, failed attempts and ledger spend, which the
+    replay cannot know."""
+    recorded = evaluate_notes(seed, server_url, run, limit)
+    report = evaluate_notes(seed, server_url, replace(run, mode="replay"), limit)
+    report["record_pass"] = {**recorded["calls"], "unanswered": recorded["unanswered"]}
+    return report
 
 
 UNIT_NOTES = REPO_ROOT / "evals" / "gold" / "unit-notes.jsonl"
@@ -183,6 +200,13 @@ def _markdown(report: dict[str, Any]) -> str:
             f"| {row['measure']} | {row['floor']} | {row['value']} | {seen_row['value']} | "
             f"{unseen_row['value']} | {'yes' if row['met'] else 'no'} |"
         )
+    paid = report.get("record_pass")
+    if paid is not None:
+        lines += [
+            "",
+            f"Record pass: {paid['calls']} calls, {paid['failed']} failed attempts, "
+            f"${paid['cost_usd']} logged, ${paid['ledger_usd']} on the ledger.",
+        ]
     lines += ["", "| Baseline | Meets every floor |", "|---|---|"]
     for name, found in report["baselines"].items():
         lines.append(f"| {name} | {'yes' if found['met'] else 'no'} |")

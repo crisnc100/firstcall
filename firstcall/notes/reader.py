@@ -10,12 +10,13 @@ parse marks it `failed`, so it is never paid for again.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board import suggestions
@@ -23,9 +24,16 @@ from firstcall.board.leads import team_hours
 from firstcall.core.clock import Clock
 from firstcall.core.note_read import NoteAnswer, answer_schema, parse_note_answer
 from firstcall.db import Lead, Note, Team
-from firstcall.model.gateway import Gateway, ModelRequest, ModelUnavailableError
+from firstcall.model.gateway import (
+    Gateway,
+    ModelRequest,
+    ModelUnavailableError,
+    NotSyntheticError,
+    ReplayMissError,
+)
 from firstcall.model.prompts import READ_NOTE
 
+log = logging.getLogger("firstcall.notes")
 UNREADABLE = "unreadable"
 BATCH = 50
 # A note's date is read in this zone when its lead has no team, or the team's zone does not
@@ -146,8 +154,26 @@ def reread_notes(
             )
         )
     for note_id in waiting:
-        with sessions.begin() as session:
-            result = _read(session, note_id, "needs_model", reader, reader.gateway.clock)
+        try:
+            with sessions.begin() as session:
+                result = _read(session, note_id, "needs_model", reader, reader.gateway.clock)
+        except (ReplayMissError, NotSyntheticError):
+            # The mode cannot answer this note: the pass stops, the note keeps waiting.
+            log.exception("note %s: the model mode cannot read it", note_id)
+            done["halted"] = done.get("halted", 0) + 1
+            break
+        except Exception:
+            # One note must never stop the pass or the scheduler. It leaves the queue, so it
+            # is not paid for again on every pass.
+            log.exception("note %s failed on reread", note_id)
+            with sessions.begin() as session:
+                session.execute(
+                    update(Note)
+                    .where(Note.id == note_id, Note.read_state == "needs_model")
+                    .values(read_state="failed", read_reason="error")
+                )
+            done["errors"] = done.get("errors", 0) + 1
+            continue
         if result == "skipped":
             continue
         if result not in ("read", "failed"):

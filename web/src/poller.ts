@@ -5,7 +5,7 @@ import { h } from "./dom";
 import { shortTime } from "./format";
 import { refreshUnread } from "./shell";
 
-const EVERY_MS = 15000;
+export const EVERY_MS = 15000;
 
 export interface Poll {
   stop: () => void;

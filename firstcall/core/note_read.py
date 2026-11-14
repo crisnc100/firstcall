@@ -15,6 +15,8 @@ from typing import Any, cast
 
 from firstcall.core.note_terms import ACTION_KINDS, AUTHORITIES, EMPTY_AUTHORITY
 
+# No buyer's budget is near a trillion dollars, and the profile stores a BIGINT.
+MAX_DOLLARS = 10**12
 MONTH = re.compile(r"\d{4}-(0[1-9]|1[0-2])")
 # A model that writes a quote also writes it a little differently: case, spacing and the
 # final full stop do not matter.
@@ -144,14 +146,15 @@ def _text(data: Mapping[str, Any] | None, key: str) -> str | None:
         return None
     if not isinstance(value, str):
         raise _UnreadableError(key)
-    return value.strip() or None
+    # Postgres text cannot hold a NUL character.
+    return value.replace("\x00", "").strip() or None
 
 
 def _dollars(data: Mapping[str, Any], key: str) -> int | None:
     value = data.get(key)
     if value is None:
         return None
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_DOLLARS:
         raise _UnreadableError(key)
     return value
 

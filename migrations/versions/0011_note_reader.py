@@ -27,6 +27,8 @@ def upgrade() -> None:
     op.create_check_constraint(
         "note_read_state", "notes", "read_state IN ('pending', 'read', 'needs_model', 'failed')"
     )
+    # Notes written before the reader have no read job; the reread pass picks these up.
+    op.execute("UPDATE notes SET read_state = 'needs_model', read_reason = 'written_before_reader'")
     op.add_column(
         "lead_profiles",
         sa.Column("model_from", sa.JSON(), nullable=False, server_default=sa.text("'{}'")),

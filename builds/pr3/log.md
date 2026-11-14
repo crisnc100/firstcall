@@ -255,3 +255,32 @@ The third round on the scorer's numbers, so one reader replaces the patches.
   prints what each suggests; tested record then replay on fakes. Their replay test lands with
   the phase 7 recording.
 - verify.sh: 863 passed, every floor met.
+
+## Phases 5-6 review fixes (72756c, 053866)
+
+Merged origin/main (PR3a, squashed as 362c632) into note-reader first; main's tree equals
+PR3a's tip, so every conflict took the branch's side and the merge changed no file.
+Each fix has a failing test first: `tests/test_note_reader_fixes.py` (11 of 12 failed
+before the fixes) and `tests/fault/test_pages_reader_fixes.py` (failed on the old page).
+- **Pages f1:** profile Notes is a textarea, so its line breaks survive and an edit to
+  another field never sends Notes. The page test checks only `need` becomes person-set.
+- **Pages f2:** while a note is pending or waiting for a model, the lead page fetches again
+  every 15 seconds and redraws only when a read changed and nothing is being typed or open.
+- **f1:** budget bounds merge as a pair from one note; a person-set bound keeps the model
+  off both.
+- **f2:** migration 0011 moves notes written before the reader to `needs_model`
+  (`written_before_reader`), so the reread pass reads them.
+- **f3:** a contact closes a follow-up only if it happened after the follow-up opened or on
+  or after its due date in the team's time.
+- **f4, s1:** each note in the reread pass has its own error boundary: a replay miss halts
+  the pass, any other error is logged, counted and fails that note. `schedule()` survives a
+  failing tick. Budget figures above $10^12 make an answer unreadable; NUL characters are
+  stripped from answer text.
+- **f5:** `record_and_report` keeps the record pass's calls, failed attempts and ledger
+  spend in the report (`record_pass`), beside the replay's reproducible figures.
+- **f6:** a call whose note was deleted mid-read is logged without the note, cost kept.
+- **f7:** a note job holds no job lock while the model reads and takes the lead before its
+  own row, the order delete uses; a job deleted meanwhile ends quietly. A threaded test
+  deletes the lead while the model call is in flight.
+- f8 (LOW, downgrade) is filed, not fixed.
+- verify.sh: 876 passed, every floor met.

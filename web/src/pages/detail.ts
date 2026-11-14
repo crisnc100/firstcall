@@ -6,7 +6,7 @@ import { fullTime, shortTime } from "../format";
 import { icon } from "../icons";
 import { categoryLabel, sourceLabel, statusLabel } from "../labels";
 import { busy, stateBadge, unbusy, waitTimer } from "../leadlist";
-import { loadFailed } from "../poller";
+import { EVERY_MS, loadFailed } from "../poller";
 import { navigate, type Cleanup } from "../router";
 import { setTitle } from "../shell";
 import { toast } from "../toast";
@@ -158,10 +158,39 @@ export function detailPage(main: HTMLElement, params: Record<string, string>): C
     const teams = await allTeams().catch(() => [] as Team[]);
     if (stopped) return;
     await draw(main, lead, teams, from, load);
+    watch(lead, teams);
+  };
+
+  // While a note waits for the model, look again every poll. The page is redrawn only when a
+  // note's read has changed and nothing is being typed, so no unsaved input is lost.
+  let timer = 0;
+  const reads = (lead: LeadDetail): string =>
+    JSON.stringify((lead.notes ?? []).map((n) => [n.id, n.read_state, n.suggestions.length]));
+  const typing = (): boolean => {
+    const text = main.querySelector<HTMLTextAreaElement>("#note-text");
+    return Boolean(text?.value.trim()) || main.querySelector(".panel") !== null;
+  };
+  const watch = (lead: LeadDetail, teams: Team[]): void => {
+    window.clearTimeout(timer);
+    const waiting = (lead.notes ?? []).some((n) => n.read_state === "pending" || n.read_state === "needs_model");
+    if (!waiting || stopped) return;
+    timer = window.setTimeout(() => {
+      void (async () => {
+        const fresh = await api<LeadDetail>("GET", `/leads/${params.id}`).catch(() => null);
+        if (stopped) return;
+        if (fresh && reads(fresh) !== reads(lead) && !typing()) {
+          await draw(main, fresh, teams, from, load);
+          watch(fresh, teams);
+          return;
+        }
+        watch(lead, teams);
+      })();
+    }, EVERY_MS);
   };
   void load();
   return () => {
     stopped = true;
+    window.clearTimeout(timer);
   };
 }
 

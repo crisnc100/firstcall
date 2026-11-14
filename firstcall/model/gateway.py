@@ -30,6 +30,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core.clock import Clock
@@ -339,12 +340,23 @@ class Gateway:
             row.spent_usd += difference
 
     def _log(self, request: ModelRequest, reply: ModelReply, ok: bool) -> None:
+        try:
+            self._insert_call(request, reply, ok, request.note_id)
+        except IntegrityError:
+            if request.note_id is None:
+                raise
+            # The note was deleted while the model read it; the call and its cost stay.
+            self._insert_call(request, reply, ok, None)
+
+    def _insert_call(
+        self, request: ModelRequest, reply: ModelReply, ok: bool, note_id: uuid.UUID | None
+    ) -> None:
         with self.sessions.begin() as session:
             session.add(
                 ModelCall(
                     org_id=request.org_id,
                     message_id=request.message_id,
-                    note_id=request.note_id,
+                    note_id=note_id,
                     model=reply.model,
                     mode=self.config.mode,
                     prompt_tokens=reply.prompt_tokens,

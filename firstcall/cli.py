@@ -201,11 +201,15 @@ def eval_notes_command(
     """Run the note eval and write evals/reports/<date>-notes-seed-<N>. record spends money:
     it records every answer, then writes the report from the recordings in replay mode. It
     reads the key from FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`."""
-    from dataclasses import replace
     from datetime import UTC, datetime
     from decimal import Decimal
 
-    from firstcall.evaluation.note_eval import NoteRun, evaluate_notes, write_notes
+    from firstcall.evaluation.note_eval import (
+        NoteRun,
+        evaluate_notes,
+        record_and_report,
+        write_notes,
+    )
     from firstcall.settings import Settings
 
     if mode not in ("replay", "record"):
@@ -227,11 +231,14 @@ def eval_notes_command(
             typer.echo(f"{note_id}: {', '.join(kinds) or 'no suggestion'}")
         return
     if mode == "record":
-        recorded = evaluate_notes(seed, url, run, limit or None)
-        calls = recorded["calls"]
-        typer.echo(f"recorded seed {seed}: {calls['calls']} calls, ${calls['cost_usd']}")
-        run = replace(run, mode="replay")
-    report = evaluate_notes(seed, url, run, limit or None)
+        report = record_and_report(seed, url, run, limit or None)
+        paid = report["record_pass"]
+        typer.echo(
+            f"recorded seed {seed}: {paid['calls']} calls ({paid['failed']} failed), "
+            f"${paid['ledger_usd']} on the ledger"
+        )
+    else:
+        report = evaluate_notes(seed, url, run, limit or None)
     for path in write_notes(report, date or datetime.now(UTC).date().isoformat()):
         typer.echo(f"wrote {path}")
 
