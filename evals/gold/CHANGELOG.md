@@ -81,3 +81,10 @@ any change to a gold file that the manifest does not record.
   scripts from both seeds (every range form and written-number style) and 10 invented
   numbers, and every script in both seeds copied through and restated from its gold. No
   gold file changed; the gold still meets every floor and the baselines still miss them.
+
+## 2026-11-14, fourth entry
+- The PR3a fix check found two gaps in the number reader, deferred to PR3b and fixed before
+  any model answer is scored: brackets and slashes did not end a number, so "nine hundred
+  thirty thousand (three bedrooms)" read as 930003; and "half-a-million" read as one million.
+  Brackets and slashes now end a number, and a hyphen between letters reads as a space. Both
+  cases are in the regression table. No gold file changed; the gold still meets every floor.
