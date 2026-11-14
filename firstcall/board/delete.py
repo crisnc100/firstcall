@@ -29,7 +29,9 @@ from firstcall.db import (
     Lead,
     LeadProfile,
     Message,
+    ModelCall,
     Note,
+    NoteSuggestion,
     Outcome,
     PushSend,
 )
@@ -37,7 +39,8 @@ from firstcall.locks import lock_all
 
 # Tables whose rows for the lead are deleted outright, children before parents.
 DELETED = (
-    PushSend, Alert, Escalation, Followup, Contact, Note, LeadProfile, Outcome, Activity, Identity,
+    PushSend, Alert, Escalation, Followup, Contact, NoteSuggestion, Note, LeadProfile, Outcome,
+    Activity, Identity,
 )  # fmt: skip
 # Message columns cleared; the delivery key and hashes stay. An emptied message can never be
 # read again, so it leaves the reread queue instead of holding a place at its head.
@@ -69,6 +72,10 @@ def delete_lead(session: Session, viewer: Viewer, lead_id: uuid.UUID, clock: Clo
     message_ids = list(session.scalars(select(Message.id).where(Message.lead_id == lead.id)))
     alert_ids = select(Alert.id).where(Alert.lead_id == lead.id)
     session.execute(delete(PushSend).where(PushSend.alert_id.in_(alert_ids)))
+    note_ids = select(Note.id).where(Note.lead_id == lead.id)
+    session.execute(delete(Job).where(Job.note_id.in_(note_ids)))
+    # Model calls stay for the cost page, without the note they read.
+    session.execute(update(ModelCall).where(ModelCall.note_id.in_(note_ids)).values(note_id=None))
     for table in DELETED[1:]:
         session.execute(delete(table).where(table.lead_id == lead.id))
     session.execute(delete(Job).where(Job.message_id.in_(message_ids)))

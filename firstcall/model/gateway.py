@@ -88,6 +88,8 @@ class ModelRequest:
     schema: dict[str, Any]
     # The stored intake bytes, which record mode checks against the synthetic corpus.
     raw: bytes
+    # The note being read, for a read_note request; its calls are logged against it.
+    note_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -212,8 +214,8 @@ class Gateway:
             assert self.synthetic is not None
             assert self.recordings is not None
             if request.raw not in self.synthetic:
-                raise NotSyntheticError("record mode only sends messages from the synthetic corpus")
-            if self.recordings.find(outbound) is not None:
+                raise NotSyntheticError("record mode only sends text from the synthetic corpus")
+            if self._recordings(request).find(outbound) is not None:
                 # Already recorded: answered from the recording, so a rerun spends nothing.
                 return self._replay(request, outbound)
         return self._live(request, outbound)
@@ -224,15 +226,19 @@ class Gateway:
         return TransportRequest(
             model=self.config.model,
             system=SYSTEM_PROMPTS[request.task],
-            user=user_message(request.context, request.intake_text),
+            user=user_message(request.context, request.intake_text, request.task),
             schema=request.schema,
             max_output_tokens=self.config.max_output_tokens,
             timeout_seconds=self.config.timeout_seconds,
         )
 
-    def _replay(self, request: ModelRequest, outbound: TransportRequest) -> ModelReply:
+    def _recordings(self, request: ModelRequest) -> Recordings:
+        """Note answers are kept in their own file beside the message answers."""
         assert self.recordings is not None
-        found = self.recordings.find(outbound)
+        return self.recordings.for_task(request.task)
+
+    def _replay(self, request: ModelRequest, outbound: TransportRequest) -> ModelReply:
+        found = self._recordings(request).find(outbound)
         if found is None:
             raise ReplayMissError(
                 f"no recorded answer for {outbound.model} (key {request_key(outbound)[:12]})"
@@ -282,8 +288,7 @@ class Gateway:
             self._settle(request.org_id, cost - estimate)
             self._log(request, reply, ok=True)
             if self.config.mode == "record":
-                assert self.recordings is not None
-                self.recordings.save(
+                self._recordings(request).save(
                     Recording(
                         key=request_key(outbound),
                         model=reply.model,
@@ -339,6 +344,7 @@ class Gateway:
                 ModelCall(
                     org_id=request.org_id,
                     message_id=request.message_id,
+                    note_id=request.note_id,
                     model=reply.model,
                     mode=self.config.mode,
                     prompt_tokens=reply.prompt_tokens,

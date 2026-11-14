@@ -210,6 +210,17 @@ The profile follows BANT, a public sales framework:
 - **Notes:** free text.
 
 The model fills the profile from typed notes and voice memos. A person's edit always wins over the model.
+Field by field, a model value from a newer note replaces one from an older note, an empty model
+value never clears a field, and each note's other facts add one line to Notes.
+
+- **Suggested contact:** a call, text, email or meeting the model read in a note, with the note's
+  own words that show it happened. It logs nothing until a person confirms it. Confirm logs one
+  contact, dated when the note was written and made by its author; Dismiss logs none. The owner,
+  a team lead of the lead's team or an admin may do either, and Confirm waits while the lead is
+  not owned or in nurture. A kind the note already logged closes as already logged.
+- **Needs a model key:** a note no model has read yet, because there is no key, the model is
+  switched off or down, or the day's budget is spent. The note is kept as typed; a later pass
+  reads it once a model answers.
 
 ## Outcomes
 

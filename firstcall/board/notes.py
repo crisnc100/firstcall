@@ -26,11 +26,12 @@ from firstcall.core.clock import Clock
 from firstcall.core.hours import business_minutes, wall_minutes
 from firstcall.core.note_terms import ACTION_KINDS, AUTHORITIES
 from firstcall.core.outcomes import may_log_contact, may_note
-from firstcall.db import Contact, Lead, LeadProfile, Note, Team
+from firstcall.db import Contact, Job, Lead, LeadProfile, Note, Team
 
 log = logging.getLogger("firstcall.board")
 
 NOTE_MAX = 5000
+READ_NOTE_JOB = "read_note"
 PROFILE_FIELDS = (
     "budget_text",
     "budget_min",
@@ -83,6 +84,9 @@ def add_note(
     )  # fmt: skip
     session.add(note)
     session.flush()
+    # The model reads the note in its own job, after this commits, so saving a note never
+    # waits on a model.
+    session.add(Job(org_id=lead.org_id, note_id=note.id, kind=READ_NOTE_JOB))
     payload = {"note_id": str(note.id), "by": viewer.user_id}
     events.write(session, lead, "note.added", f"note:{note.id}", payload, now)
     contact_id = None

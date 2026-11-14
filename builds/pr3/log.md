@@ -190,3 +190,52 @@ The third round on the scorer's numbers, so one reader replaces the patches.
 - The baseline floors test passes unchanged. ADR-007 and the gold CHANGELOG say so; no gold
   file changed.
 - verify.sh: 816 passed, every floor met.
+
+# PR3b (branch note-reader, stacked on notes-followups)
+
+## Deferred fix-check items x1 and x2
+
+- Test-only commit first (4c6ff44): the number table gains brackets, a slash and
+  half-a-million, failing on the old reader. The fix (edc8a4a) ends a number at brackets and
+  slashes and reads a hyphen between letters as a space. ADR-007 and the gold CHANGELOG
+  record it; no gold file changed.
+
+## Phase 5: the note reader (no key)
+
+- **Answer** (`core/note_read.py`, pure): the schema from the ADR-007 vocabulary and a parser
+  that never raises. A suggested action whose quote is not in the note is dropped; a wrong
+  type, an authority or a kind outside ADR-007 makes the answer unreadable; a month that is
+  not YYYY-MM reads as absent.
+- **Prompt** `read_note`: a fixed system prompt; the note goes only in the user message,
+  fenced in `<note>`, with its team-local date and the team's time zone as context.
+- **Gateway:** requests and `model_calls` carry a nullable `note_id`. Note answers are
+  recorded in their own file, `notes-<model>.jsonl`. Record mode also accepts note scripts and
+  `evals/gold/unit-notes.jsonl` (the five F31 notes and the page fixture note).
+- **Migration 0011:** note read state (pending, read, needs_model, failed), reason, tidied
+  note, model answer; `note_suggestions` (unique per note and kind); jobs take a note or a
+  message, never both, with their own creation time; `lead_profiles.model_from`.
+- **Note jobs:** saving a note queues `read_note`. `claim` no longer joins messages and orders
+  by the job's creation time; `run` dispatches by subject; an exhausted note job fails its note
+  with `retries_exhausted`, keeping the text and any typed action. The reader lives at
+  `firstcall/notes/reader.py`, the path ADR-007 names, so the gold-before-reader test covers
+  it. The model is asked before the lead is locked; the answer is applied under the lock only
+  if the note still waits and the lead is not deleted.
+- **No model:** no key, kill switch, budget or model down leave the note `needs_model` with
+  the reason; the scheduler's tick rereads those notes, stopping at the first refusal. An
+  unreadable answer fails the note so it is never paid for again.
+- **Suggestions** (`board/suggestions.py`): Confirm logs one contact dated at the note and
+  made by its author, by the owner, a team lead of the team or an admin; others get 404.
+  Confirm on a lead not owned or in nurture is 409 until reopened; a second Confirm is 409.
+  A kind the note already logged closes as already logged. A reassigned lead's suggestions
+  go to whoever may now confirm them.
+- **Profile merge:** never a person-set field, never an empty value, never over a newer
+  note's value; each note's other facts add one line to Notes.
+- **Delete** removes suggestions and note jobs and keeps model calls without their note.
+- **Eval runner** (`evaluation/note_eval.py`, `firstcall eval-notes`): reads every script
+  through the gateway in a throwaway database, scores with the frozen scorer, adds the
+  baselines and the call log, and writes no report for an incomplete run. Tested record then
+  replay on fake answers.
+- **Tests:** `test_note_read.py`, `test_note_reader.py`, `test_note_eval.py`. Two existing
+  tests changed, in their own commit: the access matrix adds confirm and dismiss, and the
+  delete test classifies `note_suggestions`.
+- verify.sh: 861 passed, every floor met.

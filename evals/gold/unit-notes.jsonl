@@ -1,0 +1,6 @@
+{"id": "unit-future", "kind": "future", "text": "Will call Dana tomorrow about the townhouse."}
+{"id": "unit-negation", "kind": "negation", "text": "Didn't reach Dana today. No answer and no voicemail left."}
+{"id": "unit-plan", "kind": "plan", "text": "Plan is to email Dana the floor plans next week."}
+{"id": "unit-hypothetical", "kind": "hypothetical", "text": "If Dana writes back, I'll set up a meeting at the model home."}
+{"id": "unit-colleague", "kind": "colleague", "text": "Sam called Dana last week, before the lead came to me."}
+{"id": "unit-page", "kind": "action", "text": "Called Dana this morning. Budget is around $450k. Wants three bedrooms and a garage. Hoping to move by June."}

@@ -15,6 +15,7 @@ from sqlalchemy.orm import sessionmaker
 
 from firstcall.core.clock import Clock
 from firstcall.db import Heartbeat
+from firstcall.notes.reader import NoteReader, reread_notes
 from firstcall.pipeline.jobs import reap, run_one
 from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.reread import reread
@@ -60,10 +61,12 @@ def tick(
     reader: ModelReader | None = None,
 ) -> dict[str, int]:
     """One scheduler pass: return jobs whose lease ran out, then reread rules-path messages
-    if the model is available."""
+    and notes that wait for a model, if the model is available."""
     done = {"reaped": reap(sessions, clock, settings.max_attempts)}
     if reader is not None:
         done.update({f"reread_{k}": v for k, v in reread(sessions, reader).items()})
+        notes = reread_notes(sessions, NoteReader(reader.gateway))
+        done.update({f"reread_notes_{k}": v for k, v in notes.items()})
     return done
 
 

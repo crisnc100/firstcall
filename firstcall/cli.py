@@ -188,6 +188,47 @@ def eval_command(
         typer.echo(f"wrote {path}")
 
 
+@app.command("eval-notes")
+def eval_notes_command(
+    seed: int = typer.Option(..., help="7 (tune) or 11 (held out, once, frozen prompt)"),
+    date: str = typer.Option("", help="The report date, YYYY-MM-DD; today when empty"),
+    mode: str = typer.Option("replay", help="replay (recorded answers) or record (paid)"),
+    budget: float = typer.Option(0.10, help="Most this run may spend, in US dollars"),
+    limit: int = typer.Option(0, help="Read only the first N scripts (0 reads all 150)"),
+    model: str = typer.Option("claude-haiku-5-5", help="The model"),
+) -> None:
+    """Run the note eval and write evals/reports/<date>-notes-seed-<N>. record spends money:
+    it records every answer, then writes the report from the recordings in replay mode. It
+    reads the key from FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`."""
+    from dataclasses import replace
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from firstcall.evaluation.note_eval import NoteRun, evaluate_notes, write_notes
+    from firstcall.settings import Settings
+
+    if mode not in ("replay", "record"):
+        raise typer.BadParameter("mode must be replay or record")
+    if budget > MAX_RUN_BUDGET:
+        raise typer.BadParameter(f"--budget is at most ${MAX_RUN_BUDGET:.0f} for one run")
+    settings = Settings()
+    key = settings.model_key.get_secret_value()
+    if mode == "record" and not key:
+        raise typer.BadParameter(
+            "--mode record needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
+        )
+    run = NoteRun(mode=mode, model=model, budget_usd=Decimal(str(budget)), key=key)
+    url = settings.database_url
+    if mode == "record":
+        recorded = evaluate_notes(seed, url, run, limit or None)
+        calls = recorded["calls"]
+        typer.echo(f"recorded seed {seed}: {calls['calls']} calls, ${calls['cost_usd']}")
+        run = replace(run, mode="replay")
+    report = evaluate_notes(seed, url, run, limit or None)
+    for path in write_notes(report, date or datetime.now(UTC).date().isoformat()):
+        typer.echo(f"wrote {path}")
+
+
 user_app = typer.Typer(no_args_is_help=True, help="Users and passwords.")
 app.add_typer(user_app, name="user")
 

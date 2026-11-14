@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, StrictInt
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from firstcall.board import accounts, delete, leads, notes, tray
+from firstcall.board import accounts, delete, leads, notes, suggestions, tray
 from firstcall.board.leads import ConflictError, InvalidError, NotFoundError
 from firstcall.core import escalation
 from firstcall.core.access import Viewer, can_see_team
@@ -43,6 +43,7 @@ from firstcall.db import (
     Membership,
     Message,
     Note,
+    NoteSuggestion,
     Outcome,
     PushSubscription,
     Source,
@@ -262,6 +263,20 @@ def board_router(
         found_notes = db.scalars(
             select(Note).where(Note.lead_id == lead.id).order_by(Note.created_at, Note.id)
         )
+        offered: dict[uuid.UUID, list[dict[str, Any]]] = {}
+        for found in db.scalars(
+            select(NoteSuggestion)
+            .where(NoteSuggestion.lead_id == lead.id)
+            .order_by(NoteSuggestion.created_at, NoteSuggestion.kind)
+        ):
+            offered.setdefault(found.note_id, []).append(
+                {
+                    "id": str(found.id),
+                    "kind": found.kind,
+                    "quote": found.quote,
+                    "state": found.state,
+                }
+            )
         found_contacts = db.scalars(
             select(Contact).where(Contact.lead_id == lead.id).order_by(Contact.at, Contact.id)
         )
@@ -276,6 +291,10 @@ def board_router(
                     "text": n.text,
                     "author": names.get(n.author_id),
                     "created_at": n.created_at.isoformat(),
+                    "read_state": n.read_state,
+                    "read_reason": n.read_reason,
+                    "clean_note": n.clean_note,
+                    "suggestions": offered.get(n.id, []),
                 }
                 for n in found_notes
             ],
@@ -564,6 +583,24 @@ def board_router(
                 body.competitor,
                 clock,
             ),
+        )
+
+    @router.post("/leads/{lead_id}/suggestions/{suggestion_id}/confirm")
+    def confirm_suggestion(
+        request: Request, lead_id: uuid.UUID, suggestion_id: uuid.UUID
+    ) -> dict[str, Any]:
+        return lead_action(
+            request,
+            lambda db, who: suggestions.confirm(db, who.viewer, lead_id, suggestion_id, clock),
+        )
+
+    @router.post("/leads/{lead_id}/suggestions/{suggestion_id}/dismiss")
+    def dismiss_suggestion(
+        request: Request, lead_id: uuid.UUID, suggestion_id: uuid.UUID
+    ) -> dict[str, Any]:
+        return lead_action(
+            request,
+            lambda db, who: suggestions.dismiss(db, who.viewer, lead_id, suggestion_id, clock),
         )
 
     @router.post("/leads/{lead_id}/nurture")
