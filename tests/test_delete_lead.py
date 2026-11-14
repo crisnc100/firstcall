@@ -13,12 +13,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board.escalate import escalate
+from firstcall.board.followups import run_nightly
 from firstcall.db import (
     Activity,
     Alert,
     Base,
     Contact,
     Escalation,
+    Followup,
     Identity,
     InboxEmail,
     Job,
@@ -40,7 +42,7 @@ MONDAY_10AM = datetime(2026, 3, 2, 15, 0, tzinfo=UTC)
 # test, so whoever adds it decides what delete does with it.
 DELETED_FOR_LEAD = {
     "identities", "activities", "notes", "contacts", "lead_profiles", "outcomes", "alerts",
-    "push_sends", "escalations", "jobs", "inbox_emails",
+    "push_sends", "escalations", "jobs", "inbox_emails", "followups",
 }  # fmt: skip
 KEPT_SCRUBBED: dict[str, tuple[str, ...]] = {
     "leads": ("name", "phone", "email", "item", "possible_duplicates", "edited_fields", "flags"),
@@ -50,7 +52,7 @@ KEPT_SCRUBBED: dict[str, tuple[str, ...]] = {
 }
 NOT_LEAD_DATA = {
     "orgs", "teams", "agents", "sources", "users", "memberships", "user_sessions",
-    "push_subscriptions", "budget_ledger", "heartbeats",
+    "push_subscriptions", "budget_ledger", "heartbeats", "followup_runs",
     # Kept for the cost page; it points at a message row, which delete keeps.
     "model_calls",
 }  # fmt: skip
@@ -113,6 +115,9 @@ def _check_delete(board: Board, push: FakePushService) -> None:
     note = {"text": "Called Ana about Friday.", "action": "call"}
     assert client.post(f"/api/leads/{lead}/notes", json=note).status_code == 201
     assert client.put(f"/api/leads/{lead}/profile", json={"need": "garage"}).status_code == 200
+    board.clock.current = MONDAY_10AM + timedelta(days=1)
+    run_nightly(board.sessions, board.clock)
+    assert _count(board, Followup, Followup.lead_id == lead) == 1
     body = {"outcome": "lost", "reason": "timing"}
     assert client.post(f"/api/leads/{lead}/outcome", json=body).status_code == 200
     with board.sessions.begin() as session:
@@ -156,6 +161,7 @@ def _check_delete(board: Board, push: FakePushService) -> None:
     assert _count(board, PushSend, PushSend.alert_id.in_(alert_ids)) == 0
     assert _count(board, Job, Job.message_id.in_(message_ids)) == 0
     assert _count(board, InboxEmail) == 0
+    assert _count(board, Followup, Followup.lead_id == lead) == 0
 
     row = board.get(lead)
     for name in KEPT_SCRUBBED["leads"]:

@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from firstcall.board.followups import run_nightly
 from firstcall.db import LeadEvent
 from tests.board_helpers import Board
 from tests.conftest import FakeClock
@@ -159,6 +160,9 @@ ALLOWED_KEYS: dict[str, set[str]] = {
     "lead.outcome": {"by", "outcome", "reason"},
     "lead.reopened": {"by", "reason", "to", "message_id"},
     "lead.deleted": {"by"},
+    "followup.created": {"followup_id", "owner_id"},
+    "followup.done": {"followup_id"},
+    "followup.cancelled": {"followup_id", "to"},
 }
 CODES = {
     "call", "text", "email", "meeting", "typed", "suggestion", "owned", "pool", "won", "lost",
@@ -185,10 +189,15 @@ def test_event_payloads_carry_only_ids_and_codes(board: Board) -> None:
     cast = Cast(board)
     client = cast.clients["salesperson"]
     lead = board.lead("north", name="Zed Quill", email="zed@buyers.example")
+    board.set_lead(lead, arrival_at=board.clock.now(), pool_since=board.clock.now())
     client.post(f"/api/leads/{lead}/claim")
+    board.clock.current = datetime(2026, 3, 3, 15, 0, tzinfo=UTC)
+    run_nightly(board.sessions, board.clock)
     client.post(f"/api/leads/{lead}/notes", json={"text": "Called Zed, 400k.", "action": "call"})
     client.post(f"/api/leads/{lead}/nurture")
     client.post(f"/api/leads/{lead}/resume")
+    board.clock.current = datetime(2026, 3, 5, 15, 0, tzinfo=UTC)
+    run_nightly(board.sessions, board.clock)
     body = {"outcome": "lost", "reason": "other", "reason_text": "Zed moved", "competitor": "X"}
     client.post(f"/api/leads/{lead}/outcome", json=body)
     board.pipe.deliver_form(
@@ -206,7 +215,8 @@ def test_event_payloads_carry_only_ids_and_codes(board: Board) -> None:
         events = list(session.scalars(select(LeadEvent)))
     seen = {e.type for e in events}
     assert {"note.added", "contact.logged", "lead.outcome", "lead.reopened",
-            "lead.deleted", "lead.activity"} <= seen  # fmt: skip
+            "lead.deleted", "lead.activity", "followup.created", "followup.done",
+            "followup.cancelled"} <= seen  # fmt: skip
     for event in events:
         assert set(event.payload) <= ALLOWED_KEYS[event.type], event.type
         for key, value in event.payload.items():
