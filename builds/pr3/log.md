@@ -171,3 +171,22 @@ textContent.
   refresh. The page test opens a follow-up, sees its badge on My leads, closes it in the
   database and waits for the poll to remove it; that check failed on the old list code.
 - verify.sh: 770 passed, every floor met.
+
+## Number reader, made structural (review 1c69e8 f1, f2)
+
+The third round on the scorer's numbers, so one reader replaces the patches.
+- **One reader for both sides.** `read_numbers` reads the script and the answer alike; the
+  script-only helper is gone. It splits the text at ; : ! ? line breaks, em dashes, and any
+  comma or full stop outside a figure, so no number runs across punctuation or a sentence
+  end. Digits and number words are read in one token pass per clause. A bare number under a
+  thousand joined by "and", "to" or a dash to a scaled number takes that scale, on either
+  side: an answer's "between 425 and 450 thousand" is supported.
+- **Regression table** (`tests/test_note_numbers.py`): 25 faithful rewrites of gold scripts
+  from both seeds (10 ranges or more, three or more in number words) state nothing
+  unsupported; 10 invented numbers (wrong scale, wrong digits, from nowhere) are flagged
+  exactly; every script in both seeds, copied through and with its budget restated in
+  figures from the gold, is supported; and punctuation cases read as separate numbers. On
+  the old reader 18 of these fail.
+- The baseline floors test passes unchanged. ADR-007 and the gold CHANGELOG say so; no gold
+  file changed.
+- verify.sh: 816 passed, every floor met.

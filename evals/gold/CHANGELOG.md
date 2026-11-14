@@ -70,3 +70,14 @@ any change to a gold file that the manifest does not record.
   written value, and a bare number joined to a scaled one ("380 and 420 thousand") shares
   that scale. No gold file changed; the gold still meets every floor and the baselines
   still miss them. No note reader or model run exists yet.
+
+## 2026-11-14, third entry
+- A third review round found the scorer still read script and answer differently (an
+  answer's "between 425 and 450 thousand" was flagged) and let number words run across
+  punctuation ("nine hundred thirty thousand; three bedrooms" read as 930003). Script and
+  answer now go through one reader: it splits at punctuation and sentence ends, reads digits
+  and number words in one pass, and gives a bare number under a thousand the scale of a
+  scaled number it is joined to. A regression table checks 25 faithful rewrites of gold
+  scripts from both seeds (every range form and written-number style) and 10 invented
+  numbers, and every script in both seeds copied through and restated from its gold. No
+  gold file changed; the gold still meets every floor and the baselines still miss them.

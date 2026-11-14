@@ -19,6 +19,7 @@ from __future__ import annotations
 import random
 import re
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from functools import cache
 from typing import Any
@@ -60,7 +61,6 @@ DIGITS = re.compile(
     r"(?:\s*(k|m|mil|million|thousand|grand|bn|billion)\b)?(?:st|nd|rd|th)?",
     re.IGNORECASE,
 )
-WORD = re.compile(r"[a-z]+", re.IGNORECASE)
 
 MONTHS = (
     "January", "February", "March", "April", "May", "June", "July", "August", "September",
@@ -114,89 +114,114 @@ def _words_value(words: Sequence[str]) -> int | None:
     return total + current if seen else None
 
 
-def _word_numbers(text: str) -> set[Decimal]:
-    """Numbers written as words: "forty thousand", "a hundred", "half a million"."""
-    found: set[Decimal] = set()
-    tokens = [t.lower() for t in WORD.findall(text.replace("-", " "))]
+# Where a number ends whatever follows: ; : ! ? a line break, an em dash, and a comma or
+# full stop that is not inside a figure ("450,000" and "1.5" stay whole).
+BREAKS = re.compile(r"[;:!?\n\u2014]|(?<!\d),|,(?!\d{3}(?!\d))|(?<!\d)\.|\.(?!\d)")
+TOKEN = re.compile(
+    r"(?P<num>(?<![\w.])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
+    r"(?:\s*(?:k|m|mil|million|thousand|grand|bn|billion)\b)?(?:st|nd|rd|th)?)"
+    r"|(?P<word>[a-z]+)|(?P<dash>[-\u2013])",
+    re.IGNORECASE,
+)
+# Words that join a bare number to a scaled one: "380 and 420 thousand", "1.1 to 1.3M".
+JOINERS = frozenset({"and", "to", "-"})
+
+
+@dataclass(frozen=True)
+class _Number:
+    value: Decimal
+    # The scale the number was written with ("k", "thousand", "million"), if any.
+    scale: int | None
+
+
+def _number_word(item: object) -> bool:
+    return isinstance(item, str) and (item in UNITS or item == "hundred" or item in SCALES)
+
+
+def _tokens(clause: str) -> list[_Number | str]:
+    items: list[_Number | str] = []
+    for match in TOKEN.finditer(clause):
+        if match.group("num"):
+            digits = DIGITS.match(match.group("num"))
+            assert digits is not None
+            whole, fraction, suffix = digits.group(1), digits.group(2) or "", digits.group(3)
+            value = Decimal(whole.replace(",", "") + fraction)
+            scale = SUFFIXES[suffix.lower()] if suffix else None
+            items.append(_Number(value * (scale or 1), scale))
+        elif match.group("word"):
+            items.append(match.group("word").lower())
+        else:
+            items.append("-")
+    return items
+
+
+def _fold_words(items: list[_Number | str]) -> list[_Number | str]:
+    """Runs of number words become numbers: "forty thousand", "a hundred", "half a
+    million", "seventy-five"."""
+    out: list[_Number | str] = []
     index = 0
-    while index < len(tokens):
-        word = tokens[index]
-        if word == "half" and tokens[index + 1 : index + 3] in (
-            ["a", "million"],
-            ["a", "billion"],
-        ):
-            found.add(Decimal(SCALES[tokens[index + 2]]) / 2)
+    while index < len(items):
+        item = items[index]
+        if item == "half" and items[index + 1 : index + 3] in (["a", "million"], ["a", "billion"]):
+            scale = SCALES[str(items[index + 2])]
+            out.append(_Number(Decimal(scale) / 2, scale))
             index += 3
             continue
-        starts = word in UNITS or word == "hundred" or word in SCALES
-        a_scale = (
-            word == "a"
-            and index + 1 < len(tokens)
-            and (tokens[index + 1] == "hundred" or tokens[index + 1] in SCALES)
-        )
-        if not (starts or a_scale):
+        a_scale = item == "a" and index + 1 < len(items) and _number_word(items[index + 1])
+        if not (_number_word(item) or a_scale):
+            out.append(item)
             index += 1
             continue
-        run: list[str] = []
         if a_scale:
             index += 1
-        while index < len(tokens):
-            word = tokens[index]
-            if word in UNITS or word == "hundred" or word in SCALES:
-                run.append(word)
+        run: list[str] = []
+        while index < len(items):
+            word, after = items[index], items[index + 1] if index + 1 < len(items) else None
+            if _number_word(word):
+                run.append(str(word))
+            elif word == "-" and run and _number_word(after):
+                pass
             elif (
-                # "four hundred and fifty" is one number; "430 thousand and 505 thousand" two.
                 word == "and"
                 and run[-1:] == ["hundred"]
-                and index + 1 < len(tokens)
-                and tokens[index + 1] in UNITS
+                and isinstance(after, str)
+                and (after in UNITS)
             ):
+                # "four hundred and fifty" is one number; "430 thousand and 505 thousand" two.
                 pass
             else:
                 break
             index += 1
         value = _words_value(run)
         if value is not None:
-            found.add(Decimal(value))
-    return found
+            scales = [SCALES[w] for w in run if w in SCALES]
+            out.append(_Number(Decimal(value), scales[-1] if scales else None))
+    return out
 
 
 def read_numbers(text: str) -> set[Decimal]:
     """Every number in the text, as a value: "$450k", "450,000" and "four hundred fifty
-    thousand" are all 450000; "1.5 million" is 1500000."""
+    thousand" are all 450000; "1.5 million" is 1500000. A number never runs across
+    punctuation or a sentence end. A bare number under a thousand joined to a scaled one
+    takes its scale: "between 380 and 420 thousand" is 380000 and 420000. The script and the
+    answer are both read this way."""
     found: set[Decimal] = set()
-    for match in DIGITS.finditer(text):
-        whole, fraction, suffix = match.group(1), match.group(2) or "", match.group(3)
-        try:
-            value = Decimal(whole.replace(",", "") + fraction)
-        except InvalidOperation:  # pragma: no cover - the pattern only matches digits
-            continue
-        if suffix:
-            value *= SUFFIXES[suffix.lower()]
-        found.add(value.normalize())
-    # Words are read only outside the digit numbers, so the "million" of "1.5 million" is
-    # not read a second time as one million.
-    found |= {v.normalize() for v in _word_numbers(DIGITS.sub(" ", text))}
-    return found
-
-
-# A bare number joined to a scaled one, as in "between 380 and 420 thousand": the scale
-# belongs to both.
-SHARED_SCALE = re.compile(
-    r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?\s*(?:and|to|-|\u2013)\s*\$?"
-    r"(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?\s*(k|m|mil|million|thousand|grand|bn|billion)\b",
-    re.IGNORECASE,
-)
-
-
-def supported_numbers(script: str) -> set[Decimal]:
-    """The script's numbers, each as the value it is written as. A bare number joined to a
-    scaled one takes that scale too: "between 380 and 420 thousand" supports 380000. Nothing
-    else is scaled, so "two dogs" never supports two thousand or two million."""
-    found = read_numbers(script)
-    for match in SHARED_SCALE.finditer(script):
-        value = Decimal(match.group(1).replace(",", "") + (match.group(2) or ""))
-        found.add((value * SUFFIXES[match.group(3).lower()]).normalize())
+    for clause in BREAKS.split(text):
+        items = _fold_words(_tokens(clause))
+        for index, item in enumerate(items):
+            if not isinstance(item, _Number):
+                continue
+            value = item.value
+            joined = items[index + 2] if index + 2 < len(items) else None
+            if (
+                item.scale is None
+                and value < 1000
+                and isinstance(joined, _Number)
+                and items[index + 1] in JOINERS
+                and joined.scale is not None
+            ):
+                value *= joined.scale
+            found.add(value.normalize())
     return found
 
 
@@ -294,7 +319,7 @@ def right(
 
 def unsupported(script: str, answer: Mapping[str, Any] | None) -> list[str]:
     """What the answer states that the script does not: numbers and person names."""
-    numbers = supported_numbers(script)
+    numbers = read_numbers(script)
     script_words = _words(script)
     found: list[str] = []
     for path in TEXT_FIELDS:
