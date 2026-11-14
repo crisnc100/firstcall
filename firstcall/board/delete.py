@@ -39,9 +39,10 @@ from firstcall.locks import lock_all
 DELETED = (
     PushSend, Alert, Escalation, Followup, Contact, Note, LeadProfile, Outcome, Activity, Identity,
 )  # fmt: skip
-# Message columns cleared; the delivery key and hashes stay.
+# Message columns cleared; the delivery key and hashes stay. An emptied message can never be
+# read again, so it leaves the reread queue instead of holding a place at its head.
 MESSAGE_SCRUB = {"raw": b"", "extracted": None, "model_answer": None, "source_time": None,
-                 "category": None}  # fmt: skip
+                 "category": None, "needs_reread": False}  # fmt: skip
 LEAD_SCRUB = {"name": None, "phone": None, "email": None, "item": None,
               "possible_duplicates": [], "edited_fields": [], "flags": []}  # fmt: skip
 

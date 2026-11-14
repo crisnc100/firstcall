@@ -154,6 +154,9 @@ def _reread_one(session: Session, message_id: uuid.UUID, reader: ModelReader) ->
         return outcome.reason or UNREADABLE
     reading = combine(rules, outcome.answer, reader.methods)
     lead = session.get_one(Lead, message.lead_id, with_for_update=True)
+    if lead.deleted_at is not None:
+        # Deleted while the model read the message: nothing it found may reach the lead.
+        return "skipped"
     keys = dict(identities(reading, view))
     lock_all(session, [("identity", str(lead.org_id), k, v) for k, v in sorted(keys.items())])
     edited = {str(f) for f in lead.edited_fields}

@@ -111,3 +111,26 @@
   tables and checks a follow-up is deleted; the event payload test allows and expects the
   three follow-up events.
 - verify.sh: 754 passed.
+
+## Phases 1-3 review fixes (reviews 917b21 and d3dd8b)
+
+Nine MEDIUM findings, no HIGH, each with a failing test first in `tests/test_pr3a_review.py`.
+- **Seed keeps a team's cadence** (917b21 f1). `seed.py` copies and checks `cadence` beside
+  hours and escalation; a bad one stops the seed.
+- **A deleted lead's messages leave the reread queue** (f2). The message scrub sets
+  `needs_reread` false. Reread also stops when the lead it locks has been deleted, so a model
+  answer read before a delete never refills the tombstone.
+- **An earlier message moves time to first contact** (f3). When an attach moves `arrival_at`
+  back, `notes.first_contact_times` recomputes both durations from the new arrival.
+- **My leads orders before its limit** (f4). Due follow-ups first, oldest due date, then
+  arrival, all in the query.
+- **Rhythm steps across a closed day** (f6). If the newest steady step moves past today, the
+  latest earlier one whose open day has come stands.
+- **Owner left skips tombstones** (f7). The walk test sends every lead write route to a
+  deleted owned and a deleted nurture lead (all 404), runs escalate and the nightly job, and
+  removes and deactivates the owner: no event, state, alert or follow-up changes.
+- **Gold** (d3dd8b f1, f2, and 917b21 f5): corner lot is a need; labels record the number
+  style written, so 5 seed-11 scripts become seen (60 seen, 90 unseen); the scorer scales a
+  number only by a scale the script writes. Script text is unchanged; labels regenerated;
+  manifest, gold CHANGELOG and ADR-007 updated. No note reader or model run exists yet.
+- verify.sh: 767 passed, every floor met.

@@ -93,11 +93,15 @@ def current_step(
     if last_touch is not None and last_touch > base:
         base = last_touch
     period = timedelta(days=RHYTHM_DAYS[rhythm])
-    # The steady steps after the base, up to today: the latest is the only one that matters.
+    # The steady steps after the base, up to today: the latest one whose open day has come is
+    # the only one that matters. A closed day can push the newest past today, so earlier
+    # steps are tried; open_day moves a date at most two weeks, so few are.
     if today > base:
-        count = (today - base) // period
-        if count >= 1:
-            candidates.append(Step(open_day(base + period * count, hours), rhythm))
+        for count in range((today - base) // period, 0, -1):
+            due_on = open_day(base + period * count, hours)
+            if due_on <= today:
+                candidates.append(Step(due_on, rhythm))
+                break
     # Candidates are in cadence order, so when a closed day pushes two steps onto one date
     # the later step wins the tie.
     found: Step | None = None

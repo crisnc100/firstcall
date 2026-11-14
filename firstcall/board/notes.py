@@ -142,8 +142,15 @@ def _first_contact(session: Session, lead: Lead, at: datetime) -> None:
     before the stored one (a suggestion confirmed late) moves it back."""
     if lead.first_contact_at is not None and at >= lead.first_contact_at:
         return
-    at = max(at, lead.arrival_at)
-    lead.first_contact_at = at
+    lead.first_contact_at = max(at, lead.arrival_at)
+    first_contact_times(session, lead)
+
+
+def first_contact_times(session: Session, lead: Lead) -> None:
+    """The wall and business minutes from arrival to the first contact, if there was one."""
+    at = lead.first_contact_at
+    if at is None:
+        return
     lead.first_contact_minutes = _minutes(wall_minutes(lead.arrival_at, at))
     lead.first_contact_business_minutes = None
     team = session.get(Team, lead.team_id) if lead.team_id else None

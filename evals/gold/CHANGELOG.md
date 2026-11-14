@@ -44,3 +44,21 @@ any change to a gold file that the manifest does not record.
   note scorer (`firstcall/evaluation/note_score.py`) and ADR-007 were committed with them,
   before any note reader code. From here the scorer changes only with an entry in this file,
   and never once the seed-11 note run has started.
+
+## 2026-11-14
+- The phases 1-3 code review of PR3a found two gold faults in the note scripts and one in the
+  scorer. No note reader exists and no model has read a note script, so all three were fixed
+  before any run.
+  - "Prefers a corner lot." is a stated preference, but its gold need could be empty. The gold
+    now marks need present with the term "corner lot". Need goes from empty to present in 2
+    seed-7 and 7 seed-11 labels; 8 and 6 labels that already had a need gain the term. Seed 11
+    has need empty in 37% of scripts, inside the 35 to 50% rule.
+  - A number style with no form for an amount's size falls back to "million" or "k", but the
+    label recorded the style asked for. Labels now record the style written. Five seed-11
+    scripts written only in seen styles were marked unseen and are now seen: 60 seen and 90
+    unseen (60% unseen; the rule is at least 40%). In all, 13 seed-7 and 24 seed-11 labels change
+    their style id.
+  - The scorer scaled every script number by a thousand and a million, so "two million"
+    passed against "two dogs". It now scales only by a scale the script itself writes.
+  - No script text changed in either seed: `scripts.jsonl` hashes are as before. Both
+    `labels.jsonl` files were regenerated and the notes manifest records their new hashes.

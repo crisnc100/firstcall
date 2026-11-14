@@ -45,7 +45,9 @@ the gold, this record and the scorer were committed before it.
   scripts whose gold has a value.
 - **Unsupported facts:** a note counts when the answer holds a number or a person's name the
   note does not. Numbers are read as values on both sides ("$450k", "450,000" and "four
-  hundred fifty thousand" are one value). Names come from Faker's en_US name lists, less
+  hundred fifty thousand" are one value). A script number also supports itself times a scale
+  the script writes, so "between 380 and 420 thousand" supports 380,000; a scale the script
+  never writes, as in "two million" against "two dogs", is unsupported. Names come from Faker's en_US name lists, less
   months, weekdays and names that are everyday words. A name outside those lists is missed.
   At most 1 of 150.
 - **Baselines:** "always fill", "never fill" and "copy the note through" miss the floors, and

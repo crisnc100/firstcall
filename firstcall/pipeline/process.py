@@ -18,7 +18,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from firstcall import events, failpoints
-from firstcall.board import alerts, leads
+from firstcall.board import alerts, leads, notes
 from firstcall.core import delivery, states
 from firstcall.core.clock import Clock
 from firstcall.core.identity import first_name
@@ -262,6 +262,7 @@ def settle(
         # lead's timers start at the buyer's earliest message either way.
         if message.received_at < lead.arrival_at:
             lead.arrival_at = message.received_at
+            notes.first_contact_times(session, lead)
         if source.kind == "email" and _is_reforward(session, message, lead.id):
             message.status, message.reason = (
                 "duplicate_content",

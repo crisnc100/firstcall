@@ -260,7 +260,9 @@ def owner_left(
 ) -> list[Done]:
     """Return the user's open owned leads to their pools: every team when the user was
     deactivated, or one team when they were removed from it. Each pool is alerted."""
-    query = select(Lead).where(Lead.owner_id == user_id, Lead.state.in_(states.OWNED))
+    query = select(Lead).where(
+        Lead.owner_id == user_id, Lead.state.in_(states.OWNED), Lead.deleted_at.is_(None)
+    )
     if team_id is not None:
         query = query.where(Lead.team_id == team_id)
     done: list[Done] = []

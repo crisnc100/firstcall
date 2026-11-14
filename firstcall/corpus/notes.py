@@ -214,9 +214,10 @@ TIMELINE = (
     (_u("timeline-none-u1", "Timing is loose, sometime next year."), "next year", "none"),
 )  # fmt: skip
 
+CORNER_LOT = "Prefers a corner lot."
 EXTRAS = (
     "Has two dogs.",
-    "Prefers a corner lot.",
+    CORNER_LOT,
     "Works from home most days.",
     "Asked about the commute downtown.",
     "Mentioned the open house went well.",
@@ -250,7 +251,20 @@ def number_words(value: int) -> str:
     return " ".join(words)
 
 
+MILLION_STYLES = ("short_m", "comma")
+THOUSAND_STYLES = ("k", "upper_k", "comma", "thousand", "words", "grand")
+
+
+def shown_style(value: int, style: str) -> str:
+    """The style the amount is really written in: a style that has no form for the amount's
+    size falls back to "million" or "k", which are seen styles."""
+    if value >= 1_000_000:
+        return style if style in MILLION_STYLES else "million"
+    return style if style in THOUSAND_STYLES else "k"
+
+
 def amount_text(value: int, style: str) -> str:
+    style = shown_style(value, style)
     if value >= 1_000_000:
         millions = f"{value / 1_000_000:g}"
         return {"short_m": f"${millions}M", "comma": f"${value:,}"}.get(
@@ -264,7 +278,7 @@ def amount_text(value: int, style: str) -> str:
         "thousand": f"{thousands} thousand",
         "words": number_words(value),
         "grand": f"{thousands} grand",
-    }.get(style, f"${thousands}k")
+    }[style]
 
 
 def _month_after(day: date, months: int) -> tuple[int, int]:
@@ -399,16 +413,16 @@ class NoteGenerator:
         if spec["budget"]:
             form = self.rng.choice(("around", "up_to", "at_least", "between"))
             style = self._style()
-            script.phrasings.append(f"style-{style}")
-            script.seen = script.seen and style in SEEN_STYLES
             if form == "between":
                 low = self._amount()
                 high = low + self.rng.choice((25_000, 50_000, 75_000, 100_000))
+                amounts = [low, high]
                 say(self._pick(BUDGET_BETWEEN), low=amount_text(low, style),
                     high=amount_text(high, style))  # fmt: skip
                 budget = {"min": low, "max": high}
             else:
                 value = self._amount()
+                amounts = [value]
                 options = {"around": BUDGET_AROUND, "up_to": BUDGET_UP_TO,
                            "at_least": BUDGET_AT_LEAST}[form]  # fmt: skip
                 say(self._pick(options), amount=amount_text(value, style))
@@ -417,6 +431,10 @@ class NoteGenerator:
                     "up_to": {"min": None, "max": value},
                     "at_least": {"min": value, "max": None},
                 }[form]
+            # Recorded as written, so a style that fell back to a seen one counts as seen.
+            for shown in dict.fromkeys(shown_style(a, style) for a in amounts):
+                script.phrasings.insert(-1, f"style-{shown}")
+                script.seen = script.seen and shown in SEEN_STYLES
             if self.rng.random() < 0.6:
                 text, term = self.rng.choice(BUDGET_TERMS)
                 script.sentences.append(text.format(**slots))
@@ -461,7 +479,12 @@ class NoteGenerator:
         body = script.sentences
         self.rng.shuffle(body)
         if (not body and not contact) or self.rng.random() < 0.3:
-            body.append(self.rng.choice(EXTRAS))
+            extra = self.rng.choice(EXTRAS)
+            body.append(extra)
+            if extra == CORNER_LOT:
+                # A stated preference is a need, so the gold says so.
+                need = True
+                terms["need"].append("corner lot")
         text = " ".join(contact + body)
 
         kind = spec["kind"]

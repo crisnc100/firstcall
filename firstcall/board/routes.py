@@ -442,12 +442,18 @@ def board_router(
                     query = query.where(Lead.state.in_(("owned", "nurture")))
             else:
                 raise HTTPException(422, "view is mine, unassigned, or pool or team with a team_id")
-            rows = db.scalars(query.order_by(Lead.arrival_at).limit(LIST_LIMIT))
-            found = [lead_json(db, lead, viewer) for lead in rows if leads.visible(viewer, lead)]
+            order: list[Any] = [Lead.arrival_at]
             if view == "mine":
-                # Due follow-ups first, the oldest due date at the top; the rest by arrival.
-                found.sort(key=lambda row: (row["followup"] is None, _due(row)))
-            return found
+                # Ordered before the limit, so a due follow-up is never cut: due follow-ups
+                # first, the oldest due date at the top; the rest by arrival.
+                due = (
+                    select(Followup.due_on)
+                    .where(Followup.lead_id == Lead.id, Followup.state == "open")
+                    .scalar_subquery()
+                )
+                order = [due.is_(None), due, Lead.arrival_at]
+            rows = db.scalars(query.order_by(*order).limit(LIST_LIMIT))
+            return [lead_json(db, lead, viewer) for lead in rows if leads.visible(viewer, lead)]
 
     @router.get("/leads/{lead_id}")
     def lead_detail(request: Request, lead_id: uuid.UUID) -> dict[str, Any]:
@@ -794,10 +800,6 @@ def board_router(
             raise account_error(error) from error
 
     return router
-
-
-def _due(row: dict[str, Any]) -> str:
-    return row["followup"]["due_on"] if row.get("followup") else ""
 
 
 def still_standing(fired: Escalation, lead: Lead) -> bool:

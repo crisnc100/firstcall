@@ -180,11 +180,20 @@ def read_numbers(text: str) -> set[Decimal]:
     return found
 
 
+def magnitudes(script: str) -> set[int]:
+    """The scales the script itself writes, as a suffix ("450k", "1.2M") or a word
+    ("thousand", "grand", "million")."""
+    found = {SUFFIXES[m.group(3).lower()] for m in DIGITS.finditer(script) if m.group(3)}
+    words = re.findall(r"[a-z]+", script.casefold())
+    return found | {SUFFIXES[w] for w in words if w in SCALES or w == "grand"}
+
+
 def supported_numbers(script: str) -> set[Decimal]:
-    """The script's numbers, each also scaled by a thousand and a million. A note that says
-    "between 380 and 420 thousand" supports 380000 as well as 380."""
+    """The script's numbers, each also scaled by every scale the script writes. A note that
+    says "between 380 and 420 thousand" supports 380000 as well as 380; "two dogs" alone
+    never supports two million."""
     base = read_numbers(script)
-    scaled = {(v * m).normalize() for v in base for m in (1_000, 1_000_000)}
+    scaled = {(v * m).normalize() for v in base for m in magnitudes(script)}
     return base | scaled
 
 
