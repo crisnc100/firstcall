@@ -1,7 +1,7 @@
 // Working a lead: notes and the contacts they log, the buyer profile, the open follow-up,
 // and the outcome, reopen and delete controls. Plain on purpose; the redesign comes later.
 
-import { api, ApiError, type LeadDetail, type Profile } from "../api";
+import { api, ApiError, type LeadDetail, type Note, type Profile } from "../api";
 import { announce, h } from "../dom";
 import { shortTime } from "../format";
 import { busy, unbusy } from "../leadlist";
@@ -115,6 +115,7 @@ function notesSection(lead: LeadDetail, reload: () => Promise<void>): HTMLElemen
           ...(logged.get(note.id) ?? []).map((word) => h("span", { class: "badge", text: `${word} · contact logged` })),
         ),
         h("div", { class: "msg", text: note.text }),
+        ...readParts(lead, note, reload),
       ),
     ),
   );
@@ -122,6 +123,47 @@ function notesSection(lead: LeadDetail, reload: () => Promise<void>): HTMLElemen
   if (!notes.length) parts.push(h("p", { class: "muted", text: "No notes yet." }));
   else parts.push(list);
   if (lead.work.includes("note")) parts.push(noteForm(lead, reload));
+  return parts;
+}
+
+const READ_LINE: Record<string, string> = {
+  pending: "Reading this note…",
+  needs_model: "Needs a model key",
+  failed: "Couldn't read this note",
+};
+const CLOSED_WORD: Record<string, string> = {
+  confirmed: "confirmed",
+  dismissed: "dismissed",
+  already_logged: "already logged",
+};
+
+/** What the model made of a note: its read state, the tidied note, and each suggested
+ * contact with Confirm and Dismiss while it is open. */
+function readParts(lead: LeadDetail, note: Note, reload: () => Promise<void>): HTMLElement[] {
+  const parts: HTMLElement[] = [];
+  const line = READ_LINE[note.read_state];
+  if (line) parts.push(h("p", { class: "muted sm read-state", text: line }));
+  if (note.clean_note) parts.push(h("p", { class: "sm tidied" }, h("strong", { text: "Tidied: " }), note.clean_note));
+  for (const suggestion of note.suggestions) {
+    const word = ACTION_WORD[suggestion.kind] ?? suggestion.kind;
+    const row = h("div", { class: "suggestion sm" }, h("span", { text: `Suggested: ${word} — “${suggestion.quote}”` }));
+    if (suggestion.state !== "open") {
+      row.append(" ", h("span", { class: "badge", text: CLOSED_WORD[suggestion.state] ?? suggestion.state }));
+    } else if (lead.work.includes("note")) {
+      const status = h("div", { attrs: { role: "status" } });
+      const path = `/leads/${lead.id}/suggestions/${suggestion.id}`;
+      const button = (label: string, verb: string, done: string): HTMLButtonElement => {
+        const node = h("button", { class: "btn secondary", text: label, attrs: { type: "button", "aria-label": `${label} ${word.toLowerCase()}` } });
+        node.addEventListener("click", () => void attempt(node, "Saving…", label, status, () => api("POST", `${path}/${verb}`), done, `${verb} the suggestion`, reload));
+        return node;
+      };
+      row.append(
+        h("div", { class: "row-buttons" }, button("Confirm", "confirm", "Contact logged."), button("Dismiss", "dismiss", "Suggestion dismissed.")),
+        status,
+      );
+    }
+    parts.push(row);
+  }
   return parts;
 }
 

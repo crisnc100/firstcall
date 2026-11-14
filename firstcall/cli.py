@@ -190,12 +190,13 @@ def eval_command(
 
 @app.command("eval-notes")
 def eval_notes_command(
-    seed: int = typer.Option(..., help="7 (tune) or 11 (held out, once, frozen prompt)"),
+    seed: int = typer.Option(7, help="7 (tune) or 11 (held out, once, frozen prompt)"),
     date: str = typer.Option("", help="The report date, YYYY-MM-DD; today when empty"),
     mode: str = typer.Option("replay", help="replay (recorded answers) or record (paid)"),
     budget: float = typer.Option(0.10, help="Most this run may spend, in US dollars"),
     limit: int = typer.Option(0, help="Read only the first N scripts (0 reads all 150)"),
     model: str = typer.Option("claude-haiku-5-5", help="The model"),
+    unit: bool = typer.Option(False, help="Read the five fixed F31 notes instead of a seed"),
 ) -> None:
     """Run the note eval and write evals/reports/<date>-notes-seed-<N>. record spends money:
     it records every answer, then writes the report from the recordings in replay mode. It
@@ -219,6 +220,12 @@ def eval_notes_command(
         )
     run = NoteRun(mode=mode, model=model, budget_usd=Decimal(str(budget)), key=key)
     url = settings.database_url
+    if unit:
+        from firstcall.evaluation.note_eval import read_unit_notes
+
+        for note_id, kinds in read_unit_notes(url, run).items():
+            typer.echo(f"{note_id}: {', '.join(kinds) or 'no suggestion'}")
+        return
     if mode == "record":
         recorded = evaluate_notes(seed, url, run, limit or None)
         calls = recorded["calls"]

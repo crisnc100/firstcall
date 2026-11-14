@@ -239,3 +239,19 @@ The third round on the scorer's numbers, so one reader replaces the patches.
   tests changed, in their own commit: the access matrix adds confirm and dismiss, and the
   delete test classifies `note_suggestions`.
 - verify.sh: 861 passed, every floor met.
+
+## Phase 6: pages for suggestions
+
+- **Lead page** (`web/src/pages/work.ts`): each note shows its read state ("Reading this
+  note…", "Needs a model key", "Couldn't read this note"), the tidied note, and each suggested
+  contact with its quote. An open one has Confirm and Dismiss for whoever may write notes;
+  a closed one shows confirmed, dismissed or already logged. Text goes in with textContent.
+- **Test** `tests/fault/test_pages_suggestions.py` on compose in Chromium: a worker with no
+  key leaves the owner's note at "Needs a model key"; one `firstcall tick` in replay mode
+  reads it from a fixture answer the test writes, keyed to the exact request for the
+  `unit-page` note; the owner sees the tidied note and the suggested call, confirms it, and a
+  suggestion-sourced contact is logged. The fixture answer is hand-written, not a model's.
+- **F31 unit notes:** `firstcall eval-notes --unit` reads the five fixed notes once each and
+  prints what each suggests; tested record then replay on fakes. Their replay test lands with
+  the phase 7 recording.
+- verify.sh: 863 passed, every floor met.

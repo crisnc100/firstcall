@@ -175,3 +175,24 @@ def test_a_run_that_cannot_answer_every_script_writes_no_report(
     assert report["complete"] is False
     with pytest.raises(ValueError, match="incomplete"):
         write_notes(report, "2026-01-01", tmp_path / "reports")
+
+
+def test_the_unit_notes_are_read_once_each_and_replayed(database_url: str, tmp_path: Path) -> None:
+    from firstcall.evaluation.note_eval import read_unit_notes
+
+    # One answer for every note; only the colleague's note holds its quote.
+    answer = {
+        "clean_note": None, "budget": None, "authority": {"value": "unknown", "others": None},
+        "need": None, "timeline": None, "notes": None,
+        "actions": [{"kind": "call", "quote": "Sam called Dana"}],
+    }  # fmt: skip
+    transport = FakeTransport(default=json.dumps(answer))
+    recorded = read_unit_notes(database_url, _run("record", tmp_path, transport))
+    assert set(recorded) == {"unit-future", "unit-negation", "unit-plan", "unit-hypothetical",
+                             "unit-colleague"}  # fmt: skip
+    assert recorded["unit-colleague"] == ["call"]
+    assert recorded["unit-future"] == []
+    assert len(transport.requests) == 5
+    assert read_unit_notes(database_url, _run("replay", tmp_path)) == recorded
+    with pytest.raises(ValueError, match="no answer"):
+        read_unit_notes(database_url, _run("record", tmp_path / "x", FakeTransport(default="no")))

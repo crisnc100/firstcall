@@ -139,6 +139,32 @@ def evaluate_notes(
     }
 
 
+UNIT_NOTES = REPO_ROOT / "evals" / "gold" / "unit-notes.jsonl"
+# A fixed date for the unit notes, so their recorded requests never change.
+UNIT_DATE = "2026-03-02"
+
+
+def read_unit_notes(server_url: str, run: NoteRun) -> dict[str, list[str]]:
+    """The five fixed F31 notes (future, negation, plan, hypothetical, a colleague's call),
+    each read once: the action kinds the model suggests for each, which should be none. An
+    unreadable or missing answer raises, since these are read one at a time on purpose."""
+    from firstcall.seed import seed as seed_world
+
+    notes = [json.loads(line) for line in UNIT_NOTES.read_text().splitlines()]
+    found: dict[str, list[str]] = {}
+    with throwaway_database(server_url) as sessions:
+        org = seed_world(sessions)
+        reader = NoteReader(_gateway(sessions, run), detached=True)
+        for note in notes:
+            if note["kind"] == "action":
+                continue
+            outcome = reader.read(org, None, note["text"], UNIT_DATE, ZONE)
+            if outcome.answer is None:
+                raise ValueError(f"{note['id']}: no answer ({outcome.reason})")
+            found[note["id"]] = [action.kind for action in outcome.answer.actions]
+    return found
+
+
 def _markdown(report: dict[str, Any]) -> str:
     whole = report["score"]["all"]
     lines = [
