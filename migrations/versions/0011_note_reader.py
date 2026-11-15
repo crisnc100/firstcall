@@ -1,4 +1,4 @@
-"""The note reader: note read state, suggestions, note jobs and the model fields' sources
+"""The note reader: note read state, suggestions, note jobs, and where model fields came from.
 
 Revision ID: 0011
 Revises: 0010

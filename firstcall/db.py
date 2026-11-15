@@ -460,7 +460,8 @@ class Note(Base):
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     # The model's read: pending until its job runs; needs_model when no model answered (a
-    # reread tries again); failed when its job ran out of attempts.
+    # reread tries again); failed when the answer was unreadable, a reread raised, or its job
+    # ran out of attempts.
     read_state: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
     read_reason: Mapped[str | None] = mapped_column(String(32))
     clean_note: Mapped[str | None] = mapped_column(Text)
@@ -583,7 +584,8 @@ class Followup(Base):
     next_step: Mapped[str] = mapped_column(Text)
     state: Mapped[str] = mapped_column(String(16), default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    # When a nightly run last moved it to a newer step; null while it is on its first.
+    # When the daily follow-up run last moved it to a newer step; null while it is on its
+    # first.
     moved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

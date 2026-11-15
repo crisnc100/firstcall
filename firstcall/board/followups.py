@@ -38,9 +38,9 @@ def open_followup(session: Session, lead_id: uuid.UUID) -> Followup | None:
 
 
 def _meets(session: Session, lead: Lead, found: Followup, at: datetime) -> bool:
-    """A contact meets a follow-up when it happened after its current step opened, or on or
-    after its due date in the team's time. A contact confirmed late from an older note keeps
-    its own date and so never closes a newer step."""
+    """A contact meets a follow-up when it happened at or after the moment it was created or
+    last moved, or on or after its due date in the team's time. A contact confirmed late from
+    an older note keeps its own date and so never closes a newer step."""
     if at >= (found.moved_at or found.created_at):
         return True
     team = session.get(Team, lead.team_id) if lead.team_id else None
