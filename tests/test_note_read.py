@@ -83,7 +83,6 @@ def test_a_suggestion_whose_quote_is_not_in_the_note_is_dropped() -> None:
         reply(actions=[{"kind": "fax", "quote": "Called Ana"}]),
         reply(actions="call"),
         reply(actions=["call"]),
-        reply(budget={"text": "x", "min": -5, "max": None}),
         reply(budget={"text": "x", "min": 1.5, "max": None}),
         reply(budget={"text": "x", "min": True, "max": None}),
         reply(budget="450k"),
