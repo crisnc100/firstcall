@@ -117,7 +117,8 @@ def evaluate_notes(
     unanswered: list[str] = []
     with throwaway_database(server_url) as sessions:
         org = seed_world(sessions)
-        reader = NoteReader(_gateway(sessions, run), detached=True)
+        gateway = _gateway(sessions, run)
+        reader = NoteReader(gateway, detached=True)
         for script in scripts:
             outcome = reader.read(org, None, script["text"], script["note_date"], ZONE)
             if outcome.answer is not None:
@@ -128,6 +129,7 @@ def evaluate_notes(
                 unanswered.append(script["id"])
         with sessions() as session:
             calls = _calls(session)
+        calls["json_prompt_calls"] = int(getattr(gateway.transport, "json_prompt_calls", 0))
     others: dict[str, Any] = {}
     for name, given in baselines(scripts, labels).items():
         part = score_part({s["id"]: s["text"] for s in scripts}, labels, given)
@@ -142,6 +144,7 @@ def evaluate_notes(
         "score": score(scripts, labels, answers),
         "baselines": others,
         "calls": calls,
+        "structured_output": calls["json_prompt_calls"] == 0,
     }
 
 
@@ -180,6 +183,7 @@ def record_and_report(
     except ReplayMissError as error:
         raise IncompleteRecordingError(record_pass, str(error)) from error
     report["record_pass"] = record_pass
+    report["structured_output"] = record_pass["json_prompt_calls"] == 0
     return report
 
 
@@ -243,6 +247,12 @@ def _markdown(report: dict[str, Any]) -> str:
             f"Record pass: {paid['calls']} calls, {paid['failed']} failed attempts, "
             f"${paid['cost_usd']} logged, ${paid['ledger_usd']} on the ledger.",
         ]
+        if paid["json_prompt_calls"]:
+            lines += [
+                "",
+                f"**NOT on structured output: {paid['json_prompt_calls']} calls** fell back to "
+                "JSON in the prompt.",
+            ]
     lines += ["", "| Baseline | Meets every floor |", "|---|---|"]
     for name, found in report["baselines"].items():
         lines.append(f"| {name} | {'yes' if found['met'] else 'no'} |")

@@ -82,7 +82,8 @@ def _object(properties: dict[str, Any]) -> dict[str, Any]:
 
 def answer_schema() -> dict[str, Any]:
     text = {"type": "string"}
-    dollars = _nullable({"type": "integer", "minimum": 0})
+    # No "minimum": structured output refuses it. The parser drops a negative bound instead.
+    dollars = _nullable({"type": "integer"})
     return _object(
         {
             "clean_note": _nullable(text),
@@ -154,9 +155,9 @@ def _dollars(data: Mapping[str, Any], key: str) -> int | None:
     value = data.get(key)
     if value is None:
         return None
-    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_DOLLARS:
+    if isinstance(value, bool) or not isinstance(value, int) or value > MAX_DOLLARS:
         raise _UnreadableError(key)
-    return value
+    return value if value >= 0 else None
 
 
 def _squash(text: str) -> str:
