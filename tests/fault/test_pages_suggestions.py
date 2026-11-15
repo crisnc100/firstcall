@@ -161,6 +161,15 @@ def test_a_suggestion_is_confirmed_in_a_browser(
             expect(owner.get_by_text("Contact logged.").first).to_be_visible()
             expect(owner.get_by_text("Called · contact logged")).to_be_visible()
             expect(owner.get_by_text("confirmed", exact=True)).to_be_visible()
+
+            # The recorded tidied note matches the note word for word, so a hand-made one
+            # that differs shows the page draws the tidied note, not the note's own text.
+            hand_made = "Tidied by hand for this test."
+            with sessions.begin() as session:
+                session.execute(update(Note).values(clean_note=hand_made))
+            owner.reload()
+            expect(owner.get_by_text(f"Tidied: {hand_made}")).to_be_visible()
+            expect(owner.get_by_text(f"Tidied: {CLEAN}")).to_have_count(0)
             browser.close()
 
         with sessions() as session:
