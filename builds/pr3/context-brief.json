@@ -1,0 +1,56 @@
+{
+ "mode": "pr",
+ "purpose": "Firstcall PR3b: the note reader. A salesperson's free-text note about a lead is read by the model once, in the background, and becomes a tidied note, updates to the buyer profile (budget, authority, need, timeline, move month), and suggested past contacts (call, text, email, meeting). A suggestion logs nothing until a person clicks Confirm. With no model key the note is kept and read later. The note eval measures the reader on synthetic seeds against frozen gold with floors.",
+ "mechanism": "1. Saving a note (firstcall/board/notes.py) stores it and queues a read_note job (firstcall/pipeline/jobs.py); the worker runs it (firstcall/pipeline/worker.py); schedule() guards each tick and reread_notes gives each note its own error boundary (firstcall/notes/reader.py).\n2. firstcall/notes/reader.py calls the model through the gateway (firstcall/model/gateway.py) with the READ_NOTE prompt (firstcall/model/prompts.py) and the answer schema (firstcall/core/note_read.py), with no lock held; it then locks the lead, then the job, and applies the answer only if the note is still waiting and the lead exists.\n3. parse_note_answer (firstcall/core/note_read.py) checks the answer: dollar caps, negative bounds become null, month format, quotes must appear in the note; an unreadable answer marks the note failed and it is not retried. No key, switched off, budget spent or model down leaves the note needs_model for the reread pass.\n4. Profile merge (firstcall/board/suggestions.py): a person-set field is never overwritten; a newer note's value wins; an empty model value never clears a field; budget min and max merge as a pair.\n5. Suggestions (firstcall/board/suggestions.py, routes.py): Confirm logs one contact dated at the note and made by its author; a second Confirm returns 409; Dismiss logs nothing; a kind the note already logged closes as already logged; who may confirm follows lead access; a closed lead returns 409.\n6. Follow-ups (firstcall/board/followups.py): a contact closes a follow-up only if it happened after the follow-up was created or last moved (moved_at), or on or after its due date in the team's time.\n7. Migration 0011 (migrations/versions/0011_note_reader.py) adds note read state, note_suggestions, note jobs, followups.moved_at; existing notes become needs_model (written_before_reader); open follow-ups already moved get moved_at = upgrade time.\n8. Delete (firstcall/board/delete.py) removes suggestions and note jobs and keeps model calls with no note id; the gateway re-logs a call without the note id if the note was deleted mid-read.\n9. Transport (firstcall/model/anthropic.py, transport.py) asks for structured output and falls back to JSON-in-prompt only when the API refuses the schema; each answer records its output mode (firstcall/model/recordings.py).\n10. Eval (firstcall/evaluation/note_eval.py, note_score.py, cli.py eval-notes): record then replay, Wilson intervals, baselines, floors; writes the record-pass summary first; counts fallback answers from the recordings used; structured_output is true only with zero fallbacks; scripts/check_replay_report.py reproduces the notes reports.\n11. Pages (web/src/pages/detail.ts, work.ts, poller.ts, api.ts, styles/app.css): the note shows Needs a model key / Couldn't read this note / its tidied text and suggestions with Confirm and Dismiss; the lead page polls every 15 s while a note is pending and never redraws while a form is being edited; only the newest load draws; the profile form sends only fields the person changed.",
+ "decisions": "Model call outside the lead lock (no long lock) with apply-under-lock and recheck, instead of holding the lock during the call. Unreadable answers fail permanently instead of retrying (never pay twice). Schema rules the API refuses (minimum) are enforced in the parser instead. Suggestions require Confirm instead of auto-logging, because a model must not create history. Person-set fields always win over the model. Backfilling moved_at with the upgrade time errs toward keeping follow-ups open.",
+ "readers": "README and docs/board.md: people running or trying Firstcall. docs/definitions.md and ADR-007: people configuring or judging the reader and its eval. Code comments: the next maintainer.",
+ "base": "origin/main",
+ "docMap": [
+  {
+   "behavior": "note reader, suggestions and Confirm",
+   "docs": [
+    "docs/board.md",
+    "docs/definitions.md",
+    "docs/adr/ADR-007-note-reader.md"
+   ]
+  },
+  {
+   "behavior": "follow-up close rule and moved_at",
+   "docs": [
+    "docs/definitions.md"
+   ]
+  },
+  {
+   "behavior": "budget pair merge and person-set fields",
+   "docs": [
+    "docs/definitions.md",
+    "docs/adr/ADR-007-note-reader.md"
+   ]
+  },
+  {
+   "behavior": "note eval, floors, structured output flag",
+   "docs": [
+    "docs/adr/ADR-007-note-reader.md",
+    "docs/rerecord.md"
+   ]
+  },
+  {
+   "behavior": "no-key and failed note states",
+   "docs": [
+    "docs/board.md",
+    "docs/adr/ADR-006-no-model-fallback.md"
+   ]
+  },
+  {
+   "behavior": "migration 0011",
+   "docs": []
+  }
+ ],
+ "untouchable": [
+  "evals/gold/**",
+  "evals/recordings/**",
+  "evals/reports/**",
+  "firstcall/model/prompts.py",
+  "builds/**"
+ ]
+}
