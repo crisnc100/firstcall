@@ -55,8 +55,10 @@ the gold, this record and the scorer were committed before it.
   one note.
 - **A confirmed contact closes a follow-up only if it is not older than the follow-up.**
   The follow-up keeps `moved_at`, the time it was last moved to a newer step. Migration 0011
-  sets it to the upgrade time for open follow-ups that had already moved, which errs towards
-  keeping them open.
+  sets it to the upgrade time for open follow-ups whose due date is later than the UTC date
+  they were created on. Comparing UTC dates misses one case: a follow-up created in the
+  evening west of UTC (already the next day in UTC) and moved the next morning keeps
+  `moved_at` null, so an older contact can still close its newer step.
 - **Structured output first.** The transport asks the API for the schema and falls back to
   JSON in the prompt only when the API refuses the schema. Each recorded answer keeps which
   way it was made.

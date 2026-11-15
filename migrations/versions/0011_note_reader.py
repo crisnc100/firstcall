@@ -70,8 +70,10 @@ def upgrade() -> None:
     )
     op.add_column("followups", sa.Column("moved_at", sa.DateTime(timezone=True), nullable=True))
     # A follow-up already moved past its first step has no record of when. The upgrade time
-    # is the safe stand-in: only contacts after it can close the newer step. A UTC date can
-    # run a day behind a team's local one east of UTC, which errs the same safe way.
+    # is the safe stand-in: only contacts after it can close the newer step. The check
+    # compares UTC dates. East of UTC that errs the safe way; west of UTC, a follow-up created
+    # in the evening (the next day in UTC) and moved the next morning is missed, keeps
+    # moved_at null, and an older contact can still close its newer step.
     op.execute(
         "UPDATE followups SET moved_at = now() "
         "WHERE state = 'open' AND due_on > (created_at AT TIME ZONE 'UTC')::date"
