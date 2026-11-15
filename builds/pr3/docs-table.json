@@ -347,6 +347,14 @@
      ]
     }
    ]
+  },
+  {
+   "behavior": "frozen note gold and recordings",
+   "files": [
+    "evals/gold/unit-notes.jsonl",
+    "evals/recordings/notes-claude-haiku-5-5.jsonl"
+   ],
+   "none": "Data files the eval reads; docs/rerecord.md describes how they are recorded and replayed."
   }
  ]
 }
