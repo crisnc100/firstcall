@@ -1,8 +1,9 @@
 # Recording model answers again
 
 Every model answer in a committed report comes from a live call to Claude Haiku 5.5 on the
-Anthropic API. The answers are saved in `evals/recordings/claude-haiku-5-5.jsonl`, and the
-reports in `evals/reports/` are made from them in replay mode. CI reruns each report in
+Anthropic API. Message answers are saved in `evals/recordings/claude-haiku-5-5.jsonl` and
+note answers in `evals/recordings/notes-claude-haiku-5-5.jsonl`. The reports in
+`evals/reports/` are made from them in replay mode. CI reruns each report in
 replay mode with no key and requires the same bytes (`scripts/check_replay_report.py`).
 
 ## When to record again
@@ -59,11 +60,44 @@ seed costs about $0.12. By the budget ledger, seeds 7, 11 and 13 measured $0.114
 and $0.1155. The reports' "Calls and cost" tables give each run's calls, tokens and spend from
 the call log.
 
+## Recording the note eval
+
+The note reader has its own eval, `eval-notes` (ADR-007). Its answers go in the notes file
+above. The key is built the same way, from the model, the system prompt, the user message (which
+carries the note's date and the team's time zone) and the schema, so changing the note prompt
+or the note schema makes every note answer miss. The note prompt is frozen after seed 7; seed 11
+is recorded once against it.
+
+```bash
+set -a; . ./.env; set +a
+uv run firstcall eval-notes --seed 7  --mode record --budget 1 --date YYYY-MM-DD
+uv run firstcall eval-notes --seed 11 --mode record --budget 1 --date YYYY-MM-DD
+```
+
+`--budget` defaults to $0.10 and is at most $10. Record mode only sends text from the
+synthetic corpus: the note scripts and the five fixed F31 notes. It records every answer,
+then writes the report from the recordings in replay mode. Before the replay starts it writes
+`<date>-notes-seed-<N>-record-pass.json`, the calls, failed attempts and ledger spend of the
+paid pass, so the cost is kept even if the replay fails. If some scripts got no answer, the
+run stops with the record pass's numbers and writes no report; run it again to fill the gaps,
+since a recorded answer costs nothing the second time.
+
+The report's `structured_output` is true only when no answer used the JSON-in-the-prompt
+fallback. The recordings say how each answer was made, so a resumed run counts earlier
+answers too.
+
+`uv run firstcall eval-notes --unit` reads the five fixed F31 notes and prints the contact
+kinds suggested for each, which should be none.
+
 ## Replaying
 
 ```bash
 uv run firstcall eval --seed 11 --mode replay --date YYYY-MM-DD
 uv run python -m scripts.check_replay_report
+uv run firstcall eval-notes --seed 11 --mode replay --date YYYY-MM-DD
 ```
+
+`check_replay_report` reruns the notes reports too. The record pass is paid for, so a replay
+cannot reproduce it; the check copies it from the committed report.
 
 Replay needs no key and makes no call.

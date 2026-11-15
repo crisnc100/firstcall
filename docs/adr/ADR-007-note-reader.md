@@ -33,6 +33,34 @@ action: future tense, negation, a plan, a hypothetical and a colleague's contact
 The reader's code lives in `firstcall/notes/reader.py`. A test checks from git history that
 the gold, this record and the scorer were committed before it.
 
+### How a read runs
+- **The model is asked outside any lock.** A slow answer must never hold the lead. The reader
+  then locks the lead and the note and applies the answer only if the note is still waiting
+  and the lead still exists, so a delete or a second reader during the call loses nothing and
+  duplicates nothing.
+- **An unreadable answer fails the note for good.** Paying again for the same note would
+  usually give the same answer. `parse_note_answer` (`firstcall/core/note_read.py`) decides:
+  a dollar figure above a trillion, a wrong type, or an authority or action kind outside the
+  list is unreadable. A negative budget bound becomes null and a month that is not `YYYY-MM`
+  becomes absent. The schema cannot carry a `minimum`, because the API refuses it, so the
+  parser enforces it.
+- **No model answer is not a failure.** No key, switched off, budget spent or model down leaves
+  the note `needs_model`; the scheduler's reread pass reads it later (as for messages, see
+  [ADR-006](ADR-006-no-model-fallback.md)).
+- **A suggestion needs a click.** A model must not create history, so a suggested contact is
+  logged only by Confirm. Its quote must appear in the note, or it is dropped.
+- **A person's field always wins.** The merge (`firstcall/board/suggestions.py`) never
+  overwrites a person-set field, never clears a field with an empty value, lets a newer note
+  replace an older note's value, and takes the budget's minimum and maximum together from
+  one note.
+- **A confirmed contact closes a follow-up only if it is not older than the follow-up.**
+  The follow-up keeps `moved_at`, the time it was last moved to a newer step. Migration 0011
+  sets it to the upgrade time for open follow-ups that had already moved, which errs towards
+  keeping them open.
+- **Structured output first.** The transport asks the API for the schema and falls back to
+  JSON in the prompt only when the API refuses the schema. Each recorded answer keeps which
+  way it was made.
+
 ## How it is scored
 `firstcall/evaluation/note_score.py`, frozen with the gold:
 - **Per field, value-aware:** a filled field is right only when its value matches: budget
@@ -57,6 +85,9 @@ the gold, this record and the scorer were committed before it.
   the gold written as an answer meets them (tested).
 - **Pass rule:** the point estimate decides, with its interval shown. An unreadable answer is
   scored as empty. Floors apply to all seed-11 scripts, seen and unseen phrasing together.
+- **Structured output:** the report counts the recorded answers made with JSON in the prompt
+  and sets `structured_output` to true only when that count is zero. A report that says
+  otherwise is flagged in its Markdown.
 - **Held out:** seed 11 is run once, after the prompt is frozen on seed 7. At least 40% of
   its scripts use phrasings seed 7 never has.
 

@@ -65,6 +65,34 @@ can open one and rescue it. A rescue reads the stored message again, with the mo
 stored answer and no new model call, then treats it as a lead: it creates a new lead or
 attaches to the buyer's existing one. The lead's history records the rescue and who did it.
 
+## Notes
+
+The owner, a team lead of the lead's team or an admin can add a note to a lead. Saving a note
+never waits on the model: the note is stored first, and the worker reads it in the
+background. The lead page shows one of these under the note:
+
+- **Reading this note…** while the read is queued or running.
+- **Needs a model key** when no model could answer: no key, the model switched off or down, or
+  the day's budget spent. The note stays as typed and is read later, once a model answers.
+  Notes written before the reader existed start here.
+- **Couldn't read this note** when the answer was not usable. The note stays as typed and is
+  not read again.
+- The **tidied note** and its **suggestions** when the read worked.
+
+The lead page checks again every 15 seconds while a note is waiting to be read. It does not
+redraw while a form on the page is being edited, so unsaved typing is never lost.
+
+A read can update the buyer's profile (budget, authority, need, timeline). It never changes
+a field a person set, and the profile form sends only the fields the person changed. The
+merge rules are in [definitions.md](definitions.md#buyer-profile).
+
+A **suggestion** is a call, text, email or meeting the note says already happened, with the
+note's own words next to it. It logs nothing by itself. Confirm logs one contact, dated when
+the note was written and made by the note's author. Dismiss logs none. A suggestion can be
+closed once: a second click gets "already closed" (409). Confirm needs the lead to be owned or
+in nurture. If the note itself already logged that kind of contact, the suggestion closes as
+already logged. Deleting a lead deletes its suggestions and read jobs.
+
 ## Alerts
 
 Alerts go to the in-app Inbox, by email, and by web push. Nothing is ever sent to a buyer.
