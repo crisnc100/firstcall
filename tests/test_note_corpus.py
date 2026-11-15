@@ -4,8 +4,11 @@ gold committed before any note reader code."""
 from __future__ import annotations
 
 import re
+import subprocess
 from collections import Counter
+from collections.abc import Sequence
 from functools import cache
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -33,6 +36,7 @@ from firstcall.corpus.notes import (
     read_notes_manifest,
 )
 from firstcall.evaluation.note_score import read_numbers
+from tests import test_corpus
 from tests.test_corpus import _first_commit_adding, _git, _history_of
 
 ROOT_FILES = (
@@ -178,11 +182,11 @@ def test_no_unseen_wording_appears_in_seed_7() -> None:
         assert longest not in seed_7, phrasing.id
 
 
-def test_note_gold_and_the_scorer_were_committed_before_any_reader_code() -> None:
-    """Checked from git history, squash merges included, as the message gold is."""
-    assert _git("rev-parse", "--is-shallow-repository") == "false", "needs full history"
-    earlier = {path: _first_commit_adding(path) for path in ROOT_FILES}
-    for code in READER_CODE:
+def _gold_before_code(gold: Sequence[str], code_paths: Sequence[str]) -> None:
+    """Every gold path is first added in a commit that is an ancestor of the commit that first
+    adds each code path."""
+    earlier = {path: _first_commit_adding(path) for path in gold}
+    for code in code_paths:
         code_commit = _first_commit_adding(code)
         if code_commit is None:
             continue
@@ -196,3 +200,66 @@ def test_note_gold_and_the_scorer_were_committed_before_any_reader_code() -> Non
                 later = _first_commit_adding(code, ref) or ""
             assert first != later, f"{path} landed together with {code}"
             assert _git("merge-base", first, later) == first, f"{path} came after {code}"
+
+
+def test_note_gold_and_the_scorer_were_committed_before_any_reader_code() -> None:
+    """Checked from git history, squash merges included, as the message gold is."""
+    assert _git("rev-parse", "--is-shallow-repository") == "false", "needs full history"
+    _gold_before_code(ROOT_FILES, READER_CODE)
+
+
+def _commit(repo: Path, message: str, *paths: str) -> None:
+    for path in paths:
+        (repo / path).write_text(path)
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-qm", message], cwd=repo, check=True)
+
+
+def _repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.setattr(test_corpus, "ROOT", tmp_path)
+    for args in (
+        ["init", "-q", "-b", "main"],
+        ["config", "user.email", "test@example.com"],
+        ["config", "user.name", "Test"],
+    ):
+        subprocess.run(["git", *args], cwd=tmp_path, check=True)
+    _commit(tmp_path, "base", "base.txt")
+    return tmp_path
+
+
+def _git_in(repo: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+
+def test_the_order_holds_through_a_pull_request_merge_after_a_squash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The CI shape: gold lands on a branch, the reader on a branch stacked on it, the first
+    branch is squashed into main, main is merged into the second, and CI tests main merged
+    with that branch, main as the first parent."""
+    repo = _repo(tmp_path, monkeypatch)
+    _git_in(repo, "checkout", "-qb", "gold")
+    _commit(repo, "gold", "gold.txt")
+    _git_in(repo, "checkout", "-qb", "reader")
+    _commit(repo, "reader", "reader.txt")
+    _git_in(repo, "checkout", "-q", "main")
+    _git_in(repo, "merge", "-q", "--squash", "gold")
+    _commit(repo, "gold, squashed")
+    _git_in(repo, "checkout", "-q", "reader")
+    _git_in(repo, "merge", "-q", "--no-edit", "main")
+    _git_in(repo, "checkout", "-q", "main")
+    _git_in(repo, "merge", "-q", "--no-ff", "--no-edit", "reader")
+    _gold_before_code(["gold.txt"], ["reader.txt"])
+
+
+def test_gold_added_after_the_reader_still_fails_through_a_merge(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = _repo(tmp_path, monkeypatch)
+    _git_in(repo, "checkout", "-qb", "late-gold")
+    _commit(repo, "reader", "reader.txt")
+    _commit(repo, "gold", "gold.txt")
+    _git_in(repo, "checkout", "-q", "main")
+    _git_in(repo, "merge", "-q", "--no-ff", "--no-edit", "late-gold")
+    with pytest.raises(AssertionError, match=re.escape("gold.txt came after reader.txt")):
+        _gold_before_code(["gold.txt"], ["reader.txt"])
