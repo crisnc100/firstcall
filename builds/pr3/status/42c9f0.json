@@ -1,1 +1,1 @@
-{"f1":{"status":"fixed","response":"real"}}
+{"f1": {"status": "fixed", "response": "real"}, "x1": {"status": "deferred", "reason": "Every committed note recording now carries output_mode, and every record pass logged 0 fallback calls; only an uncommitted pre-fix recording file could carry unmarked fallback answers. Follow-up: treat a missing output_mode as unknown, not structured."}}
