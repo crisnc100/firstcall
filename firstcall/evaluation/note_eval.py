@@ -106,6 +106,23 @@ def _calls(session: Session) -> dict[str, Any]:
     }
 
 
+def _json_prompt_answers(
+    gateway: Gateway, reader: NoteReader, org: Any, scripts: list[dict[str, Any]]
+) -> int:
+    """How many of the run's answers were made with JSON asked for in the prompt, read from
+    the recordings the run used. A resumed recording answers earlier scripts from file, so
+    this run's transport never saw how they were made."""
+    if gateway.recordings is None:
+        return 0
+    recordings = gateway.recordings.for_task(READ_NOTE)
+    found = 0
+    for script in scripts:
+        request = reader.request(org, None, script["text"], script["note_date"], ZONE)
+        recording = recordings.find(gateway.outbound(request))
+        found += recording is not None and recording.output_mode != "json_schema"
+    return found
+
+
 def evaluate_notes(
     seed: int, server_url: str, run: NoteRun, limit: int | None = None
 ) -> dict[str, Any]:
@@ -129,7 +146,12 @@ def evaluate_notes(
                 unanswered.append(script["id"])
         with sessions() as session:
             calls = _calls(session)
-        calls["json_prompt_calls"] = int(getattr(gateway.transport, "json_prompt_calls", 0))
+        # The recordings say how every answer used was made, resumed ones included; the
+        # transport's own count covers a live run that keeps no recordings.
+        calls["json_prompt_calls"] = max(
+            _json_prompt_answers(gateway, reader, org, scripts),
+            int(getattr(gateway.transport, "json_prompt_calls", 0)),
+        )
     others: dict[str, Any] = {}
     for name, given in baselines(scripts, labels).items():
         part = score_part({s["id"]: s["text"] for s in scripts}, labels, given)
@@ -183,7 +205,7 @@ def record_and_report(
     except ReplayMissError as error:
         raise IncompleteRecordingError(record_pass, str(error)) from error
     report["record_pass"] = record_pass
-    report["structured_output"] = record_pass["json_prompt_calls"] == 0
+    report["structured_output"] = report["structured_output"] and recorded["structured_output"]
     return report
 
 
@@ -247,12 +269,13 @@ def _markdown(report: dict[str, Any]) -> str:
             f"Record pass: {paid['calls']} calls, {paid['failed']} failed attempts, "
             f"${paid['cost_usd']} logged, ${paid['ledger_usd']} on the ledger.",
         ]
-        if paid["json_prompt_calls"]:
-            lines += [
-                "",
-                f"**NOT on structured output: {paid['json_prompt_calls']} calls** fell back to "
-                "JSON in the prompt.",
-            ]
+    if not report.get("structured_output", True):
+        fell_back = max(report["calls"]["json_prompt_calls"],
+                        paid["json_prompt_calls"] if paid else 0)  # fmt: skip
+        lines += [
+            "",
+            f"**NOT on structured output: {fell_back} calls** fell back to JSON in the prompt.",
+        ]
     lines += ["", "| Baseline | Meets every floor |", "|---|---|"]
     for name, found in report["baselines"].items():
         lines.append(f"| {name} | {'yes' if found['met'] else 'no'} |")

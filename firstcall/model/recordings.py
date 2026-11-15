@@ -26,6 +26,9 @@ class Recording:
     completion_tokens: int
     cost_usd: str
     latency_ms: int
+    # How the answer was asked for: json_schema or json_prompt. Lines written before the
+    # field existed were all structured output.
+    output_mode: str = "json_schema"
 
     @property
     def cost(self) -> Decimal:

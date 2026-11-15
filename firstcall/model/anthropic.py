@@ -105,7 +105,7 @@ class AnthropicTransport:
         if payload.get("stop_reason") in CUT:
             log.info("answer stopped at %s; read as unreadable", payload.get("stop_reason"))
             text = ""
-        return TransportReply(text, prompt_tokens, completion_tokens)
+        return TransportReply(text, prompt_tokens, completion_tokens, output_mode=self.output_mode)
 
 
 def _error_message(response: httpx.Response) -> str:

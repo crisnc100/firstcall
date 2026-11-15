@@ -298,6 +298,7 @@ class Gateway:
                         completion_tokens=reply.completion_tokens,
                         cost_usd=str(reply.cost_usd),
                         latency_ms=reply.latency_ms,
+                        output_mode=answer.output_mode,
                     )
                 )
             return reply

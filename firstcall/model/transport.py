@@ -36,6 +36,8 @@ class TransportReply:
     completion_tokens: int
     # The provider's own figure when it reports one; otherwise the gateway prices the tokens.
     cost_usd: Decimal | None = None
+    # json_schema when the provider enforced the schema; json_prompt when it was only asked for.
+    output_mode: str = "json_schema"
 
 
 class TransportError(Exception):
