@@ -284,3 +284,42 @@ before the fixes) and `tests/fault/test_pages_reader_fixes.py` (failed on the ol
   deletes the lead while the model call is in flight.
 - f8 (LOW, downgrade) is filed, not fixed.
 - verify.sh: 876 passed, every floor met.
+
+## Phase 7: the paid runs (2026-11-14)
+
+Model `claude-haiku-5-5`. Each run used a throwaway database, so its ledger is that run's
+spend. Tuning passes recorded into scratch folders; only the frozen prompt's answers are
+committed.
+
+| Run | Prompt sha256 (first 12) | Calls | Failed | Fallback calls | Ledger $ |
+|---|---|---|---|---|---|
+| Smoke, 5 seed-7 scripts | 26b892e846cf | 5 | 0 | 5 (schema refused) | 0.000761 |
+| Smoke after the schema fix | 26b892e846cf | 5 | 0 | 0 | 0.001231 |
+| Seed 7, pass 1 | 26b892e846cf | 150 | 0 | 0 | 0.039338 |
+| Seed 7, pass 2 | eba6c21f50fa | 150 | 0 | 0 | 0.040415 |
+| Seed 7, pass 3 (frozen) | 93a64f569142 | 150 | 0 | 0 | 0.041525 |
+| Seed 7, pass 4 (discarded) | 16fa33443382 | 150 | 0 | 0 | 0.041575 |
+| Seed 11, once | 93a64f569142 | 150 | 0 | 0 | 0.041673 |
+| Five F31 unit notes, once | 93a64f569142 | 5 | 0 | 0 | 0.001121 |
+| Unit-page note, once | 93a64f569142 | 1 | 0 | 0 | 0.000271 |
+| **Total** | | 766 | 0 | | **0.207910** |
+
+The cap was $0.50. The unit-note figures are the sums of the recordings' costs; the rest are
+the record passes' ledgers.
+
+- **Schema:** the first smoke run showed the API refusing the answer schema over `minimum`
+  on the budget bounds; the transport fell back to JSON in the prompt. Fixed before tuning
+  (cb06c3a): no `minimum`, a negative bound parses as null, and the eval counts fallback
+  calls and flags any run with one.
+- **Tuning:** pass 1 missed key-term recall (0.7796): budget text left out how the buyer pays
+  and timeline text its hedge. Pass 2 asked for both and met every floor, but 10 of 15
+  colleague notes drew a suggestion. Pass 3 named the writer's own contacts (no subject, or I
+  and we) against a named colleague's: colleague 10 of 15 clean, precision 0.9342, recall
+  0.9467. Pass 4 pushed the colleague rule further: colleague 12 of 15, but recall fell to
+  0.8533 and a future note drew a suggestion, so it was discarded.
+- **Frozen prompt:** sha256 `93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59`.
+- **Seed 11:** every floor met; see ADR-007's result. No floor was missed, so
+  `docs/failures/` has no new entry.
+- **F31:** the five unit notes drew no suggestion; `tests/test_note_replay.py` replays them
+  and the unit-page note. The page test replays the real unit-page answer, dated to the unit
+  notes' date, in place of the hand-written fixture.
