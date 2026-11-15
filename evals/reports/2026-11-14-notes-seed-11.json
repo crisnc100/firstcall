@@ -1,0 +1,947 @@
+{
+  "baselines": {
+    "always_fill": {
+      "floors": [
+        {
+          "floor": ">= 0.85",
+          "measure": "budget F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority F1",
+          "met": false,
+          "value": 0.1941
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "need F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline F1",
+          "met": false,
+          "value": 0.0253
+        },
+        {
+          "floor": ">= 0.8",
+          "measure": "key-term recall",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority exact",
+          "met": false,
+          "value": 0.2644
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline month exact",
+          "met": false,
+          "value": 0.0429
+        },
+        {
+          "floor": "<= 1",
+          "measure": "notes with an unsupported number or name",
+          "met": false,
+          "value": 150
+        }
+      ],
+      "met": false
+    },
+    "copy_through": {
+      "floors": [
+        {
+          "floor": ">= 0.85",
+          "measure": "budget F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "need F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.8",
+          "measure": "key-term recall",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority exact",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline month exact",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": "<= 1",
+          "measure": "notes with an unsupported number or name",
+          "met": true,
+          "value": 0
+        }
+      ],
+      "met": false
+    },
+    "gold": {
+      "floors": [
+        {
+          "floor": ">= 0.85",
+          "measure": "budget F1",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority F1",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "need F1",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline F1",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.8",
+          "measure": "key-term recall",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority exact",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline month exact",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": "<= 1",
+          "measure": "notes with an unsupported number or name",
+          "met": true,
+          "value": 0
+        }
+      ],
+      "met": true
+    },
+    "never_fill": {
+      "floors": [
+        {
+          "floor": ">= 0.85",
+          "measure": "budget F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "need F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline F1",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.8",
+          "measure": "key-term recall",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority exact",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline month exact",
+          "met": false,
+          "value": 0.0
+        },
+        {
+          "floor": "<= 1",
+          "measure": "notes with an unsupported number or name",
+          "met": true,
+          "value": 0
+        }
+      ],
+      "met": false
+    }
+  },
+  "calls": {
+    "calls": 150,
+    "completion_tokens": 27605,
+    "cost_usd": "0.041668",
+    "failed": 0,
+    "json_prompt_calls": 0,
+    "ledger_usd": "0.000000",
+    "ok": 150,
+    "prompt_tokens": 278562
+  },
+  "complete": true,
+  "mode": "replay",
+  "model": "claude-haiku-5-5",
+  "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+  "record_pass": {
+    "calls": 150,
+    "completion_tokens": 27605,
+    "cost_usd": "0.041668",
+    "failed": 0,
+    "json_prompt_calls": 0,
+    "ledger_usd": "0.041673",
+    "ok": 150,
+    "prompt_tokens": 278562,
+    "unanswered": []
+  },
+  "score": {
+    "all": {
+      "actions": {
+        "precision": {
+          "hits": 64,
+          "interval": [
+            0.9179,
+            0.9973
+          ],
+          "rate": 0.9846,
+          "total": 65
+        },
+        "recall": {
+          "hits": 64,
+          "interval": [
+            0.7562,
+            0.9161
+          ],
+          "rate": 0.8533,
+          "total": 75
+        }
+      },
+      "authority_exact": {
+        "hits": 87,
+        "interval": [
+          0.9577,
+          1.0
+        ],
+        "rate": 1.0,
+        "total": 87
+      },
+      "copied_fields": 2,
+      "fields": {
+        "authority": {
+          "f1": 1.0,
+          "f1_interval": [
+            1.0,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 87,
+            "interval": [
+              0.5,
+              0.656
+            ],
+            "rate": 0.58,
+            "total": 150
+          },
+          "fn": 0,
+          "fp": 0,
+          "gold_fill_rate": {
+            "hits": 87,
+            "interval": [
+              0.5,
+              0.656
+            ],
+            "rate": 0.58,
+            "total": 150
+          },
+          "tp": 87
+        },
+        "budget": {
+          "f1": 1.0,
+          "f1_interval": [
+            1.0,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 87,
+            "interval": [
+              0.5,
+              0.656
+            ],
+            "rate": 0.58,
+            "total": 150
+          },
+          "fn": 0,
+          "fp": 0,
+          "gold_fill_rate": {
+            "hits": 87,
+            "interval": [
+              0.5,
+              0.656
+            ],
+            "rate": 0.58,
+            "total": 150
+          },
+          "tp": 87
+        },
+        "need": {
+          "f1": 0.9688,
+          "f1_interval": [
+            0.9368,
+            0.9945
+          ],
+          "fill_rate": {
+            "hits": 98,
+            "interval": [
+              0.5742,
+              0.7248
+            ],
+            "rate": 0.6533,
+            "total": 150
+          },
+          "fn": 1,
+          "fp": 5,
+          "gold_fill_rate": {
+            "hits": 94,
+            "interval": [
+              0.547,
+              0.7
+            ],
+            "rate": 0.6267,
+            "total": 150
+          },
+          "tp": 93
+        },
+        "timeline": {
+          "f1": 0.9385,
+          "f1_interval": [
+            0.8889,
+            0.9778
+          ],
+          "fill_rate": {
+            "hits": 92,
+            "interval": [
+              0.5335,
+              0.6875
+            ],
+            "rate": 0.6133,
+            "total": 150
+          },
+          "fn": 3,
+          "fp": 8,
+          "gold_fill_rate": {
+            "hits": 87,
+            "interval": [
+              0.5,
+              0.656
+            ],
+            "rate": 0.58,
+            "total": 150
+          },
+          "tp": 84
+        }
+      },
+      "floors": [
+        {
+          "floor": ">= 0.85",
+          "measure": "budget F1",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority F1",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "need F1",
+          "met": true,
+          "value": 0.9688
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline F1",
+          "met": true,
+          "value": 0.9385
+        },
+        {
+          "floor": ">= 0.8",
+          "measure": "key-term recall",
+          "met": true,
+          "value": 0.9902
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "authority exact",
+          "met": true,
+          "value": 1.0
+        },
+        {
+          "floor": ">= 0.85",
+          "measure": "timeline month exact",
+          "met": true,
+          "value": 0.9714
+        },
+        {
+          "floor": "<= 1",
+          "measure": "notes with an unsupported number or name",
+          "met": true,
+          "value": 0
+        }
+      ],
+      "key_terms": {
+        "hits": 304,
+        "interval": [
+          0.9717,
+          0.9967
+        ],
+        "rate": 0.9902,
+        "total": 307
+      },
+      "month_exact": {
+        "hits": 68,
+        "interval": [
+          0.9017,
+          0.9921
+        ],
+        "rate": 0.9714,
+        "total": 70
+      },
+      "non_actions_without_suggestion": {
+        "colleague": {
+          "hits": 14,
+          "interval": [
+            0.7018,
+            0.9881
+          ],
+          "rate": 0.9333,
+          "total": 15
+        },
+        "future": {
+          "hits": 15,
+          "interval": [
+            0.7961,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 15
+        },
+        "hypothetical": {
+          "hits": 15,
+          "interval": [
+            0.7961,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 15
+        },
+        "negation": {
+          "hits": 15,
+          "interval": [
+            0.7961,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 15
+        },
+        "plan": {
+          "hits": 15,
+          "interval": [
+            0.7961,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 15
+        }
+      },
+      "scripts": 150,
+      "unreadable": 0,
+      "unsupported": {
+        "count": 0,
+        "ids": []
+      }
+    },
+    "seen": {
+      "actions": {
+        "precision": {
+          "hits": 24,
+          "interval": [
+            0.862,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 24
+        },
+        "recall": {
+          "hits": 24,
+          "interval": [
+            0.6545,
+            0.924
+          ],
+          "rate": 0.8276,
+          "total": 29
+        }
+      },
+      "authority_exact": {
+        "hits": 29,
+        "interval": [
+          0.883,
+          1.0
+        ],
+        "rate": 1.0,
+        "total": 29
+      },
+      "copied_fields": 2,
+      "fields": {
+        "authority": {
+          "f1": 1.0,
+          "f1_interval": [
+            1.0,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 29,
+            "interval": [
+              0.3618,
+              0.6069
+            ],
+            "rate": 0.4833,
+            "total": 60
+          },
+          "fn": 0,
+          "fp": 0,
+          "gold_fill_rate": {
+            "hits": 29,
+            "interval": [
+              0.3618,
+              0.6069
+            ],
+            "rate": 0.4833,
+            "total": 60
+          },
+          "tp": 29
+        },
+        "budget": {
+          "f1": 1.0,
+          "f1_interval": [
+            1.0,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 28,
+            "interval": [
+              0.3463,
+              0.5911
+            ],
+            "rate": 0.4667,
+            "total": 60
+          },
+          "fn": 0,
+          "fp": 0,
+          "gold_fill_rate": {
+            "hits": 28,
+            "interval": [
+              0.3463,
+              0.5911
+            ],
+            "rate": 0.4667,
+            "total": 60
+          },
+          "tp": 28
+        },
+        "need": {
+          "f1": 0.9565,
+          "f1_interval": [
+            0.8857,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 35,
+            "interval": [
+              0.4573,
+              0.6994
+            ],
+            "rate": 0.5833,
+            "total": 60
+          },
+          "fn": 1,
+          "fp": 2,
+          "gold_fill_rate": {
+            "hits": 34,
+            "interval": [
+              0.441,
+              0.6843
+            ],
+            "rate": 0.5667,
+            "total": 60
+          },
+          "tp": 33
+        },
+        "timeline": {
+          "f1": 0.8788,
+          "f1_interval": [
+            0.7576,
+            0.9706
+          ],
+          "fill_rate": {
+            "hits": 34,
+            "interval": [
+              0.441,
+              0.6843
+            ],
+            "rate": 0.5667,
+            "total": 60
+          },
+          "fn": 3,
+          "fp": 5,
+          "gold_fill_rate": {
+            "hits": 32,
+            "interval": [
+              0.4089,
+              0.6537
+            ],
+            "rate": 0.5333,
+            "total": 60
+          },
+          "tp": 29
+        }
+      },
+      "key_terms": {
+        "hits": 108,
+        "interval": [
+          0.9235,
+          0.9908
+        ],
+        "rate": 0.973,
+        "total": 111
+      },
+      "month_exact": {
+        "hits": 23,
+        "interval": [
+          0.7503,
+          0.9778
+        ],
+        "rate": 0.92,
+        "total": 25
+      },
+      "non_actions_without_suggestion": {
+        "colleague": {
+          "hits": 5,
+          "interval": [
+            0.5655,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 5
+        },
+        "future": {
+          "hits": 7,
+          "interval": [
+            0.6457,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 7
+        },
+        "hypothetical": {
+          "hits": 5,
+          "interval": [
+            0.5655,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 5
+        },
+        "negation": {
+          "hits": 6,
+          "interval": [
+            0.6097,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 6
+        },
+        "plan": {
+          "hits": 6,
+          "interval": [
+            0.6097,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 6
+        }
+      },
+      "scripts": 60,
+      "unreadable": 0,
+      "unsupported": {
+        "count": 0,
+        "ids": []
+      }
+    },
+    "unseen": {
+      "actions": {
+        "precision": {
+          "hits": 40,
+          "interval": [
+            0.874,
+            0.9957
+          ],
+          "rate": 0.9756,
+          "total": 41
+        },
+        "recall": {
+          "hits": 40,
+          "interval": [
+            0.7433,
+            0.9388
+          ],
+          "rate": 0.8696,
+          "total": 46
+        }
+      },
+      "authority_exact": {
+        "hits": 58,
+        "interval": [
+          0.9379,
+          1.0
+        ],
+        "rate": 1.0,
+        "total": 58
+      },
+      "copied_fields": 0,
+      "fields": {
+        "authority": {
+          "f1": 1.0,
+          "f1_interval": [
+            1.0,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 58,
+            "interval": [
+              0.5415,
+              0.7356
+            ],
+            "rate": 0.6444,
+            "total": 90
+          },
+          "fn": 0,
+          "fp": 0,
+          "gold_fill_rate": {
+            "hits": 58,
+            "interval": [
+              0.5415,
+              0.7356
+            ],
+            "rate": 0.6444,
+            "total": 90
+          },
+          "tp": 58
+        },
+        "budget": {
+          "f1": 1.0,
+          "f1_interval": [
+            1.0,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 59,
+            "interval": [
+              0.5528,
+              0.7455
+            ],
+            "rate": 0.6556,
+            "total": 90
+          },
+          "fn": 0,
+          "fp": 0,
+          "gold_fill_rate": {
+            "hits": 59,
+            "interval": [
+              0.5528,
+              0.7455
+            ],
+            "rate": 0.6556,
+            "total": 90
+          },
+          "tp": 59
+        },
+        "need": {
+          "f1": 0.9756,
+          "f1_interval": [
+            0.9449,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 63,
+            "interval": [
+              0.5987,
+              0.7849
+            ],
+            "rate": 0.7,
+            "total": 90
+          },
+          "fn": 0,
+          "fp": 3,
+          "gold_fill_rate": {
+            "hits": 60,
+            "interval": [
+              0.5642,
+              0.7555
+            ],
+            "rate": 0.6667,
+            "total": 90
+          },
+          "tp": 60
+        },
+        "timeline": {
+          "f1": 0.9735,
+          "f1_interval": [
+            0.9412,
+            1.0
+          ],
+          "fill_rate": {
+            "hits": 58,
+            "interval": [
+              0.5415,
+              0.7356
+            ],
+            "rate": 0.6444,
+            "total": 90
+          },
+          "fn": 0,
+          "fp": 3,
+          "gold_fill_rate": {
+            "hits": 55,
+            "interval": [
+              0.5078,
+              0.7053
+            ],
+            "rate": 0.6111,
+            "total": 90
+          },
+          "tp": 55
+        }
+      },
+      "key_terms": {
+        "hits": 196,
+        "interval": [
+          0.9808,
+          1.0
+        ],
+        "rate": 1.0,
+        "total": 196
+      },
+      "month_exact": {
+        "hits": 45,
+        "interval": [
+          0.9213,
+          1.0
+        ],
+        "rate": 1.0,
+        "total": 45
+      },
+      "non_actions_without_suggestion": {
+        "colleague": {
+          "hits": 9,
+          "interval": [
+            0.5958,
+            0.9821
+          ],
+          "rate": 0.9,
+          "total": 10
+        },
+        "future": {
+          "hits": 8,
+          "interval": [
+            0.6756,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 8
+        },
+        "hypothetical": {
+          "hits": 10,
+          "interval": [
+            0.7225,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 10
+        },
+        "negation": {
+          "hits": 9,
+          "interval": [
+            0.7009,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 9
+        },
+        "plan": {
+          "hits": 9,
+          "interval": [
+            0.7009,
+            1.0
+          ],
+          "rate": 1.0,
+          "total": 9
+        }
+      },
+      "scripts": 90,
+      "unreadable": 0,
+      "unsupported": {
+        "count": 0,
+        "ids": []
+      }
+    }
+  },
+  "seed": 11,
+  "structured_output": true,
+  "unanswered": []
+}

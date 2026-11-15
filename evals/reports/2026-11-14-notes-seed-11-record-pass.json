@@ -1,0 +1,11 @@
+{
+  "calls": 150,
+  "completion_tokens": 27605,
+  "cost_usd": "0.041668",
+  "failed": 0,
+  "json_prompt_calls": 0,
+  "ledger_usd": "0.041673",
+  "ok": 150,
+  "prompt_tokens": 278562,
+  "unanswered": []
+}

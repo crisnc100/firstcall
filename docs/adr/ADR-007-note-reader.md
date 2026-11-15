@@ -2,7 +2,7 @@
 
 - **Status:** Vocabulary, scorer and prediction committed 2026-11-13, with the note gold,
   before any note reader code or model call.
-- **Result:** not yet recorded.
+- **Result:** recorded 2026-11-14, from the held-out seed-11 run.
 
 ## Context
 A salesperson writes a short note after talking to a buyer. One model call turns it into a
@@ -72,5 +72,39 @@ Claude Haiku 5.5, seed 11, all scripts:
    colleague's contact and a hypothetical draw the most wrong suggestions.
 6. Unseen phrasing scores within 5 points of seen phrasing on every rate.
 
-## Result
-Not yet recorded.
+## Result (2026-11-14)
+
+From the [seed-11 report](../../evals/reports/2026-11-14-notes-seed-11.md): 150 scripts, 0
+unreadable answers, every call on structured output. The prompt was tuned on seed 7 and
+frozen before seed 11 ran (sha256 `93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59`).
+
+| Measure | Floor | Seed 11 [95% interval] | Met |
+|---|---|---|---|
+| Budget F1 | >= 0.85 | 1.0 [1.0, 1.0] | yes |
+| Authority F1 | >= 0.85 | 1.0 [1.0, 1.0] | yes |
+| Need F1 | >= 0.85 | 0.9688 [0.9368, 0.9945] | yes |
+| Timeline F1 | >= 0.85 | 0.9385 [0.8889, 0.9778] | yes |
+| Key-term recall | >= 0.80 | 0.9902 [0.9717, 0.9967] | yes |
+| Authority exact | >= 0.85 | 1.0 [0.9577, 1.0] | yes |
+| Timeline month exact | >= 0.85 | 0.9714 [0.9017, 0.9921] | yes |
+| Notes with an unsupported number or name | <= 1 | 0 | yes |
+
+Actions, reported with no floor: precision 0.9846 [0.9179, 0.9973], recall 0.8533 [0.7562,
+0.9161]. Of the non-action kinds, only one colleague's contact drew a suggestion (14 of 15
+clean); every future, negation, plan and hypothetical note drew none. The five fixed F31
+notes drew no suggestion, and `tests/test_note_replay.py` replays them.
+
+Predictions:
+1. **Budget, authority and need F1 at least 0.85:** held. **Timeline F1 between 0.75 and
+   0.90:** did not hold; it came in higher, at 0.9385.
+2. **Authority exact at least 0.90:** held, 1.0. **Month exact between 0.75 and 0.90:** did
+   not hold; it came in higher, at 0.9714.
+3. **Key-term recall at least 0.80:** held, 0.9902.
+4. **Unsupported facts 0 to 3:** held, 0.
+5. **Action precision at least 0.90:** held. **Recall at least 0.90:** did not hold, 0.8533;
+   the colleague rule in the prompt makes the reader pass over some of the writer's own
+   contacts. **A colleague's contact and a hypothetical draw the most wrong suggestions:**
+   half held; the colleague kind drew the one wrong suggestion, the hypothetical none.
+6. **Unseen within 5 points of seen on every rate:** did not hold, the other way round:
+   unseen phrasing scored higher on timeline F1 (0.9735 against 0.8788) and month exact
+   (1.0 against 0.92).
