@@ -1,10 +1,10 @@
 """Suggestions in a real browser on compose. A worker with no model key leaves the note
-saying it needs one; a scheduler pass in replay mode then reads it from a recorded fixture
+saying it needs one; a scheduler pass in replay mode then reads it from the model's recorded
 answer, and the owner confirms the suggested call.
 
-The fixture answer is written by this test, not by a model: it is keyed to the request the
-reader will send for the fixture note (`unit-page` in evals/gold/unit-notes.jsonl), so the
-page is tested without a model call.
+The note is `unit-page` in evals/gold/unit-notes.jsonl, and its answer was recorded once at
+that file's fixed date. The test dates the note to that day so the reader sends the same
+request, and replays the committed recordings with no model call.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ import json
 import re
 import subprocess
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import httpx
 from playwright.sync_api import Page, expect, sync_playwright
@@ -22,12 +22,8 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board import accounts
-from firstcall.core.note_read import answer_schema
 from firstcall.db import Contact, Message, Note, NoteSuggestion, Team
-from firstcall.model.prompts import READ_NOTE, SYSTEM_PROMPTS, user_message
-from firstcall.model.recordings import Recording, request_key
-from firstcall.model.transport import TransportRequest
-from firstcall.notes.reader import context_text
+from firstcall.evaluation.note_eval import RECORDINGS, UNIT_DATE
 from firstcall.seed import seed
 from tests.conftest import FakeClock
 from tests.fault.test_pages import PASSWORD, _free_port, _store, _wait_for
@@ -37,17 +33,12 @@ from tests.fault.test_pages_qa import _sign_in
 ALL_INTERFACES = "0.0.0.0"  # noqa: S104
 MODEL = "claude-haiku-5-5"
 UNIT_NOTES = Path(__file__).resolve().parents[2] / "evals" / "gold" / "unit-notes.jsonl"
-CLEAN = "Called Dana. Budget about $450k; wants three bedrooms and a garage."
+# The recorded answer's tidied note and its suggested call.
+CLEAN = (
+    "Called Dana this morning. Budget is around $450k. Wants three bedrooms and a garage. "
+    "Hoping to move by June."
+)
 SUGGESTED = "Suggested: Called — “Called Dana this morning”"
-FIXTURE_ANSWER = {
-    "clean_note": CLEAN,
-    "budget": {"text": "around $450k", "min": 450000, "max": 450000},
-    "authority": {"value": "unknown", "others": None},
-    "need": "three bedrooms and a garage",
-    "timeline": {"text": "by June", "month": None},
-    "notes": None,
-    "actions": [{"kind": "call", "quote": "Called Dana this morning"}],
-}
 
 
 def _page_note() -> str:
@@ -86,7 +77,7 @@ def _signed_in(page: Page, email: str) -> None:
 
 
 def test_a_suggestion_is_confirmed_in_a_browser(
-    compose_db: tuple[sessionmaker[Session], str], tmp_path: Path
+    compose_db: tuple[sessionmaker[Session], str],
 ) -> None:
     sessions, container_url = compose_db
     seed(sessions)
@@ -146,38 +137,23 @@ def test_a_suggestion_is_confirmed_in_a_browser(
             expect(owner.get_by_text("Needs a model key")).to_be_visible()
 
             with sessions.begin() as session:
-                note = session.scalars(select(Note)).one()
-                zone = "America/New_York"
-                note_date = note.created_at.astimezone(ZoneInfo(zone)).date().isoformat()
+                # 09:00 in New York on the unit notes' date, the day the answer was recorded.
+                dated = datetime.fromisoformat(UNIT_DATE).replace(hour=14, tzinfo=UTC)
+                session.execute(update(Note).values(created_at=dated))
                 # The buyer's message took the rules path with no key; its reread is not what
                 # this test is about, and replay has no recording for it.
                 session.execute(update(Message).values(needs_reread=False))
-            request = TransportRequest(
-                model=MODEL,
-                system=SYSTEM_PROMPTS[READ_NOTE],
-                user=user_message(context_text(note_date, zone), text, READ_NOTE),
-                schema=answer_schema(),
-                max_output_tokens=0,
-                timeout_seconds=0,
-            )
-            fixture = Recording(
-                key=request_key(request), model=MODEL, content=json.dumps(FIXTURE_ANSWER),
-                prompt_tokens=0, completion_tokens=0, cost_usd="0", latency_ms=0,
-            )  # fmt: skip
-            folder = tmp_path / "recordings"
-            folder.mkdir()
-            (folder / f"notes-{MODEL}.jsonl").write_text(json.dumps(fixture.__dict__) + "\n")
             replay = {
                 "FIRSTCALL_MODEL_MODE": "replay",
                 "FIRSTCALL_MODEL_NAME": MODEL,
                 "FIRSTCALL_MODEL_RECORDINGS": "/fixtures",
             }
             _run(f"firstcall-suggest-tick-{run}", container_url, "worker", ["tick"], replay,
-                 volume=f"{folder}:/fixtures:ro", detach=False)  # fmt: skip
+                 volume=f"{RECORDINGS}:/fixtures:ro", detach=False)  # fmt: skip
 
             owner.reload()
             expect(owner.get_by_text("Needs a model key")).to_have_count(0)
-            expect(owner.get_by_text(FIXTURE_ANSWER["clean_note"])).to_be_visible()  # type: ignore[arg-type]
+            expect(owner.get_by_text(f"Tidied: {CLEAN}")).to_be_visible()
             expect(
                 owner.get_by_text("Suggested: Called — “Called Dana this morning”")
             ).to_be_visible()
