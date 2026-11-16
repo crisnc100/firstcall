@@ -259,15 +259,21 @@ class LeadEvent(Base):
 
 
 class Job(Base):
+    """Work for the worker: processing a message, or reading a note. Exactly one is set."""
+
     __tablename__ = "jobs"
     __table_args__ = (
         UniqueConstraint("message_id", "kind"),
+        UniqueConstraint("note_id", "kind"),
         CheckConstraint(_in("state", ("queued", "running", "done", "failed")), name="job_state"),
+        CheckConstraint("(message_id IS NULL) <> (note_id IS NULL)", name="job_subject"),
         Index("jobs_ready", "state", "run_after"),
     )
     id: Mapped[uuid.UUID] = _uuid()
     org_id: Mapped[uuid.UUID] = _org()
-    message_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("messages.id"))
+    message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("messages.id"))
+    note_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("notes.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     kind: Mapped[str] = mapped_column(String(32), default="process")
     state: Mapped[str] = mapped_column(String(16), default="queued")
     attempts: Mapped[int] = mapped_column(Integer, default=0)
@@ -283,6 +289,7 @@ class ModelCall(Base):
     id: Mapped[uuid.UUID] = _uuid()
     org_id: Mapped[uuid.UUID] = _org()
     message_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("messages.id"))
+    note_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("notes.id"))
     model: Mapped[str] = mapped_column(String(200))
     mode: Mapped[str] = mapped_column(String(16))
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
@@ -441,11 +448,49 @@ class Note(Base):
     """A note a person wrote on a lead. Notes are never edited; delete lead removes them."""
 
     __tablename__ = "notes"
+    __table_args__ = (
+        CheckConstraint(
+            _in("read_state", ("pending", "read", "needs_model", "failed")), name="note_read_state"
+        ),
+    )
     id: Mapped[uuid.UUID] = _uuid()
     org_id: Mapped[uuid.UUID] = _org()
     lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
     author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # The model's read: pending until its job runs; needs_model when no model answered (a
+    # reread tries again); failed when the answer was unreadable, a reread raised, or its job
+    # ran out of attempts.
+    read_state: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    read_reason: Mapped[str | None] = mapped_column(String(32))
+    clean_note: Mapped[str | None] = mapped_column(Text)
+    model_answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class NoteSuggestion(Base):
+    """A contact the model read in a note. It logs nothing until a person confirms it."""
+
+    __tablename__ = "note_suggestions"
+    __table_args__ = (
+        UniqueConstraint("note_id", "kind"),
+        CheckConstraint(_in("kind", ("call", "text", "email", "meeting")), name="suggestion_kind"),
+        CheckConstraint(
+            _in("state", ("open", "confirmed", "dismissed", "already_logged")),
+            name="suggestion_state",
+        ),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    note_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("notes.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    # The note's own words that show the contact happened.
+    quote: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(String(16), default="open")
+    closed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -489,6 +534,9 @@ class LeadProfile(Base):
     timeline_month: Mapped[str | None] = mapped_column(String(7))
     notes: Mapped[str | None] = mapped_column(Text)
     person_fields: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    # For each field the model set, the creation time of the note it came from, so an older
+    # note read late never replaces a newer note's value.
+    model_from: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, server_default="{}")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
@@ -536,6 +584,9 @@ class Followup(Base):
     next_step: Mapped[str] = mapped_column(Text)
     state: Mapped[str] = mapped_column(String(16), default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # When the daily follow-up run last moved it to a newer step; null while it is on its
+    # first.
+    moved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

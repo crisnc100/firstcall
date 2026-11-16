@@ -188,6 +188,71 @@ def eval_command(
         typer.echo(f"wrote {path}")
 
 
+@app.command("eval-notes")
+def eval_notes_command(
+    seed: int = typer.Option(7, help="7 (tune) or 11 (held out, once, frozen prompt)"),
+    date: str = typer.Option("", help="The report date, YYYY-MM-DD; today when empty"),
+    mode: str = typer.Option("replay", help="replay (recorded answers) or record (paid)"),
+    budget: float = typer.Option(0.10, help="Most this run may spend, in US dollars"),
+    limit: int = typer.Option(0, help="Read only the first N scripts (0 reads all 150)"),
+    model: str = typer.Option("claude-haiku-5-5", help="The model"),
+    unit: bool = typer.Option(False, help="Read the five fixed F31 notes instead of a seed"),
+) -> None:
+    """Run the note eval and write evals/reports/<date>-notes-seed-<N>. record spends money:
+    it records every answer, then writes the report from the recordings in replay mode. It
+    reads the key from FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`."""
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from firstcall.evaluation.note_eval import (
+        IncompleteRecordingError,
+        NoteRun,
+        evaluate_notes,
+        record_and_report,
+        write_notes,
+        write_record_pass,
+    )
+    from firstcall.settings import Settings
+
+    if mode not in ("replay", "record"):
+        raise typer.BadParameter("mode must be replay or record")
+    if budget > MAX_RUN_BUDGET:
+        raise typer.BadParameter(f"--budget is at most ${MAX_RUN_BUDGET:.0f} for one run")
+    settings = Settings()
+    key = settings.model_key.get_secret_value()
+    if mode == "record" and not key:
+        raise typer.BadParameter(
+            "--mode record needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
+        )
+    run = NoteRun(mode=mode, model=model, budget_usd=Decimal(str(budget)), key=key)
+    url = settings.database_url
+    if unit:
+        from firstcall.evaluation.note_eval import read_unit_notes
+
+        for note_id, kinds in read_unit_notes(url, run).items():
+            typer.echo(f"{note_id}: {', '.join(kinds) or 'no suggestion'}")
+        return
+    day = date or datetime.now(UTC).date().isoformat()
+    if mode == "record":
+
+        def keep(paid: dict[str, Any]) -> None:
+            path = write_record_pass(paid, seed, day)
+            typer.echo(
+                f"recorded seed {seed}: {paid['calls']} calls ({paid['failed']} failed), "
+                f"${paid['ledger_usd']} on the ledger; wrote {path}"
+            )
+
+        try:
+            report = record_and_report(seed, url, run, limit or None, on_recorded=keep)
+        except IncompleteRecordingError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
+    else:
+        report = evaluate_notes(seed, url, run, limit or None)
+    for path in write_notes(report, day):
+        typer.echo(f"wrote {path}")
+
+
 user_app = typer.Typer(no_args_is_help=True, help="Users and passwords.")
 app.add_typer(user_app, name="user")
 

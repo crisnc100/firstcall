@@ -1,0 +1,360 @@
+{
+ "rows": [
+  {
+   "behavior": "note saved, read in a background job, answer applied under lock",
+   "files": [
+    "firstcall/board/notes.py",
+    "firstcall/notes/reader.py",
+    "firstcall/notes/__init__.py",
+    "firstcall/pipeline/jobs.py",
+    "firstcall/pipeline/worker.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Saving a note stores it and queues a read job; the model is not called while saving",
+       "at": "firstcall/board/notes.py:89"
+      },
+      {
+       "claim": "The reader asks the model before taking any lock",
+       "at": "firstcall/notes/reader.py:113"
+      },
+      {
+       "claim": "A note job reads through read_note_job",
+       "at": "firstcall/pipeline/jobs.py:127"
+      }
+     ]
+    },
+    {
+     "path": "docs/adr/ADR-007-note-reader.md",
+     "claims": [
+      {
+       "claim": "The answer is applied only if the note is still waiting and the lead exists",
+       "at": "firstcall/notes/reader.py:118"
+      },
+      {
+       "claim": "The scheduler's reread pass reads notes left needs_model",
+       "at": "firstcall/pipeline/worker.py:68"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "unreadable answer fails the note; no model answer leaves needs_model",
+   "files": [
+    "firstcall/core/note_read.py",
+    "firstcall/model/prompts.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "A dollar figure above a trillion makes an answer unreadable",
+       "at": "firstcall/core/note_read.py:158"
+      },
+      {
+       "claim": "A negative bound is read as no bound",
+       "at": "firstcall/core/note_read.py:160"
+      },
+      {
+       "claim": "A month not YYYY-MM is read as absent",
+       "at": "firstcall/core/note_read.py:220"
+      },
+      {
+       "claim": "A suggested contact whose quote is not in the note is dropped",
+       "at": "firstcall/core/note_read.py:183"
+      },
+      {
+       "claim": "An unreadable answer fails the note for good",
+       "at": "firstcall/notes/reader.py:127"
+      }
+     ]
+    },
+    {
+     "path": "docs/adr/ADR-007-note-reader.md",
+     "claims": [
+      {
+       "claim": "The parser enforces the minimum the schema cannot carry",
+       "at": "firstcall/core/note_read.py:85"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "profile merge and person-set fields",
+   "files": [
+    "firstcall/board/suggestions.py",
+    "web/src/api.ts"
+   ],
+   "docs": [
+    {
+     "path": "docs/adr/ADR-007-note-reader.md",
+     "claims": [
+      {
+       "claim": "A person-set field is never overwritten",
+       "at": "firstcall/board/suggestions.py:65"
+      },
+      {
+       "claim": "A newer note replaces an older note's value",
+       "at": "firstcall/board/suggestions.py:60"
+      },
+      {
+       "claim": "Budget bounds merge together from one note",
+       "at": "firstcall/board/suggestions.py:71"
+      }
+     ]
+    },
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "The profile form sends only the fields the person changed",
+       "at": "web/src/pages/work.ts:272"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "suggestions: Confirm, Dismiss, already logged, 409",
+   "files": [
+    "firstcall/board/suggestions.py",
+    "firstcall/board/routes.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "A second click on a closed suggestion is a conflict (409)",
+       "at": "firstcall/board/suggestions.py:123"
+      },
+      {
+       "claim": "Confirm needs the lead owned or in nurture",
+       "at": "firstcall/board/suggestions.py:131"
+      },
+      {
+       "claim": "A kind the note already logged closes as already logged",
+       "at": "firstcall/board/suggestions.py:100"
+      },
+      {
+       "claim": "Confirm and Dismiss are routes on the lead",
+       "at": "firstcall/board/routes.py:589"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "follow-up close rule and moved_at",
+   "files": [
+    "firstcall/board/followups.py",
+    "firstcall/db.py",
+    "migrations/versions/0011_note_reader.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/definitions.md",
+     "claims": [
+      {
+       "claim": "A contact closes a follow-up only at or after created or moved_at, or on or after its due date",
+       "at": "firstcall/board/followups.py:44"
+      },
+      {
+       "claim": "moved_at is set when a run moves the follow-up to a newer step",
+       "at": "firstcall/board/followups.py:133"
+      }
+     ]
+    },
+    {
+     "path": "docs/adr/ADR-007-note-reader.md",
+     "claims": [
+      {
+       "claim": "Migration 0011 sets moved_at to the upgrade time for open follow-ups already moved",
+       "at": "migrations/versions/0011_note_reader.py:76"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "delete removes suggestions and note jobs, keeps model calls",
+   "files": [
+    "firstcall/board/delete.py",
+    "firstcall/model/gateway.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Deleting a lead deletes its suggestions",
+       "at": "firstcall/board/delete.py:42"
+      },
+      {
+       "claim": "Deleting a lead deletes its read jobs",
+       "at": "firstcall/board/delete.py:76"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "structured output first and per-answer output mode",
+   "files": [
+    "firstcall/model/anthropic.py",
+    "firstcall/model/transport.py",
+    "firstcall/model/recordings.py",
+    "firstcall/model/synthetic.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/adr/ADR-007-note-reader.md",
+     "claims": [
+      {
+       "claim": "Each recorded answer keeps its output mode",
+       "at": "firstcall/model/recordings.py:31"
+      },
+      {
+       "claim": "A fallback request is counted",
+       "at": "firstcall/model/anthropic.py:65"
+      }
+     ]
+    },
+    {
+     "path": "docs/rerecord.md",
+     "claims": [
+      {
+       "claim": "Note answers are recorded in their own notes- file",
+       "at": "firstcall/model/recordings.py:49"
+      },
+      {
+       "claim": "Record mode accepts only the synthetic notes and unit notes",
+       "at": "firstcall/model/synthetic.py:35"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "note eval: record then replay, record pass, structured_output, unit notes, CI check",
+   "files": [
+    "firstcall/evaluation/note_eval.py",
+    "firstcall/cli.py",
+    "scripts/check_replay_report.py",
+    "scripts/check_coverage.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/rerecord.md",
+     "claims": [
+      {
+       "claim": "structured_output is true only with zero JSON-in-prompt answers",
+       "at": "firstcall/evaluation/note_eval.py:169"
+      },
+      {
+       "claim": "The record pass is written before the replay",
+       "at": "firstcall/evaluation/note_eval.py:212"
+      },
+      {
+       "claim": "eval-notes --unit reads the fixed notes",
+       "at": "firstcall/cli.py:191"
+      },
+      {
+       "claim": "check_replay_report copies the paid record pass",
+       "at": "scripts/check_replay_report.py:48"
+      }
+     ]
+    },
+    {
+     "path": "docs/adr/ADR-007-note-reader.md",
+     "claims": [
+      {
+       "claim": "The report prompt hash and structured_output are set by the eval",
+       "at": "firstcall/evaluation/note_eval.py:169"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "note scorer reads numbers across brackets, slashes and word hyphens",
+   "files": [
+    "firstcall/evaluation/note_score.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/adr/ADR-007-note-reader.md",
+     "claims": [
+      {
+       "claim": "A number never runs across brackets or a slash",
+       "at": "firstcall/evaluation/note_score.py:120"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "lead page: note states, suggestions, polling",
+   "files": [
+    "web/src/pages/detail.ts",
+    "web/src/pages/work.ts",
+    "web/src/poller.ts",
+    "web/src/styles/app.css"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "The page shows Needs a model key",
+       "at": "web/src/pages/work.ts:131"
+      },
+      {
+       "claim": "It checks every 15 seconds while a note waits",
+       "at": "web/src/poller.ts:8"
+      },
+      {
+       "claim": "Polling applies while a note is pending or needs a model",
+       "at": "web/src/pages/detail.ts:197"
+      },
+      {
+       "claim": "Confirm and Dismiss buttons",
+       "at": "web/src/pages/work.ts:161"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "notes written before the reader start as needs_model",
+   "files": [
+    "migrations/versions/0011_note_reader.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/board.md",
+     "claims": [
+      {
+       "claim": "Existing notes become needs_model",
+       "at": "migrations/versions/0011_note_reader.py:31"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "frozen note gold and recordings",
+   "files": [
+    "evals/gold/unit-notes.jsonl",
+    "evals/recordings/notes-claude-haiku-5-5.jsonl"
+   ],
+   "none": "Data files the eval reads; docs/rerecord.md describes how they are recorded and replayed."
+  }
+ ]
+}

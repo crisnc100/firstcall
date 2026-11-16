@@ -115,6 +115,7 @@ FAITHFUL: list[tuple[str, dict[str, Any]]] = [
     ),
     ("note-11-091", answer("Budget $440,000 to $465,000. Wife signs off.")),
     ("note-11-124", answer("1.1\u20131.125 million budget, move by September.")),
+    ("note-7-025", answer("Budget (around six hundred sixty-five thousand) / 3 months.")),
 ]
 
 # Rewrites that invent a number: a wrong scale, wrong digits, or a number from nowhere.
@@ -132,6 +133,8 @@ INVENTED: list[tuple[str, dict[str, Any], list[str]]] = [
     ("note-7-016", answer("430 to 550 thousand."), ["notes: number 5.5E+5"]),
     ("note-11-066", answer("nine hundred thirty thousand; three bedrooms"),
      ["notes: number 3", "notes: number 9.3E+5"]),
+    ("note-11-066", answer("eight hundred fifteen thousand (two kids)"), ["notes: number 2"]),
+    ("note-7-006", answer("Budget is half-a-million."), ["notes: number 5E+5"]),
 ]  # fmt: skip
 
 
@@ -193,6 +196,11 @@ def test_every_script_copied_through_or_restated_from_its_gold_is_supported(seed
         ("between 425 and 450 thousand", {425000, 450000}),
         ("$1.5M, 450,000 and 3.5 acres", {1500000, 450000, Decimal("3.5")}),
         ("2,000 to 3 million", {2000, 3000000}),
+        ("nine hundred thirty thousand (three bedrooms)", {930000, 3}),
+        ("two/three bedrooms", {2, 3}),
+        ("[forty] {two}", {40, 2}),
+        ("half-a-million", {500000}),
+        ("seventy-five thousand", {75000}),
     ],
 )
 def test_a_number_never_runs_across_punctuation(text: str, values: set[int | Decimal]) -> None:

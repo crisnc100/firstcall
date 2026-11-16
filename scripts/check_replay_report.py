@@ -3,9 +3,10 @@
     uv run python -m scripts.check_replay_report
 
 Each report under evals/reports/ named <date>-<kind>-seed-<N>.json is rerun for its seed and
-date on a throwaway database: rules reports with no model, model and confirm reports from
-the recorded answers in evals/recordings/ (replay mode, no key). A missing recording raises.
-Any difference in the JSON or the Markdown fails.
+date on a throwaway database: rules reports with no model, model, confirm and notes reports
+from the recorded answers in evals/recordings/ (replay mode, no key). A missing recording
+raises. Any difference in the JSON or the Markdown fails. A notes report keeps its paid record
+pass, which a replay cannot know, so that part is carried over from the committed report.
 """
 
 from __future__ import annotations
@@ -19,12 +20,13 @@ from pathlib import Path
 
 from firstcall.evaluation.model_eval import ModelRun, evaluate_confirm, evaluate_models
 from firstcall.evaluation.model_report import confirm_paths, model_paths, write_confirm, write_model
+from firstcall.evaluation.note_eval import NoteRun, evaluate_notes, write_notes
 from firstcall.evaluation.report import REPORTS, paths, write
 from firstcall.evaluation.run import evaluate
 from firstcall.settings import Settings
 
 NAME = re.compile(
-    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<kind>rules|model|confirm)-seed-(?P<seed>\d+)\.json$"
+    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<kind>rules|model|confirm|notes)-seed-(?P<seed>\d+)\.json$"
 )
 
 
@@ -39,6 +41,15 @@ def rerun(kind: str, date: str, seed: int, url: str, scratch: Path) -> tuple[Pat
     if kind == "rules":
         return write(evaluate(seed, url), date, scratch)
     old = json.loads(paths_for(kind, date, seed)[0].read_text())
+    if kind == "notes":
+        report = evaluate_notes(
+            seed, url, NoteRun(mode="replay", model=old["model"], budget_usd=Decimal("0"))
+        )
+        for paid in ("record_pass", "structured_output"):
+            if paid in old:
+                report[paid] = old[paid]
+        data, text = write_notes(report, date, scratch)
+        return data, text
     run = ModelRun(mode="replay", model=old["model"], budget_usd=Decimal("0"))
     if kind == "model":
         return write_model(evaluate_models(seed, url, run), date, scratch)
@@ -50,6 +61,9 @@ def paths_for(kind: str, date: str, seed: int) -> tuple[Path, Path]:
         return paths(seed, date)
     if kind == "model":
         return model_paths(seed, date)
+    if kind == "notes":
+        stem = REPORTS / f"{date}-notes-seed-{seed}"
+        return stem.with_suffix(".json"), stem.with_suffix(".md")
     return confirm_paths(seed, date)
 
 

@@ -49,6 +49,7 @@ class FakeTransport:
     delay_seconds: float = 0.0
     requests: list[TransportRequest] = field(default_factory=list[TransportRequest])
     respond: Callable[[TransportRequest], str] | None = None
+    output_mode: str = "json_schema"
 
     def complete(self, request: TransportRequest) -> TransportReply:
         self.requests.append(request)
@@ -63,7 +64,9 @@ class FakeTransport:
             step = self.default
         if isinstance(step, TransportError):
             raise step
-        return TransportReply(step, self.prompt_tokens, self.completion_tokens, self.cost_usd)
+        return TransportReply(
+            step, self.prompt_tokens, self.completion_tokens, self.cost_usd, self.output_mode
+        )
 
 
 def config(mode: str = "live", **overrides: Any) -> GatewayConfig:

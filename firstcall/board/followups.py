@@ -37,11 +37,27 @@ def open_followup(session: Session, lead_id: uuid.UUID) -> Followup | None:
     )
 
 
+def _meets(session: Session, lead: Lead, found: Followup, at: datetime) -> bool:
+    """A contact meets a follow-up when it happened at or after the moment it was created or
+    last moved, or on or after its due date in the team's time. A contact confirmed late from
+    an older note keeps its own date and so never closes a newer step."""
+    if at >= (found.moved_at or found.created_at):
+        return True
+    team = session.get(Team, lead.team_id) if lead.team_id else None
+    if team is None:
+        return False
+    try:
+        hours, _ = _rules(team)
+    except (ValueError, KeyError, TypeError):
+        return False
+    return _local(at, hours) >= found.due_on
+
+
 def touched(session: Session, lead: Lead, at: datetime) -> None:
-    """A real contact closes the lead's open follow-up as done. The caller holds the lead's
-    row lock."""
+    """A real contact closes the lead's open follow-up as done, if it meets it. The caller
+    holds the lead's row lock."""
     found = open_followup(session, lead.id)
-    if found is None:
+    if found is None or not _meets(session, lead, found, at):
         return
     found.state, found.closed_at = "done", at
     payload = {"followup_id": str(found.id)}
@@ -114,7 +130,7 @@ def follow_lead(
     if found is not None:
         # One open follow-up per lead: a later run moves it to the newest due step.
         if found.due_on < step.due_on:
-            found.due_on, found.step = step.due_on, step.label
+            found.due_on, found.step, found.moved_at = step.due_on, step.label, now
         found.next_step, found.owner_id = line, lead.owner_id
         return False
     followup = Followup(

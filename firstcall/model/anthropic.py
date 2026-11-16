@@ -42,6 +42,9 @@ class AnthropicTransport:
         self._key = key
         self._client = client or httpx.Client()
         self.output_mode = JSON_SCHEMA
+        # Requests sent without the schema. An eval reports it, so a run that fell back to
+        # JSON in the prompt cannot pass as a structured-output run.
+        self.json_prompt_calls = 0
 
     def _body(self, request: TransportRequest) -> dict[str, Any]:
         body: dict[str, Any] = {
@@ -58,6 +61,8 @@ class AnthropicTransport:
         return body
 
     def _post(self, request: TransportRequest) -> httpx.Response:
+        if self.output_mode == JSON_PROMPT:
+            self.json_prompt_calls += 1
         try:
             return self._client.post(
                 API_URL,
@@ -100,7 +105,7 @@ class AnthropicTransport:
         if payload.get("stop_reason") in CUT:
             log.info("answer stopped at %s; read as unreadable", payload.get("stop_reason"))
             text = ""
-        return TransportReply(text, prompt_tokens, completion_tokens)
+        return TransportReply(text, prompt_tokens, completion_tokens, output_mode=self.output_mode)
 
 
 def _error_message(response: httpx.Response) -> str:

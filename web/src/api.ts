@@ -60,11 +60,22 @@ export interface Followup {
   overdue: boolean;
 }
 
+export interface Suggestion {
+  id: string;
+  kind: string;
+  quote: string;
+  state: "open" | "confirmed" | "dismissed" | "already_logged";
+}
+
 export interface Note {
   id: string;
   text: string;
   author: string | null;
   created_at: string;
+  read_state: "pending" | "read" | "needs_model" | "failed";
+  read_reason: string | null;
+  clean_note: string | null;
+  suggestions: Suggestion[];
 }
 
 export interface ContactRow {

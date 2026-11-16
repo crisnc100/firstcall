@@ -1,7 +1,7 @@
 // Working a lead: notes and the contacts they log, the buyer profile, the open follow-up,
 // and the outcome, reopen and delete controls. Plain on purpose; the redesign comes later.
 
-import { api, ApiError, type LeadDetail, type Profile } from "../api";
+import { api, ApiError, type LeadDetail, type Note, type Profile } from "../api";
 import { announce, h } from "../dom";
 import { shortTime } from "../format";
 import { busy, unbusy } from "../leadlist";
@@ -115,6 +115,7 @@ function notesSection(lead: LeadDetail, reload: () => Promise<void>): HTMLElemen
           ...(logged.get(note.id) ?? []).map((word) => h("span", { class: "badge", text: `${word} · contact logged` })),
         ),
         h("div", { class: "msg", text: note.text }),
+        ...readParts(lead, note, reload),
       ),
     ),
   );
@@ -122,6 +123,47 @@ function notesSection(lead: LeadDetail, reload: () => Promise<void>): HTMLElemen
   if (!notes.length) parts.push(h("p", { class: "muted", text: "No notes yet." }));
   else parts.push(list);
   if (lead.work.includes("note")) parts.push(noteForm(lead, reload));
+  return parts;
+}
+
+const READ_LINE: Record<string, string> = {
+  pending: "Reading this note…",
+  needs_model: "Needs a model key",
+  failed: "Couldn't read this note",
+};
+const CLOSED_WORD: Record<string, string> = {
+  confirmed: "confirmed",
+  dismissed: "dismissed",
+  already_logged: "already logged",
+};
+
+/** What the model made of a note: its read state, the tidied note, and each suggested
+ * contact with Confirm and Dismiss while it is open. */
+function readParts(lead: LeadDetail, note: Note, reload: () => Promise<void>): HTMLElement[] {
+  const parts: HTMLElement[] = [];
+  const line = READ_LINE[note.read_state];
+  if (line) parts.push(h("p", { class: "muted sm read-state", text: line }));
+  if (note.clean_note) parts.push(h("p", { class: "sm tidied" }, h("strong", { text: "Tidied: " }), note.clean_note));
+  for (const suggestion of note.suggestions) {
+    const word = ACTION_WORD[suggestion.kind] ?? suggestion.kind;
+    const row = h("div", { class: "suggestion sm" }, h("span", { text: `Suggested: ${word} — “${suggestion.quote}”` }));
+    if (suggestion.state !== "open") {
+      row.append(" ", h("span", { class: "badge", text: CLOSED_WORD[suggestion.state] ?? suggestion.state }));
+    } else if (lead.work.includes("note")) {
+      const status = h("div", { attrs: { role: "status" } });
+      const path = `/leads/${lead.id}/suggestions/${suggestion.id}`;
+      const button = (label: string, verb: string, done: string): HTMLButtonElement => {
+        const node = h("button", { class: "btn secondary", text: label, attrs: { type: "button", "aria-label": `${label} ${word.toLowerCase()}` } });
+        node.addEventListener("click", () => void attempt(node, "Saving…", label, status, () => api("POST", `${path}/${verb}`), done, `${verb} the suggestion`, reload));
+        return node;
+      };
+      row.append(
+        h("div", { class: "row-buttons" }, button("Confirm", "confirm", "Contact logged."), button("Dismiss", "dismiss", "Suggestion dismissed.")),
+        status,
+      );
+    }
+    parts.push(row);
+  }
   return parts;
 }
 
@@ -211,7 +253,11 @@ function profileEditor(lead: LeadDetail, reload: () => Promise<void>): HTMLEleme
     const [needLabel, need] = input("need", "Needs", profile?.need);
     const [timelineLabel, timeline] = input("timeline", "Timeline, in words", profile?.timeline_text);
     const [monthLabel, month] = input("month", "Timeline month", profile?.timeline_month, "month");
-    const [notesLabel, notes] = input("notes", "Notes", profile?.notes);
+    // A textarea: the model writes one line per note, and a single-line input would drop
+    // the line breaks.
+    const notes = h("textarea", { attrs: { id: "profile-notes", rows: "3" } });
+    notes.value = profile?.notes ?? "";
+    const notesLabel = h("label", { text: "Notes", attrs: { for: "profile-notes" } });
     const status = h("div", { attrs: { role: "status" } });
     const save = h("button", { class: "btn primary", text: "Save profile", attrs: { type: "submit" } });
     const form = h(
@@ -223,27 +269,27 @@ function profileEditor(lead: LeadDetail, reload: () => Promise<void>): HTMLEleme
       h("div", { class: "row-buttons" }, save),
       status,
     );
+    // A field is sent only when the person changed its control. Comparing with the profile
+    // instead would send any value a control cannot hold as drawn, such as a line break in
+    // a single-line input, and mark it person-set.
+    const whole = (text: string): number | null => (text.trim() === "" ? null : Number(text));
+    const controls: [string, HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, (text: string) => unknown][] = [
+      ["budget_text", budget, (text) => text],
+      ["budget_min", min, whole],
+      ["budget_max", max, whole],
+      ["authority", who, (text) => text],
+      ["authority_others", others, (text) => text],
+      ["need", need, (text) => text],
+      ["timeline_text", timeline, (text) => text],
+      ["timeline_month", month, (text) => text || null],
+      ["notes", notes, (text) => text],
+    ];
+    const drawn = new Map(controls.map(([, control]) => [control, control.value]));
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      const whole = (text: string): number | null => (text.trim() === "" ? null : Number(text));
-      const wanted: Record<string, unknown> = {
-        budget_text: budget.value,
-        budget_min: whole(min.value),
-        budget_max: whole(max.value),
-        authority: who.value,
-        authority_others: others.value,
-        need: need.value,
-        timeline_text: timeline.value,
-        timeline_month: month.value || null,
-        notes: notes.value,
-      };
-      // Only fields the person changed are sent, so the rest stay open to the model.
-      const before: Record<string, unknown> = { ...(profile ?? {}) };
       const changes: Record<string, unknown> = {};
-      for (const [name, next] of Object.entries(wanted)) {
-        const old = before[name] ?? (name === "authority" ? "unknown" : null);
-        const empty = next === "" ? null : next;
-        if (empty !== old) changes[name] = next;
+      for (const [name, control, read] of controls) {
+        if (control.value !== drawn.get(control)) changes[name] = read(control.value);
       }
       void attempt(save, "Saving…", "Save profile", status, () => api("PUT", `/leads/${lead.id}/profile`, changes), "Profile saved.", "save the profile", reload);
     });

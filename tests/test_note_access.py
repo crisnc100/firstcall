@@ -13,17 +13,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board.followups import run_nightly
-from firstcall.db import LeadEvent
+from firstcall.db import LeadEvent, Note, NoteSuggestion
 from tests.board_helpers import Board
 from tests.conftest import FakeClock
 
 ROUTES = (
     "read", "note", "contact", "profile", "outcome", "nurture", "resume", "reopen", "delete",
+    "confirm", "dismiss",
 )  # fmt: skip
 ROLES = ("salesperson", "team_lead", "monitor", "admin")
 WHERE = ("own", "other", "unassigned")
 TEAM = {"own": "north", "other": "south", "unassigned": None}
-WRITES = {"note": 201, "contact": 201, "profile": 200}
+WRITES = {"note": 201, "contact": 201, "profile": 200, "confirm": 200, "dismiss": 200}
 MOVES = {"outcome": 200, "nurture": 200, "resume": 200}
 
 # Everything not listed answers 404 with the body of a lead that does not exist. For "read",
@@ -38,6 +39,7 @@ ALLOWED: dict[tuple[str, str, str], int] = {
     **{("admin", "delete", w): 204 for w in WHERE},
     # An admin may note an Unassigned lead, but it has no owner, so no contact and no reopen.
     ("admin", "contact", "unassigned"): 422,
+    ("admin", "confirm", "unassigned"): 409,
     ("admin", "reopen", "unassigned"): 409,
 }
 
@@ -61,14 +63,33 @@ class Cast:
             "south": board.user("south1@larkspur.example", teams={"south": "salesperson"}),
         }
         self.clients = {role: board.signed_in(user.email) for role, user in self.actors.items()}
+        self.suggestions: dict[uuid.UUID, uuid.UUID] = {}
 
 
 STATE_FOR = {"resume": "nurture", "reopen": "won", "delete": "pool"}
 
 
+def _suggest(board: Board, cast: Cast, lead: uuid.UUID) -> None:
+    """A note on the lead with one open suggestion, as the reader would leave it."""
+    now = board.clock.now()
+    with board.sessions.begin() as session:
+        org = board.get(lead).org_id
+        note = Note(id=uuid.uuid4(), org_id=org, lead_id=lead, author_id=cast.owner["north"].id,
+                    text="Called about Friday.", created_at=now, read_state="read")  # fmt: skip
+        session.add(note)
+        session.flush()
+        suggestion = NoteSuggestion(id=uuid.uuid4(), org_id=org, lead_id=lead, note_id=note.id,
+                                    kind="call", quote="Called about Friday", state="open",
+                                    created_at=now)  # fmt: skip
+        session.add(suggestion)
+    cast.suggestions[lead] = suggestion.id
+
+
 def _setup(board: Board, cast: Cast, role: str, route: str, where: str) -> uuid.UUID:
     team = TEAM[where]
     lead = board.lead(team)
+    if route in ("confirm", "dismiss"):
+        _suggest(board, cast, lead)
     if team is None or STATE_FOR.get(route) == "pool":
         return lead
     owner = cast.actors[role] if (role == "salesperson" and where == "own") else cast.owner[team]
@@ -92,6 +113,8 @@ def _call(cast: Cast, role: str, route: str, lead: uuid.UUID) -> Any:
         return client.post(f"{path}/outcome", json={"outcome": "won"})
     if route == "delete":
         return client.delete(path)
+    if route in ("confirm", "dismiss"):
+        return client.post(f"{path}/suggestions/{cast.suggestions[lead]}/{route}")
     return client.post(f"{path}/{route}")
 
 

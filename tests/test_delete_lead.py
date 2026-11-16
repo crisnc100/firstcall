@@ -42,7 +42,7 @@ MONDAY_10AM = datetime(2026, 3, 2, 15, 0, tzinfo=UTC)
 # test, so whoever adds it decides what delete does with it.
 DELETED_FOR_LEAD = {
     "identities", "activities", "notes", "contacts", "lead_profiles", "outcomes", "alerts",
-    "push_sends", "escalations", "jobs", "inbox_emails", "followups",
+    "push_sends", "escalations", "jobs", "inbox_emails", "followups", "note_suggestions",
 }  # fmt: skip
 KEPT_SCRUBBED: dict[str, tuple[str, ...]] = {
     "leads": ("name", "phone", "email", "item", "possible_duplicates", "edited_fields", "flags"),

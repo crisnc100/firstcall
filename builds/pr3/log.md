@@ -190,3 +190,136 @@ The third round on the scorer's numbers, so one reader replaces the patches.
 - The baseline floors test passes unchanged. ADR-007 and the gold CHANGELOG say so; no gold
   file changed.
 - verify.sh: 816 passed, every floor met.
+
+# PR3b (branch note-reader, stacked on notes-followups)
+
+## Deferred fix-check items x1 and x2
+
+- Test-only commit first (4c6ff44): the number table gains brackets, a slash and
+  half-a-million, failing on the old reader. The fix (edc8a4a) ends a number at brackets and
+  slashes and reads a hyphen between letters as a space. ADR-007 and the gold CHANGELOG
+  record it; no gold file changed.
+
+## Phase 5: the note reader (no key)
+
+- **Answer** (`core/note_read.py`, pure): the schema from the ADR-007 vocabulary and a parser
+  that never raises. A suggested action whose quote is not in the note is dropped; a wrong
+  type, an authority or a kind outside ADR-007 makes the answer unreadable; a month that is
+  not YYYY-MM reads as absent.
+- **Prompt** `read_note`: a fixed system prompt; the note goes only in the user message,
+  fenced in `<note>`, with its team-local date and the team's time zone as context.
+- **Gateway:** requests and `model_calls` carry a nullable `note_id`. Note answers are
+  recorded in their own file, `notes-<model>.jsonl`. Record mode also accepts note scripts and
+  `evals/gold/unit-notes.jsonl` (the five F31 notes and the page fixture note).
+- **Migration 0011:** note read state (pending, read, needs_model, failed), reason, tidied
+  note, model answer; `note_suggestions` (unique per note and kind); jobs take a note or a
+  message, never both, with their own creation time; `lead_profiles.model_from`.
+- **Note jobs:** saving a note queues `read_note`. `claim` no longer joins messages and orders
+  by the job's creation time; `run` dispatches by subject; an exhausted note job fails its note
+  with `retries_exhausted`, keeping the text and any typed action. The reader lives at
+  `firstcall/notes/reader.py`, the path ADR-007 names, so the gold-before-reader test covers
+  it. The model is asked before the lead is locked; the answer is applied under the lock only
+  if the note still waits and the lead is not deleted.
+- **No model:** no key, kill switch, budget or model down leave the note `needs_model` with
+  the reason; the scheduler's tick rereads those notes, stopping at the first refusal. An
+  unreadable answer fails the note so it is never paid for again.
+- **Suggestions** (`board/suggestions.py`): Confirm logs one contact dated at the note and
+  made by its author, by the owner, a team lead of the team or an admin; others get 404.
+  Confirm on a lead not owned or in nurture is 409 until reopened; a second Confirm is 409.
+  A kind the note already logged closes as already logged. A reassigned lead's suggestions
+  go to whoever may now confirm them.
+- **Profile merge:** never a person-set field, never an empty value, never over a newer
+  note's value; each note's other facts add one line to Notes.
+- **Delete** removes suggestions and note jobs and keeps model calls without their note.
+- **Eval runner** (`evaluation/note_eval.py`, `firstcall eval-notes`): reads every script
+  through the gateway in a throwaway database, scores with the frozen scorer, adds the
+  baselines and the call log, and writes no report for an incomplete run. Tested record then
+  replay on fake answers.
+- **Tests:** `test_note_read.py`, `test_note_reader.py`, `test_note_eval.py`. Two existing
+  tests changed, in their own commit: the access matrix adds confirm and dismiss, and the
+  delete test classifies `note_suggestions`.
+- verify.sh: 861 passed, every floor met.
+
+## Phase 6: pages for suggestions
+
+- **Lead page** (`web/src/pages/work.ts`): each note shows its read state ("Reading this
+  note…", "Needs a model key", "Couldn't read this note"), the tidied note, and each suggested
+  contact with its quote. An open one has Confirm and Dismiss for whoever may write notes;
+  a closed one shows confirmed, dismissed or already logged. Text goes in with textContent.
+- **Test** `tests/fault/test_pages_suggestions.py` on compose in Chromium: a worker with no
+  key leaves the owner's note at "Needs a model key"; one `firstcall tick` in replay mode
+  reads it from a fixture answer the test writes, keyed to the exact request for the
+  `unit-page` note; the owner sees the tidied note and the suggested call, confirms it, and a
+  suggestion-sourced contact is logged. The fixture answer is hand-written, not a model's.
+- **F31 unit notes:** `firstcall eval-notes --unit` reads the five fixed notes once each and
+  prints what each suggests; tested record then replay on fakes. Their replay test lands with
+  the phase 7 recording.
+- verify.sh: 863 passed, every floor met.
+
+## Phases 5-6 review fixes (72756c, 053866)
+
+Merged origin/main (PR3a, squashed as 362c632) into note-reader first; main's tree equals
+PR3a's tip, so every conflict took the branch's side and the merge changed no file.
+Each fix has a failing test first: `tests/test_note_reader_fixes.py` (11 of 12 failed
+before the fixes) and `tests/fault/test_pages_reader_fixes.py` (failed on the old page).
+- **Pages f1:** profile Notes is a textarea, so its line breaks survive and an edit to
+  another field never sends Notes. The page test checks only `need` becomes person-set.
+- **Pages f2:** while a note is pending or waiting for a model, the lead page fetches again
+  every 15 seconds and redraws only when a read changed and nothing is being typed or open.
+- **f1:** budget bounds merge as a pair from one note; a person-set bound keeps the model
+  off both.
+- **f2:** migration 0011 moves notes written before the reader to `needs_model`
+  (`written_before_reader`), so the reread pass reads them.
+- **f3:** a contact closes a follow-up only if it happened after the follow-up opened or on
+  or after its due date in the team's time.
+- **f4, s1:** each note in the reread pass has its own error boundary: a replay miss halts
+  the pass, any other error is logged, counted and fails that note. `schedule()` survives a
+  failing tick. Budget figures above $10^12 make an answer unreadable; NUL characters are
+  stripped from answer text.
+- **f5:** `record_and_report` keeps the record pass's calls, failed attempts and ledger
+  spend in the report (`record_pass`), beside the replay's reproducible figures.
+- **f6:** a call whose note was deleted mid-read is logged without the note, cost kept.
+- **f7:** a note job holds no job lock while the model reads and takes the lead before its
+  own row, the order delete uses; a job deleted meanwhile ends quietly. A threaded test
+  deletes the lead while the model call is in flight.
+- f8 (LOW, downgrade) is filed, not fixed.
+- verify.sh: 876 passed, every floor met.
+
+## Phase 7: the paid runs (2026-11-14)
+
+Model `claude-haiku-5-5`. Each run used a throwaway database, so its ledger is that run's
+spend. Tuning passes recorded into scratch folders; only the frozen prompt's answers are
+committed.
+
+| Run | Prompt sha256 (first 12) | Calls | Failed | Fallback calls | Ledger $ |
+|---|---|---|---|---|---|
+| Smoke, 5 seed-7 scripts | 26b892e846cf | 5 | 0 | 5 (schema refused) | 0.000761 |
+| Smoke after the schema fix | 26b892e846cf | 5 | 0 | 0 | 0.001231 |
+| Seed 7, pass 1 | 26b892e846cf | 150 | 0 | 0 | 0.039338 |
+| Seed 7, pass 2 | eba6c21f50fa | 150 | 0 | 0 | 0.040415 |
+| Seed 7, pass 3 (frozen) | 93a64f569142 | 150 | 0 | 0 | 0.041525 |
+| Seed 7, pass 4 (discarded) | 16fa33443382 | 150 | 0 | 0 | 0.041575 |
+| Seed 11, once | 93a64f569142 | 150 | 0 | 0 | 0.041673 |
+| Five F31 unit notes, once | 93a64f569142 | 5 | 0 | 0 | 0.001121 |
+| Unit-page note, once | 93a64f569142 | 1 | 0 | 0 | 0.000271 |
+| **Total** | | 766 | 0 | | **0.207910** |
+
+The cap was $0.50. The unit-note figures are the sums of the recordings' costs; the rest are
+the record passes' ledgers.
+
+- **Schema:** the first smoke run showed the API refusing the answer schema over `minimum`
+  on the budget bounds; the transport fell back to JSON in the prompt. Fixed before tuning
+  (cb06c3a): no `minimum`, a negative bound parses as null, and the eval counts fallback
+  calls and flags any run with one.
+- **Tuning:** pass 1 missed key-term recall (0.7796): budget text left out how the buyer pays
+  and timeline text its hedge. Pass 2 asked for both and met every floor, but 10 of 15
+  colleague notes drew a suggestion. Pass 3 named the writer's own contacts (no subject, or I
+  and we) against a named colleague's: colleague 10 of 15 clean, precision 0.9342, recall
+  0.9467. Pass 4 pushed the colleague rule further: colleague 12 of 15, but recall fell to
+  0.8533 and a future note drew a suggestion, so it was discarded.
+- **Frozen prompt:** sha256 `93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59`.
+- **Seed 11:** every floor met; see ADR-007's result. No floor was missed, so
+  `docs/failures/` has no new entry.
+- **F31:** the five unit notes drew no suggestion; `tests/test_note_replay.py` replays them
+  and the unit-page note. The page test replays the real unit-page answer, dated to the unit
+  notes' date, in place of the hand-written fixture.

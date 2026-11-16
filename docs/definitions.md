@@ -195,7 +195,10 @@ There is no automatic release: taking a lead away from a salesperson is a team l
 - **Follow-up:** a task opened on the date a cadence step falls due, when no touch has happened
   since that date. It never contacts the buyer. Done on or before its due date is on time.
   A lead has at most one open follow-up; a later run updates it instead of adding another.
-  A touch closes it as done. The lead leaving its owner (back to a pool, or closed) cancels it.
+  A touch closes it as done when it happened at or after the moment the follow-up was created
+  or last moved to a newer step (its `moved_at`), or on or after its due date in the team's time.
+  A contact confirmed late from an older note keeps its own date, so it closes nothing newer.
+  The lead leaving its owner (back to a pool, or closed) cancels it.
   A step on a day the team is closed moves to its next open day.
   Its suggested next step is a rules-based line from the cadence step and the profile gaps (for
   example "No contact in 6 days. Budget not known yet."). No model call.
@@ -210,6 +213,25 @@ The profile follows BANT, a public sales framework:
 - **Notes:** free text.
 
 The model fills the profile from typed notes and voice memos. A person's edit always wins over the model.
+Field by field, a model value from a newer note replaces one from an older note, an empty model
+value never clears a field, and each note's other facts add one line to Notes. The budget's lower
+and upper bounds come from one note together, so two notes never combine into a range neither
+gave.
+
+- **Suggested contact:** a call, text, email or meeting the model read in a note, with the note's
+  own words that show it happened. It logs nothing until a person confirms it. Confirm logs one
+  contact, dated when the note was written and made by its author; Dismiss logs none. The owner,
+  a team lead of the lead's team or an admin may do either, and Confirm waits while the lead is
+  not owned or in nurture. A kind the note already logged closes as already logged.
+- **Needs a model key:** a note no model has read yet, because there is no key, the model is
+  switched off or down, or the day's budget is spent. The note is kept as typed; a later pass
+  reads it once a model answers. Notes written before the reader existed start in this state.
+- **Couldn't read this note:** the model answered, but the answer was not usable: not a JSON
+  object, a value of the wrong type, a dollar figure above a trillion, or an authority or
+  action kind outside the list. A note whose read job fails every try ends the same way. The
+  note is kept as typed and is never sent again, so it is never paid for twice. A negative budget bound is read as no bound, and a month that is not
+  `YYYY-MM` as no month; neither makes an answer unusable. A suggested contact whose quote is
+  not in the note is dropped.
 
 ## Outcomes
 

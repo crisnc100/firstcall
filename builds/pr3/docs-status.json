@@ -1,0 +1,1 @@
+{"f1": {"status": "fixed", "response": "real"}, "x1": {"status": "deferred", "reason": "Same west-of-UTC backfill case as 15a420 x1: one-time upgrade edge for follow-ups created late evening west of UTC and moved before the upgrade. ADR-007 and the migration comment now state the limit. Follow-up: compare in the team time zone."}}

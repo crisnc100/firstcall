@@ -2,7 +2,8 @@
 
 A worker claims a job with FOR UPDATE SKIP LOCKED and holds a lease that it renews while
 working. The reaper returns jobs whose lease ran out, so a dead worker's job is picked up
-again. After max_attempts tries the message ends `failed: retries_exhausted`.
+again. After max_attempts tries the message ends `failed: retries_exhausted`, or a note's
+read ends `failed` with the same reason, its text and any typed action kept.
 """
 
 from __future__ import annotations
@@ -20,7 +21,8 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.core.clock import Clock
-from firstcall.db import Job, Message
+from firstcall.db import Job, Message, Note
+from firstcall.notes.reader import NoteReader, read_note_job
 from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.process import process
 
@@ -31,13 +33,21 @@ EXHAUSTED = "retries_exhausted"
 @dataclass(frozen=True)
 class Claimed:
     job_id: uuid.UUID
-    message_id: uuid.UUID
+    message_id: uuid.UUID | None
     attempt: int
+    note_id: uuid.UUID | None = None
 
 
 def _fail(session: Session, job: Job, reason: str) -> None:
     job.state = "failed"
     job.lease_until = None
+    if job.note_id is not None:
+        session.execute(
+            update(Note)
+            .where(Note.id == job.note_id, Note.read_state == "pending")
+            .values(read_state="failed", read_reason=reason)
+        )
+        return
     session.execute(
         update(Message)
         .where(Message.id == job.message_id, Message.status.in_(("received", "processing")))
@@ -53,11 +63,10 @@ def claim(
         while True:
             job = session.scalar(
                 select(Job)
-                .join(Message, Message.id == Job.message_id)
                 .where(Job.state == "queued", or_(Job.run_after.is_(None), Job.run_after <= now))
-                .order_by(Message.received_at, Job.id)
+                .order_by(Job.created_at, Job.id)
                 .limit(1)
-                .with_for_update(of=Job, skip_locked=True)
+                .with_for_update(skip_locked=True)
             )
             if job is None:
                 return None
@@ -67,7 +76,7 @@ def claim(
             job.state = "running"
             job.attempts += 1
             job.lease_until = now + timedelta(seconds=lease_seconds)
-            return Claimed(job.id, job.message_id, job.attempts)
+            return Claimed(job.id, job.message_id, job.attempts, job.note_id)
 
 
 @contextmanager
@@ -111,15 +120,28 @@ def run(
     together; on an error the job goes back in the queue or, out of attempts, fails."""
     try:
         with keep_lease(sessions, clock, claimed, lease_seconds), sessions.begin() as session:
-            job = session.get_one(Job, claimed.job_id, with_for_update=True)
-            status = process(session, claimed.message_id, clock, reader)
+            if claimed.note_id is not None:
+                # A note job takes the lead before its own row, the order delete lead uses,
+                # and holds no lock while the model reads. Delete may remove the job meanwhile.
+                notes = NoteReader(reader.gateway) if reader is not None else None
+                status = read_note_job(session, claimed.note_id, clock, notes)
+                job = session.get(Job, claimed.job_id, with_for_update=True)
+                if job is None:
+                    return status
+            else:
+                job = session.get_one(Job, claimed.job_id, with_for_update=True)
+                assert claimed.message_id is not None
+                status = process(session, claimed.message_id, clock, reader)
             job.state = "done"
             job.lease_until = None
             return status
     except Exception as error:
         log.exception("job %s failed on attempt %s", claimed.job_id, claimed.attempt)
         with sessions.begin() as session:
-            job = session.get_one(Job, claimed.job_id, with_for_update=True)
+            job = session.get(Job, claimed.job_id, with_for_update=True)
+            if job is None:
+                # A note job whose lead was deleted while it ran: nothing is left to retry.
+                return None
             job.last_error = f"{type(error).__name__}: {error}"[:2000]
             if job.attempts >= max_attempts:
                 _fail(session, job, EXHAUSTED)

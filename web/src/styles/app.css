@@ -615,6 +615,13 @@ textarea {
   padding: var(--s2) 0;
   border-top: 1px solid var(--border);
 }
+.notes .tidied,
+.notes .read-state {
+  margin: var(--s1) 0 0;
+}
+.notes .suggestion {
+  margin-top: var(--s2);
+}
 .history {
   list-style: none;
   padding: 0;

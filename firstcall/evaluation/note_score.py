@@ -114,9 +114,13 @@ def _words_value(words: Sequence[str]) -> int | None:
     return total + current if seen else None
 
 
-# Where a number ends whatever follows: ; : ! ? a line break, an em dash, and a comma or
-# full stop that is not inside a figure ("450,000" and "1.5" stay whole).
-BREAKS = re.compile(r"[;:!?\n\u2014]|(?<!\d),|,(?!\d{3}(?!\d))|(?<!\d)\.|\.(?!\d)")
+# Where a number ends whatever follows: ; : ! ? a line break, an em dash, brackets, a
+# slash, and a comma or full stop that is not inside a figure ("450,000" and "1.5" stay
+# whole).
+BREAKS = re.compile(r"[;:!?\n\u2014()\[\]{}/]|(?<!\d),|,(?!\d{3}(?!\d))|(?<!\d)\.|\.(?!\d)")
+# A hyphen inside words ("seventy-five", "half-a-million") is a space; between figures it is
+# a range dash.
+WORD_HYPHEN = re.compile(r"(?<=[a-z])-(?=[a-z])", re.IGNORECASE)
 TOKEN = re.compile(
     r"(?P<num>(?<![\w.])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
     r"(?:\s*(?:k|m|mil|million|thousand|grand|bn|billion)\b)?(?:st|nd|rd|th)?)"
@@ -140,7 +144,7 @@ def _number_word(item: object) -> bool:
 
 def _tokens(clause: str) -> list[_Number | str]:
     items: list[_Number | str] = []
-    for match in TOKEN.finditer(clause):
+    for match in TOKEN.finditer(WORD_HYPHEN.sub(" ", clause)):
         if match.group("num"):
             digits = DIGITS.match(match.group("num"))
             assert digits is not None
@@ -157,7 +161,7 @@ def _tokens(clause: str) -> list[_Number | str]:
 
 def _fold_words(items: list[_Number | str]) -> list[_Number | str]:
     """Runs of number words become numbers: "forty thousand", "a hundred", "half a
-    million", "seventy-five"."""
+    million", "seventy five"."""
     out: list[_Number | str] = []
     index = 0
     while index < len(items):
@@ -179,8 +183,6 @@ def _fold_words(items: list[_Number | str]) -> list[_Number | str]:
             word, after = items[index], items[index + 1] if index + 1 < len(items) else None
             if _number_word(word):
                 run.append(str(word))
-            elif word == "-" and run and _number_word(after):
-                pass
             elif (
                 word == "and"
                 and run[-1:] == ["hundred"]

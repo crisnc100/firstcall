@@ -142,7 +142,13 @@ SQUASHED = {"ce83ec7": "pr1a-history"}
 
 
 def _first_commit_adding(path: str, ref: str = "HEAD") -> str | None:
-    found = _git("log", ref, "--diff-filter=A", "--format=%H", "--", path).splitlines()
+    """The oldest commit that adds the path. --full-history walks both parents of every
+    merge: by default git follows only one parent where the file is the same in both, and in
+    a pull request's test merge that is main, where a squashed branch's files appear only in
+    the squash, later than the branch commits that added them."""
+    found = _git(
+        "log", ref, "--full-history", "--diff-filter=A", "--format=%H", "--", path
+    ).splitlines()
     return found[-1] if found else None
 
 

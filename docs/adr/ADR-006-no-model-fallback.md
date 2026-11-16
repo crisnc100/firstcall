@@ -12,7 +12,8 @@ shown to a salesperson.
 When the model is unavailable, the lead is still created and alerted from the rules read. The
 category fails open: anything the rules do not call spam is a lead. The message is marked
 `needs_reread`. A reread job, once the model is back, fills only empty fields; it never moves
-an owned lead, closes a lead or changes a field a person edited.
+an owned lead, closes a lead or changes a field a person edited. A note with no model answer
+is kept as typed and marked `needs_model` the same way ([ADR-007](ADR-007-note-reader.md)).
 
 ## Prediction (pre-registered)
 Rules-only path, seed 11, seen layouts:
