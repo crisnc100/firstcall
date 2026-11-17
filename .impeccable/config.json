@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-17T18:18:31.282Z",
+        "reason": "orchestrator: CSS loads through src/front/main.ts, which the detector does not read; front CSS sets the display at clamp(3.25rem, 7.4vw, 6rem) over 1rem body"
+      }
+    ]
+  }
+}
