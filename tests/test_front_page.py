@@ -45,10 +45,18 @@ def _examples() -> dict[str, Any]:
     return json.loads(EXAMPLES.read_text())
 
 
-def _is_excerpt(shown: str, source: str) -> bool:
-    """Every line shown is a whole line of the source, in the source's order."""
-    lines = iter(source.split("\n"))
-    return all(any(line == candidate for candidate in lines) for line in shown.split("\n"))
+def _cut_at_signature(source: str) -> tuple[str, list[str]]:
+    """The source email's From and Subject headers and its body up to the signature, exactly,
+    and the signature's lines. The signature is found from the email itself: the body's last
+    paragraph, which must open with the sign-off."""
+    head, _, body = source.partition("\n\n")
+    headers = [line for line in head.split("\n") if line.startswith(("From:", "Subject:"))]
+    assert [line.split(":", 1)[0] for line in headers] == ["From", "Subject"]
+    paragraphs = body.rstrip("\n").split("\n\n")
+    signature = paragraphs[-1].split("\n")
+    assert signature[0] == "Best regards,"
+    kept = "\n".join(headers) + "\n\n" + "\n\n".join(paragraphs[:-1])
+    return kept, signature
 
 
 def test_the_tickets_are_seed_13_messages_and_their_labels_verbatim() -> None:
@@ -150,14 +158,14 @@ def test_the_first_ticket_shows_the_source_message_and_its_fields(
     first = page.locator('li.ticket[data-id="s13-0006"]')
     body = ticket["message"]["body"]
     shown = first.locator("pre.raw").text_content() or ""
-    assert _is_excerpt(shown, body)
-    # The excerpt keeps the sender, the subject and the request itself, and drops only the
-    # signature, which the page says it does.
-    assert shown.startswith(f"From: {labels['agent']['name']} <{labels['agent']['email']}>\n")
-    assert "\nSubject: Showing request: Foxglove Row\n" in shown
-    assert "My client Amanda Lewis is interested in Foxglove Row" in shown
-    assert "You can reach them at 229-555-0174" in shown
-    assert "Best regards," not in shown
+    kept, signature = _cut_at_signature(body)
+    assert shown == kept
+    # No signature line is shown. A signature line may still occur inside a kept line (the
+    # agent's name and address are in the From header), but only where the kept source text
+    # has it too.
+    for line in signature:
+        assert line not in shown.split("\n")
+        assert line not in shown or line in kept
     expect(first.locator(".t-cut")).to_have_text("Signature not shown")
     printed = dict(
         zip(
