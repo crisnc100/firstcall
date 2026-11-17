@@ -234,6 +234,14 @@ h1 {
   align-items: flex-end;
   gap: 2px;
 }
+/* Atkinson's zero is slashed and has no plain alternate, so figures in prose are set in
+   Big Shoulders. Printed ticket text and the tally keep the mono's slashed zero. */
+.fig {
+  font-family: var(--face-label);
+  font-size: 1.12em;
+  font-weight: 700;
+  line-height: 1;
+}
 .nowrap {
   white-space: nowrap;
 }
