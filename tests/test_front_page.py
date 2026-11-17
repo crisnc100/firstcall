@@ -9,6 +9,7 @@ import socket
 import threading
 import time
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -202,7 +203,11 @@ def test_heard_claims_the_first_ticket_at_once(page: Page, base_url: str) -> Non
 
 
 def test_heard_claims_any_ticket_and_leaves_the_others_waiting(page: Page, base_url: str) -> None:
-    page.clock.install()
+    # The fake clock is paused before the page opens, so no second passes between opening
+    # and the click and the stamp's time is exact.
+    start = datetime(2026, 3, 2, 14, 0, tzinfo=UTC)
+    page.clock.install(time=start)
+    page.clock.pause_at(start + timedelta(seconds=1))
     page.goto(base_url + "/")
     third = page.locator('li.ticket[data-id="s13-0058"]')
     third.get_by_role("button", name="Heard: claim Joseph Harper's lead").click()
