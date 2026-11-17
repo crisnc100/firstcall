@@ -2,16 +2,132 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="color-scheme" content="light dark" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="preload" href="/fonts/atkinson-next-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      name="description"
+      content="Firstcall is an open-source lead hub. The AI reads messy messages and notes and tidies them; people decide."
+    />
+    <link rel="preload" href="/fonts/big-shoulders-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/martian-mono-latin.woff2" as="font" type="font/woff2" crossorigin />
     <title>Firstcall</title>
   </head>
   <body>
-    <div id="app"></div>
-    <div id="live" class="sr" aria-live="polite"></div>
-    <div id="toast" aria-live="polite"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <a class="skip" href="#main">Skip to the demo</a>
+    <header class="top">
+      <a class="mark" href="/">Firstcall</a>
+      <nav aria-label="Page">
+        <ul>
+          <li><a href="#notes">How it works</a></li>
+          <li><a href="#proof">Proof</a></li>
+          <li><a href="https://github.com/crisnc100/firstcall">Code</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="intro" aria-labelledby="promise">
+        <h1 id="promise">The AI reads. People decide.</h1>
+        <p class="lede">
+          Firstcall puts every lead from email, web forms and call services on one rail. The AI
+          turns each messy message into a clean ticket; a person claims it, and its colour shows how
+          long it has waited.
+        </p>
+      </section>
+
+      <section class="pass" aria-labelledby="rail-title">
+        <h2 id="rail-title" class="sr">Four leads on the rail</h2>
+        <div class="rail" aria-hidden="true"></div>
+        <ol class="tickets" id="tickets"></ol>
+        <div class="under">
+          <p class="proof-line">
+            On 500 made-up test messages: 0 messages added to the wrong buyer, 0 agent contacts
+            taken as the buyer's.
+            <a href="#proof">The proof and its limits</a>
+          </p>
+          <p class="demo-note" id="claim-status" role="status">
+            Nobody owns these leads yet. The AI has read them; only a person can claim one.
+          </p>
+        </div>
+      </section>
+
+      <section class="notes" id="notes" aria-labelledby="notes-title">
+        <div class="notes-text">
+          <h2 id="notes-title">Notes get the same reading</h2>
+          <p>
+            After a call, a salesperson types a quick note. The AI tidies it, fills in the buyer's
+            budget and needs, and suggests the contact the note describes. Nothing is logged until a
+            person presses Confirm, so a wrong suggestion costs one tap.
+          </p>
+        </div>
+        <div class="note-pair" id="note-pair"></div>
+      </section>
+
+      <section class="ledger" aria-labelledby="ledger-title">
+        <h2 id="ledger-title">What the AI does, and what it never does</h2>
+        <div class="columns">
+          <div>
+            <h3>Does</h3>
+            <ul class="claims">
+              <li>
+                Reads every message and prints the ticket: the buyer, their phone and email, what
+                they want, their agent, and the team.
+              </li>
+              <li>
+                Uses fixed rules first. The model's answer counts for only two fields, the buyer's
+                name and the kind of message, and only where the rules found nothing or weren't sure.
+                Tests on made-up messages picked those two.
+              </li>
+              <li>
+                Tidies a salesperson's note, fills in the buyer's budget and needs, and suggests the
+                contacts the note describes. A value a person typed is never overwritten.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3>Never</h3>
+            <ul class="claims">
+              <li>Emails a buyer. Email goes only to the company's own active users.</li>
+              <li>Logs a contact by itself. A suggestion saves nothing until a person presses Confirm.</li>
+              <li>Claims a lead. A person does, and the timer shows how long it took.</li>
+              <li>
+                Runs unless someone switches it on. The model is off by default, and then every
+                message takes the rules path.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="proof" id="proof" aria-labelledby="proof-title">
+        <h2 id="proof-title">The proof, and its limits</h2>
+        <p class="proof-run">
+          500 made-up messages through the shipped pipeline, in one run set up before it started:
+          0 times two different buyers were merged, 0 messages added to the wrong buyer, 0 planted
+          instructions that changed a field, 0 agent contacts taken as the buyer's.
+        </p>
+        <p>
+          The messages and their right answers come from the same generator, so this shows the
+          pipeline does what it was built to do. It does not measure accuracy on real mail. Misses
+          are published, and each decision states its prediction before the result.
+        </p>
+        <p>
+          <a href="https://github.com/crisnc100/firstcall/blob/main/evals/reports/2026-11-12-confirm-seed-13.md"
+            >Read the full report</a
+          >
+        </p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>
+        The code is open:
+        <a href="https://github.com/crisnc100/firstcall">github.com/crisnc100/firstcall</a>
+        (Apache-2.0).
+      </p>
+      <p>Every name, message and number on this page is made up.</p>
+      <p><a href="/signin">Team sign-in</a></p>
+    </footer>
+    <script type="module" src="/src/front/main.ts"></script>
   </body>
 </html>

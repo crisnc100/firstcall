@@ -1,5 +1,5 @@
-// History routing. The server answers every page address with index.html, so a reload on
-// any route works.
+// History routing. The server answers every page address except "/" with app.html, so a
+// reload on any route works; "/" is the public front page.
 
 export type Cleanup = () => void;
 export type Page = (main: HTMLElement, params: Record<string, string>) => Cleanup | void;

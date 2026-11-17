@@ -1,0 +1,177 @@
+{
+  "tickets": [
+    {
+      "message": {
+        "body": "From: Imogen Starr <imogen@starrpartners.example>\nTo: Larkspur Leads <leads@larkspur.example>\nSubject: Showing request: Foxglove Row\nDate: Mon, 02 Mar 2026 08:50:00 -0500\nMessage-ID: <s13-0006.e3aa11c38d@mail.example>\nMIME-Version: 1.0\nContent-Type: text/plain; charset=utf-8\nContent-Transfer-Encoding: 8bit\n\nHello,\n\nMy client Amanda Lewis is interested in Foxglove Row and asked me to reach out.\nYou can reach them at 229-555-0174 or by email at alewis55@postnet.example.\n\nBest regards,\nImogen Starr\nBuyer's agent, starrpartners\n5125550115\nimogen@starrpartners.example\n",
+        "content_type": "message/rfc822",
+        "headers": {},
+        "id": "s13-0006",
+        "source": "inbox"
+      },
+      "labels": {
+        "agent": {
+          "email": "imogen@starrpartners.example",
+          "name": "Imogen Starr",
+          "phone": "+15125550115"
+        },
+        "case": "agent",
+        "category": "lead",
+        "email": "alewis55@postnet.example",
+        "hard_negatives": [],
+        "id": "s13-0006",
+        "injection": null,
+        "item": "Foxglove Row",
+        "layout": "agent-email",
+        "lead": "L13-0004",
+        "name": "Amanda Lewis",
+        "phone": "+12295550174",
+        "seen": true,
+        "source_time": "2026-03-02T13:50:00+00:00",
+        "team": "north"
+      }
+    },
+    {
+      "message": {
+        "body": "{\"call_id\": \"call-s13-0004\", \"caller\": {\"name\": \"Dylan Perez\", \"number\": \"+12695550119\"}, \"tracking_number\": \"+18005550120\", \"listing\": \"\", \"duration_seconds\": 37, \"transcript\": \"Caller: Hi there. I'm calling about Bluestem Village. Please call me back on this number.\"}",
+        "content_type": "application/json",
+        "headers": {
+          "X-Call-Id": "call-s13-0004"
+        },
+        "id": "s13-0004",
+        "source": "calls"
+      },
+      "labels": {
+        "agent": null,
+        "case": "new",
+        "category": "lead",
+        "email": null,
+        "hard_negatives": [],
+        "id": "s13-0004",
+        "injection": null,
+        "item": "Bluestem Village",
+        "layout": "call",
+        "lead": "L13-0002",
+        "name": "Dylan Perez",
+        "phone": "+12695550119",
+        "seen": true,
+        "source_time": null,
+        "team": "central"
+      }
+    },
+    {
+      "message": {
+        "body": "{\"name\": \"Joseph Harper\", \"phone\": \"(253) 555-0159\", \"email\": \"jharper51@mailbox.example\", \"listing\": \"Lantern Wharf\", \"message\": \"I'm interested in Lantern Wharf. Is it still available?\", \"website\": \"\"}",
+        "content_type": "application/json",
+        "headers": {},
+        "id": "s13-0058",
+        "source": "site-form"
+      },
+      "labels": {
+        "agent": null,
+        "case": "new",
+        "category": "lead",
+        "email": "jharper51@mailbox.example",
+        "hard_negatives": [],
+        "id": "s13-0058",
+        "injection": null,
+        "item": "Lantern Wharf",
+        "layout": "site-form",
+        "lead": "L13-0037",
+        "name": "Joseph Harper",
+        "phone": "+12535550159",
+        "seen": true,
+        "source_time": null,
+        "team": "east"
+      }
+    },
+    {
+      "message": {
+        "body": "From: Gablework <leads@gablework.example>\nTo: Larkspur Leads <leads@larkspur.example>\nSubject: Gablework: new inquiry for Union Depot Flats\nDate: Mon, 02 Mar 2026 09:41:00 -0500\nMessage-ID: <s13-0012.648d7732ef@mail.example>\nReply-To: margaret.garner@letterbox.example\nMIME-Version: 1.0\nContent-Type: text/plain; charset=utf-8\nContent-Transfer-Encoding: 8bit\n\nLead details:\n  full_name => Margaret Garner\n  mobile => 2155550180\n  e-mail => margaret.garner@letterbox.example\n  home => Union Depot Flats\n  says => Please send me more details about Union Depot Flats.\n",
+        "content_type": "message/rfc822",
+        "headers": {},
+        "id": "s13-0012",
+        "source": "inbox"
+      },
+      "labels": {
+        "agent": null,
+        "case": "new",
+        "category": "lead",
+        "email": "margaret.garner@letterbox.example",
+        "hard_negatives": [],
+        "id": "s13-0012",
+        "injection": null,
+        "item": "Union Depot Flats",
+        "layout": "portal-gablework",
+        "lead": "L13-0010",
+        "name": "Margaret Garner",
+        "phone": "+12155550180",
+        "seen": false,
+        "source_time": "2026-03-02T14:41:00+00:00",
+        "team": "central"
+      }
+    }
+  ],
+  "note": {
+    "script": {
+      "id": "note-11-140",
+      "note_date": "2026-06-26",
+      "text": "Sat down with Charles at the office to go over options. Will call Charles tomorrow. Budget is between five hundred fifty-five thousand and six hundred fifty-five thousand. He needs to sell his current place first. Must have a pool. Mentioned the open house went well."
+    },
+    "labels": {
+      "actions": [
+        "meeting"
+      ],
+      "authority": "unknown",
+      "budget": {
+        "max": 655000,
+        "min": 555000
+      },
+      "buyer": "Charles",
+      "id": "note-11-140",
+      "kind": "action",
+      "need": true,
+      "note_date": "2026-06-26",
+      "phrasings": [
+        "meeting-u2",
+        "future-1",
+        "style-words",
+        "budget-between-1",
+        "need-2"
+      ],
+      "seen": false,
+      "terms": {
+        "authority": [],
+        "budget": [
+          "sell"
+        ],
+        "need": [
+          "pool"
+        ],
+        "timeline": []
+      },
+      "timeline": null
+    },
+    "recording_key": "db12e7cbf9f04f6f0cd44cf023eaba848c0dd1b17eccc70e6229099d56d684e6",
+    "answer": {
+      "clean_note": "Sat down with Charles at the office to go over options. Will call Charles tomorrow. Budget is between $555,000 and $655,000. He needs to sell his current place first. Must have a pool. Mentioned the open house went well.",
+      "budget": {
+        "text": "Between five hundred fifty-five thousand and six hundred fifty-five thousand; needs to sell his current place first",
+        "min": 555000,
+        "max": 655000
+      },
+      "authority": {
+        "value": "unknown",
+        "others": null
+      },
+      "need": "Must have a pool",
+      "timeline": null,
+      "notes": "Needs to sell his current place first; mentioned the open house went well",
+      "actions": [
+        {
+          "kind": "meeting",
+          "quote": "Sat down with Charles at the office to go over options."
+        }
+      ]
+    }
+  }
+}
