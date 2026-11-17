@@ -90,7 +90,8 @@ def test_the_note_is_a_held_out_script_and_the_readers_recorded_answer() -> None
         timeout_seconds=1,
     )
     recorded = _rows_by_key(NOTE_RECORDINGS)[request_key(request)]
-    assert note["recording_key"] == recorded["key"]
+    # The browser gets the note and its answer, never the recording's key.
+    assert set(note) == {"script", "labels", "answer"}
     assert note["answer"] == json.loads(recorded["content"])
     # The page says the future-tense call gets no suggestion; the recorded answer agrees.
     assert "Will call Charles tomorrow." in script["text"]
