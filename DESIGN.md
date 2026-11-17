@@ -196,7 +196,7 @@ The thresholds are the app's own defaults, read through its urgency function, no
 - **Print** (500, width 87.5%): everything the printer produced: ticket fields, note text, the tally. Field values on the large ticket's printed side narrow further to 75% width.
 - **Print raw** (500): a message excerpt as it arrived.
 
-**The Three Speakers Rule.** Pick the face by who is speaking: the pass (Big Shoulders), the printer (Martian Mono), a person (Atkinson). Prose never runs in Big Shoulders, and printed output never runs in Atkinson.
+**The Three Speakers Rule.** Pick the face by who is speaking: the pass (Big Shoulders), the printer (Martian Mono), a person (Atkinson). Prose never runs in Big Shoulders, and printed output never runs in Atkinson. Atkinson is the page's default face; Big Shoulders and Martian Mono are opted into per element, so new prose cannot come out condensed.
 
 **The Slashed Zero Rule.** Figures inside prose stay in the text face, slashed zero and all. Atkinson's zero is slashed for legibility and has no plain alternate; switching faces mid-sentence reads worse.
 

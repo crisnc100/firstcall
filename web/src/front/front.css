@@ -9,15 +9,20 @@ html {
   scroll-padding-top: 24px;
 }
 
+/* Prose is the default; the condensed label face is opted into per class below, so new
+   text never renders condensed by accident. */
+:root {
+  --gutter: clamp(16px, 3.9vw, 56px);
+}
 body {
   margin: 0;
   color: var(--ink);
   background: var(--steel);
-  font-family: var(--face-label);
+  font-family: var(--face-text);
   font-optical-sizing: auto;
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1.4;
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 1.5;
   text-rendering: optimizeLegibility;
 }
 
@@ -67,7 +72,7 @@ a:hover {
 .top,
 main > section,
 .foot {
-  padding-inline: clamp(16px, 3.9vw, 56px);
+  padding-inline: var(--gutter);
 }
 
 .top {
@@ -104,6 +109,13 @@ main > section,
 
 h1,
 h2,
+h3,
+.mark,
+.top nav a {
+  font-family: var(--face-label);
+}
+h1,
+h2,
 h3 {
   margin: 0;
   font-weight: 800;
@@ -118,17 +130,6 @@ h1 {
   font-size: clamp(3.25rem, 6.2vw, 5.5rem);
   letter-spacing: -0.005em;
   text-transform: uppercase;
-}
-.lede,
-.notes-text p,
-.claims li,
-.proof-text p,
-.foot,
-.under,
-.t-aside {
-  font-family: var(--face-text);
-  font-stretch: normal;
-  font-weight: 400;
 }
 .lede {
   max-width: 70ch;
@@ -147,7 +148,7 @@ h1 {
   position: relative;
   z-index: 1;
   height: 22px;
-  margin-inline: calc(-1 * clamp(16px, 3.9vw, 56px));
+  margin-inline: calc(-1 * var(--gutter));
   background: var(--steel-dark);
   border-top: 2px solid var(--steel-edge);
   border-bottom: 5px solid var(--steel-edge);
@@ -346,17 +347,25 @@ h1 {
 
 /* A margin note in a person's text face, not the printer's: it explains the ticket. */
 .t-aside {
+  font-family: var(--face-text);
+  font-stretch: normal;
+  font-weight: 400;
   margin: 8px 0 0;
   padding-left: 10px;
   border-left: 1px solid var(--paper-ink-soft);
   color: var(--paper-ink-soft);
   font-size: 0.8125rem;
-  font-style: italic;
   line-height: 1.4;
 }
 
+/* The key and the stamp that replaces it share one box, so claiming never moves the
+   ticket. */
+.heard,
+.claimed {
+  margin-block: 10px 0;
+  line-height: 1.2;
+}
 .heard {
-  margin-top: 10px;
   padding: 9px 12px 8px;
   border: 2px solid var(--ink);
   border-radius: 0;
@@ -378,7 +387,6 @@ h1 {
 }
 
 .claimed {
-  margin-top: 14px;
   padding: 9px 12px 8px;
   border: 2px solid var(--ink);
   background: var(--ink);
@@ -640,7 +648,6 @@ h3 {
   .note-pair {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
-    border-left: 0;
   }
   .slip.typed {
     margin-right: 0;
