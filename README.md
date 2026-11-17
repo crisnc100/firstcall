@@ -29,7 +29,8 @@ a spam trap. A form source's URL ends in a form key. The key is public, since an
 read it in the page, so a form source is protected by its honeypot, its rate limits and the
 spam check, not by the key. Sources that must refuse strangers use basic auth or a signature.
 
-To use the board, add yourself as a user and open <http://localhost:8020>:
+To use the board, add yourself as a user, then open <http://localhost:8020/signin>. The front page at
+<http://localhost:8020> is public and needs no sign-in:
 
 ```sh
 uv run firstcall user add you@example.com --name "Your Name" --role admin --role monitor

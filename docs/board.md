@@ -150,7 +150,9 @@ With `FIRSTCALL_ENV=beta`, it must be set to something other than the local defa
 ## Run the pages locally
 
 The pages are built into the app image and served by the api at
-<http://localhost:8020>.
+<http://localhost:8020>. `/` is the public front page (`web/index.html`). The board is
+`web/app.html`, which the api returns for every other page address, so it opens at
+<http://localhost:8020/signin> and keeps its deep links.
 
 ```sh
 docker compose up -d --wait
@@ -159,7 +161,7 @@ uv run firstcall user add you@example.com --name "Your Name" --role admin --role
 uv run firstcall user password you@example.com   # asks for the password, 12 or more characters
 ```
 
-Sign in at <http://localhost:8020> and add more people on the Users page. To add a
+Sign in at <http://localhost:8020/signin> and add more people on the Users page. To add a
 salesperson from the command line instead, give a team from `config/demo.yaml`:
 `--team north=salesperson` (or `=team_lead`). After changing anything under `web/`, run
 `docker compose up -d --build --wait` to rebuild the pages.
