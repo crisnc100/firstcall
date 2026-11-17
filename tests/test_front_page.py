@@ -201,6 +201,27 @@ def test_heard_claims_the_first_ticket_at_once(page: Page, base_url: str) -> Non
     expect(page.locator("li.ticket .heard")).to_have_count(3)
 
 
+def test_heard_claims_any_ticket_and_leaves_the_others_waiting(page: Page, base_url: str) -> None:
+    page.clock.install()
+    page.goto(base_url + "/")
+    third = page.locator('li.ticket[data-id="s13-0058"]')
+    third.get_by_role("button", name="Heard: claim Joseph Harper's lead").click()
+    expect(third).to_have_attribute("data-age", "claimed")
+    stamp = third.locator(".claimed")
+    expect(stamp).to_contain_text("Claimed by you · 14:45")
+    timer = third.locator(".t-timer")
+    frozen = timer.inner_text()
+    page.clock.run_for(5 * 60_000)
+    assert timer.inner_text() == frozen
+    expect(third).to_have_attribute("data-age", "claimed")
+    for other in ("s13-0006", "s13-0004", "s13-0012"):
+        ticket = page.locator(f'li.ticket[data-id="{other}"]')
+        assert ticket.get_attribute("data-age") != "claimed"
+        expect(ticket.locator(".heard")).to_have_count(1)
+        expect(ticket.locator(".claimed")).to_have_count(0)
+    expect(page.locator("#claim-status")).to_contain_text("You claimed Joseph Harper's lead")
+
+
 def test_the_age_labels_change_at_the_boards_thresholds(page: Page, base_url: str) -> None:
     page.clock.install()
     page.goto(base_url + "/")
