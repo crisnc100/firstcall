@@ -45,10 +45,10 @@ def _examples() -> dict[str, Any]:
     return json.loads(EXAMPLES.read_text())
 
 
-def _raw_lines(body: str) -> str:
-    head, _, rest = body.partition("\n\n")
-    kept = [line for line in head.split("\n") if line.startswith(("From:", "Subject:"))]
-    return "\n".join(kept) + "\n\n" + rest.rstrip()
+def _is_excerpt(shown: str, source: str) -> bool:
+    """Every line shown is a whole line of the source, in the source's order."""
+    lines = iter(source.split("\n"))
+    return all(any(line == candidate for candidate in lines) for line in shown.split("\n"))
 
 
 def test_the_tickets_are_seed_13_messages_and_their_labels_verbatim() -> None:
@@ -148,15 +148,25 @@ def test_the_first_ticket_shows_the_source_message_and_its_fields(
     ticket = _examples()["tickets"][0]
     labels = ticket["labels"]
     first = page.locator('li.ticket[data-id="s13-0006"]')
-    assert first.locator("pre.raw").text_content() == _raw_lines(ticket["message"]["body"])
-    shown = dict(
+    body = ticket["message"]["body"]
+    shown = first.locator("pre.raw").text_content() or ""
+    assert _is_excerpt(shown, body)
+    # The excerpt keeps the sender, the subject and the request itself, and drops only the
+    # signature, which the page says it does.
+    assert shown.startswith(f"From: {labels['agent']['name']} <{labels['agent']['email']}>\n")
+    assert "\nSubject: Showing request: Foxglove Row\n" in shown
+    assert "My client Amanda Lewis is interested in Foxglove Row" in shown
+    assert "You can reach them at 229-555-0174" in shown
+    assert "Best regards," not in shown
+    expect(first.locator(".t-cut")).to_have_text("Signature not shown")
+    printed = dict(
         zip(
             first.locator(".fields dt").all_text_contents(),
             first.locator(".fields dd").all_text_contents(),
             strict=True,
         )
     )
-    assert shown == {
+    assert printed == {
         "Buyer": labels["name"],
         "Phone": labels["phone"],
         "Email": labels["email"],
