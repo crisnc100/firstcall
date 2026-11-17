@@ -1,0 +1,14 @@
+{
+  "mode": "pr",
+  "purpose": "Give Firstcall a public front page that shows in seconds how the AI is used (it reads messy messages and notes and tidies them) and how people decide (they claim leads and confirm suggestions), in the new On the Rail look, while the signed-in app keeps working at its current addresses.",
+  "mechanism": "web/index.html plus web/src/front/* is the front page: a client-side demo with no backend calls. Four tickets and one note come from evals/gold seed-13 messages and labels and the seed-11 note with its recorded reader answer, copied into web/src/front/examples.json and kept equal to the sources by tests/test_front_page.py. Timers and age labels use the app's own urgency thresholds from web/src/format.ts. Each ticket's Heard claims it on the page only. The app moved from web/index.html to web/app.html; firstcall/api.py serve_pages returns dist/index.html only for '/' and dist/app.html for every other page path, both no-cache. The manifest start_url and the sw.js notification fallbacks are /mine, and sw.js opens only same-origin paths that start with a single '/'. The in-app wordmark links to the user's home. Fonts: Big Shoulders and Martian Mono self-hosted with OFL licenses, Atkinson reused for prose; tokens in web/src/styles/rail-tokens.css.",
+  "decisions": "The front page lives at '/' and the app keeps its own paths, so deep links, emails and push links keep working; moving the app under a prefix was rejected. The demo uses real gold examples rather than invented ones, and a test pins them. The signed-in app keeps its old look until a later phase.",
+  "readers": "README and docs/board.md: people running or evaluating Firstcall. DESIGN.md: whoever builds the next page in this look. Comments: the next maintainer of web/src and firstcall/api.py.",
+  "base": "origin/main",
+  "docMap": [
+    {"behavior": "'/' is the public front page; the board is reached by signing in at /signin or /mine", "docs": ["README.md", "docs/board.md"]},
+    {"behavior": "The app is built from web/app.html; serve_pages picks the page", "docs": ["docs/board.md"]},
+    {"behavior": "Visual system for the front page", "docs": ["DESIGN.md"]}
+  ],
+  "untouchable": ["PRODUCT.md", ".impeccable/**", "evals/**", "config/**"]
+}

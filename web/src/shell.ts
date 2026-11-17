@@ -144,7 +144,7 @@ export function frame(root: HTMLElement): HTMLElement {
     h(
       "div",
       { class: "in" },
-      h("a", { class: "mark", text: "Firstcall", attrs: { href: "/", "data-link": true } }),
+      h("a", { class: "mark", text: "Firstcall", attrs: { href: homeFor(s), "data-link": true } }),
       h("span", { class: "page-title" }),
       h("nav", { class: "tabs", attrs: { "aria-label": "Main" } }, ...topItems(s).map((i) => navLink(i, false))),
       h("div", { class: "right" }, inbox, who, menu),

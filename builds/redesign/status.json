@@ -1,0 +1,5 @@
+{
+  "f1": {"status": "fixed", "response": "real"},
+  "x1": {"status": "deferred", "reason": "Product choice, not a defect: the demo lets each ticket's Heard claim that ticket, as the real board does. The intent text that said first ticket only was outdated; a test covers claiming a non-first ticket. Cristian can reverse this in the PR.", "fix": "If only the first ticket should be claimable, bind the Heard handler to ticket 0 and hide the key on the others."},
+  "x2": {"status": "fixed", "response": "real"}
+}

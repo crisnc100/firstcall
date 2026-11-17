@@ -1,0 +1,412 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-17T18:35:53Z",
+  "title": "Design System: Firstcall",
+  "extensions": {
+    "colorMeta": {
+      "steel": {
+        "role": "neutral",
+        "displayName": "Brushed Steel",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232527",
+          "#3f4245",
+          "#5e6265",
+          "#7f8386",
+          "#a2a5a8",
+          "#c6c9cc",
+          "#edeff0"
+        ]
+      },
+      "steel-light": {
+        "role": "neutral",
+        "displayName": "Pale Steel",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242527",
+          "#404244",
+          "#5e6264",
+          "#7f8385",
+          "#a2a5a8",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "steel-dark": {
+        "role": "neutral",
+        "displayName": "Rail Steel",
+        "tonalRamp": [
+          "#090b0d",
+          "#222629",
+          "#3e4347",
+          "#5c6268",
+          "#7c8389",
+          "#a0a6ab",
+          "#c5cace",
+          "#eceff2"
+        ]
+      },
+      "steel-edge": {
+        "role": "neutral",
+        "displayName": "Rail Edge",
+        "tonalRamp": [
+          "#090b0d",
+          "#222528",
+          "#3e4347",
+          "#5c6267",
+          "#7d8388",
+          "#a0a6aa",
+          "#c5cacd",
+          "#eceff1"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Ticket Ink",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242527",
+          "#404245",
+          "#5f6165",
+          "#808286",
+          "#a3a5a8",
+          "#c7c9cc",
+          "#edeef0"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Ink",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232529",
+          "#3e4247",
+          "#5d6268",
+          "#7e8389",
+          "#a1a5ab",
+          "#c6c9ce",
+          "#eceff2"
+        ]
+      },
+      "paper": {
+        "role": "primary",
+        "displayName": "Thermal Paper",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#414242",
+          "#606161",
+          "#828282",
+          "#a4a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "paper-ink-soft": {
+        "role": "neutral",
+        "displayName": "Faded Print",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232527",
+          "#3f4245",
+          "#5d6266",
+          "#7e8387",
+          "#a1a6a9",
+          "#c6cacc",
+          "#eceff1"
+        ]
+      },
+      "paper-rule": {
+        "role": "neutral",
+        "displayName": "Paper Rule",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232527",
+          "#3f4345",
+          "#5d6264",
+          "#7e8386",
+          "#a1a6a8",
+          "#c6cacb",
+          "#eceff0"
+        ]
+      },
+      "age-new": {
+        "role": "tertiary",
+        "displayName": "Fresh Green",
+        "tonalRamp": [
+          "#001004",
+          "#022e16",
+          "#144e2d",
+          "#2a7146",
+          "#4e9467",
+          "#7cb58d",
+          "#a9d6b6",
+          "#d9f8e2"
+        ]
+      },
+      "age-waiting": {
+        "role": "tertiary",
+        "displayName": "Heat-Lamp Orange",
+        "tonalRamp": [
+          "#1c0300",
+          "#431500",
+          "#6c2d00",
+          "#984800",
+          "#be6a00",
+          "#da9351",
+          "#f5bc8a",
+          "#ffe6c4"
+        ]
+      },
+      "age-late": {
+        "role": "tertiary",
+        "displayName": "Late Red",
+        "tonalRamp": [
+          "#220000",
+          "#4d0200",
+          "#7b1700",
+          "#ab2f00",
+          "#d35530",
+          "#ee8365",
+          "#ffb097",
+          "#ffdecd"
+        ]
+      },
+      "age-verylate": {
+        "role": "tertiary",
+        "displayName": "Very Late Red",
+        "tonalRamp": [
+          "#210000",
+          "#4c0104",
+          "#7a1514",
+          "#ab2c28",
+          "#d2524a",
+          "#ee8176",
+          "#ffaea4",
+          "#ffddd5"
+        ]
+      },
+      "on-verylate": {
+        "role": "neutral",
+        "displayName": "Paper on Very Late",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#414242",
+          "#606161",
+          "#828282",
+          "#a4a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The one-line promise; one per page, uppercase."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles, uppercase."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sub-heads, uppercase with wide tracking."
+      },
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "The Firstcall mark in the top rule."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "A ticket's running timer, tabular figures."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Nav links, keys and the age word; uppercase, tracked 0.10 to 0.16em."
+      },
+      "label-small": {
+        "displayName": "Label small",
+        "purpose": "Field names and slip headers, on paper only; uppercase, tracked."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Explanatory prose in the text face."
+      },
+      "lede": {
+        "displayName": "Lede",
+        "purpose": "The two sentences under the promise."
+      },
+      "print": {
+        "displayName": "Print",
+        "purpose": "Everything the printer produced: ticket fields, note text, the tally."
+      },
+      "print-raw": {
+        "displayName": "Print raw",
+        "purpose": "A message excerpt as it arrived."
+      }
+    },
+    "shadows": [
+      {
+        "name": "paper-edge",
+        "value": "0 1px 1px rgb(27 29 32 / 0.18), 0 3px 6px -2px rgb(27 29 32 / 0.22)",
+        "purpose": "The thickness of a sheet under tickets, note slips and the tally slip. Nothing else casts a shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "print-feed",
+        "value": "clip-path inset(0 0 100% 0) to inset(0) 900ms cubic-bezier(0.16, 1, 0.3, 1) 350ms",
+        "purpose": "The first ticket's printed fields feed in once on load, only under prefers-reduced-motion: no-preference."
+      },
+      {
+        "name": "state-change",
+        "value": "none (instant)",
+        "purpose": "Claiming, confirming and stripe changes swap at once with no transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "stack-notes",
+        "value": "1100px"
+      },
+      {
+        "name": "one-column",
+        "value": "760px"
+      }
+    ],
+    "focus": {
+      "value": "outline: 3px solid var(--ink); outline-offset: 3px",
+      "purpose": "Global focus ring."
+    },
+    "cssSource": "web/src/styles/rail-tokens.css",
+    "scope": "Public front page only. The signed-in app (web/app.html, app.css, tokens.css) is not yet in this world."
+  },
+  "components": [
+    {
+      "name": "Heard Key",
+      "kind": "button",
+      "refersTo": "button-heard",
+      "description": "The claim key on a ticket; also Confirm and Dismiss under a suggestion.",
+      "html": "<button class=\"ds-heard\" type=\"button\">Heard</button>",
+      "css": ".ds-heard { padding: 9px 12px 8px; border: 2px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font-family: var(--face-label); font-size: 1rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; } .ds-heard:hover { background: var(--ink); color: var(--paper); } .ds-heard:active { transform: translateY(1px); } .ds-heard:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }"
+    },
+    {
+      "name": "Claimed Stamp",
+      "kind": "custom",
+      "refersTo": "stamp-claimed",
+      "description": "Replaces the Heard key at once when a person claims the lead.",
+      "html": "<p class=\"ds-claimed\">Claimed by you · 4:51</p>",
+      "css": ".ds-claimed { margin: 0; padding: 9px 12px 8px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font-family: var(--face-label); font-size: 1rem; font-weight: 800; letter-spacing: 0.12em; text-align: center; text-transform: uppercase; }"
+    },
+    {
+      "name": "Ticket",
+      "kind": "card",
+      "refersTo": "ticket",
+      "description": "A lead printed on thermal paper, its top stripe showing how long it has waited.",
+      "html": "<article class=\"ds-ticket\" data-age=\"waiting\"><div class=\"ds-stripe\"></div><header class=\"ds-t-head\"><span class=\"ds-t-src\"><span>Web form</span><span class=\"ds-t-team\">East</span></span><span class=\"ds-t-clock\"><span class=\"ds-t-timer\">14:46</span><span class=\"ds-t-age\">Waiting</span></span></header><dl class=\"ds-fields\"><dt>Buyer</dt><dd>Joseph Harper</dd><dt>Wants</dt><dd>Lantern Wharf</dd></dl><button class=\"ds-heard\" type=\"button\">Heard</button></article>",
+      "css": ".ds-ticket { position: relative; display: flex; flex-direction: column; max-width: 260px; padding-bottom: 12px; background: var(--paper); color: var(--ink); box-shadow: var(--paper-edge); font-family: var(--face-print); font-size: 0.8125rem; font-stretch: 87.5%; font-weight: 500; line-height: 1.5; } .ds-ticket::after { content: ''; position: absolute; inset-inline: 0; bottom: -5px; height: 6px; background: linear-gradient(-45deg, transparent 3px, var(--paper) 0) 0 0 / 6px 6px repeat-x, linear-gradient(45deg, transparent 3px, var(--paper) 0) 0 0 / 6px 6px repeat-x; } .ds-ticket > :not(.ds-stripe) { margin-inline: 16px; } .ds-stripe { height: 10px; background: var(--age-new); } .ds-ticket[data-age='waiting'] .ds-stripe { background: var(--age-waiting); } .ds-ticket[data-age='late'] .ds-stripe { background: var(--age-late); } .ds-ticket[data-age='verylate'] .ds-stripe { background: var(--age-verylate); } .ds-ticket[data-age='claimed'] .ds-stripe { background: var(--ink); } .ds-t-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-block: 10px 6px; font-family: var(--face-label); font-stretch: normal; font-weight: 700; } .ds-t-src { display: flex; flex-direction: column; font-size: 0.875rem; letter-spacing: 0.12em; line-height: 1.2; text-transform: uppercase; } .ds-t-team { color: var(--paper-ink-soft); } .ds-t-clock { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; } .ds-t-timer { font-size: 1.625rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; } .ds-t-age { font-size: 1rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; } .ds-ticket[data-age='verylate'] .ds-t-age { padding: 1px 6px; background: var(--age-verylate); color: var(--on-verylate); } .ds-fields { display: grid; grid-template-columns: max-content minmax(0, 1fr); margin: 0 0 4px; } .ds-fields dt, .ds-fields dd { margin: 0; padding-block: 3px; border-bottom: 1px dashed var(--paper-rule); } .ds-fields dt { padding-right: 14px; color: var(--paper-ink-soft); font-family: var(--face-label); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.12em; line-height: 1.6; text-transform: uppercase; } .ds-heard { margin-top: 10px; padding: 9px 12px 8px; border: 2px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font-family: var(--face-label); font-size: 1rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; } .ds-heard:hover { background: var(--ink); color: var(--paper); } .ds-heard:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }"
+    },
+    {
+      "name": "Rail",
+      "kind": "custom",
+      "description": "The steel bar the tickets hang from; it runs edge to edge and grips the top of each ticket.",
+      "html": "<div class=\"ds-rail\" aria-hidden=\"true\"></div>",
+      "css": ".ds-rail { height: 22px; background: var(--steel-dark); border-top: 2px solid var(--steel-edge); border-bottom: 5px solid var(--steel-edge); }"
+    },
+    {
+      "name": "Margin Note",
+      "kind": "custom",
+      "description": "A person's aside in the text face, explaining the paper it sits on.",
+      "html": "<p class=\"ds-aside\">Never over a value a person set.</p>",
+      "css": ".ds-aside { margin: 8px 0 0; padding-left: 10px; border-left: 1px solid var(--paper-ink-soft); color: var(--paper-ink-soft); font-family: var(--face-text); font-size: 0.8125rem; font-weight: 400; line-height: 1.4; }"
+    },
+    {
+      "name": "Tally Slip",
+      "kind": "card",
+      "description": "The printer's end-of-run slip: one figure per line, dotted out to the margin.",
+      "html": "<figure class=\"ds-tally\"><figcaption>End of run</figcaption><dl><dt>Made-up messages read</dt><dd>500</dd><dt>Two different buyers merged</dt><dd>0</dd></dl></figure>",
+      "css": ".ds-tally { margin: 0; max-width: 420px; padding: 16px 18px 20px; background: var(--paper); color: var(--ink); box-shadow: var(--paper-edge); font-family: var(--face-print); font-size: 0.8125rem; font-stretch: 87.5%; } .ds-tally figcaption { margin-bottom: 6px; padding-bottom: 8px; border-bottom: 1px dashed var(--paper-rule); color: var(--paper-ink-soft); font-family: var(--face-label); font-size: 0.8125rem; font-weight: 700; font-stretch: normal; letter-spacing: 0.12em; text-transform: uppercase; } .ds-tally dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; margin: 0; } .ds-tally dt, .ds-tally dd { margin: 0; padding-block: 4px; } .ds-tally dt { overflow: hidden; white-space: nowrap; } .ds-tally dt::after { content: ' ............................................................'; color: var(--paper-ink-soft); } .ds-tally dd { padding-left: 8px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }"
+    },
+    {
+      "name": "House Card",
+      "kind": "card",
+      "refersTo": "house-card",
+      "description": "A posted rule card: paper in a 3px ink frame, title reversed out of an ink band.",
+      "html": "<div class=\"ds-house\"><h2>House rules for the AI</h2><div class=\"ds-cols\"><div><h3>It does</h3><p>Read every message and print the ticket.</p></div><div><h3>It never</h3><p>Emails a buyer.</p></div></div></div>",
+      "css": ".ds-house { max-width: 1080px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); } .ds-house h2 { margin: 0; padding: 14px 24px 12px; background: var(--ink); color: var(--paper); font-family: var(--face-label); font-size: 2.5rem; font-weight: 800; line-height: 0.95; text-transform: uppercase; } .ds-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .ds-cols > div { padding: 20px 24px 8px; } .ds-cols > div + div { border-left: 3px solid var(--ink); } .ds-house h3 { margin: 0; font-family: var(--face-label); font-size: 1.375rem; font-weight: 800; letter-spacing: 0.14em; line-height: 0.95; text-transform: uppercase; } .ds-house p { font-family: var(--face-text); font-size: 1.0625rem; line-height: 1.5; }"
+    },
+    {
+      "name": "Top Rule Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "The wordmark and three tracked uppercase links over a 2px ink rule.",
+      "html": "<header class=\"ds-top\"><a class=\"ds-mark\" href=\"#\">Firstcall</a><nav><a href=\"#\">How it works</a><a href=\"#\">Proof</a><a href=\"#\">Code</a></nav></header>",
+      "css": ".ds-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 18px 24px 14px; border-bottom: 2px solid var(--ink); background: var(--steel); color: var(--ink); font-family: var(--face-label); } .ds-mark { color: inherit; font-size: 1.75rem; font-weight: 800; letter-spacing: 0.01em; text-decoration: none; } .ds-top nav { display: flex; gap: 32px; } .ds-top nav a { color: inherit; font-size: 1rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; } .ds-top nav a:hover { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 0.18em; } .ds-top a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "On the Rail",
+    "overview": "**Creative North Star: \"On the Rail\"**\n\nEvery lead is a printed ticket clipped to a steel rail at a kitchen pass. The page is brushed steel; anything a machine printed or a person wrote sits on bright thermal paper; ink is near-black. A ticket's top stripe ages from green to heat-lamp orange to late red while it waits, and a person claims it by pressing Heard. The world is an operating object, not a landing page: there is no headline beside a dashboard screenshot and no row of feature cards.\n\nThe system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.\n\nScope today: the public front page (`web/index.html`, `web/src/front/`, `web/src/styles/rail-tokens.css`). The signed-in app (`web/app.html`, `web/src/styles/app.css`, `web/src/styles/tokens.css`) is not yet in this world and is restyled into it in a later phase. Its current look is not part of this system and is not a reference for new work.",
+    "keyCharacteristics": [
+      "Steel ground, paper objects, ink type; nothing else competes.",
+      "Age colours are state, never decoration.",
+      "Square corners everywhere; the only softness is the paper's own edge shadow.",
+      "Three faces, each tied to a speaker: the pass, the printer, the person.",
+      "State changes are instant; the one motion is the printer feeding the first ticket."
+    ],
+    "rules": [
+      {
+        "name": "The State-Only Rule",
+        "body": "The four age colours mean how long a lead has waited and nothing else. No link, heading, button, border or illustration uses them.",
+        "section": "colors"
+      },
+      {
+        "name": "The Stripe-Not-Text Rule",
+        "body": "Fresh Green, Heat-Lamp Orange and Late Red are stripes, never text or text grounds (Heat-Lamp Orange is 2.6:1 on paper). Every stripe has its label word beside it in ink, so colour is never the only signal.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hottest-Colour Rule",
+        "body": "Only the lead that has waited longest gets its age word reversed out of Very Late Red. A claimed ticket's stripe turns to ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three Speakers Rule",
+        "body": "Pick the face by who is speaking: the pass (Big Shoulders), the printer (Martian Mono), a person (Atkinson). Prose never runs in Big Shoulders, and printed output never runs in Atkinson.",
+        "section": "typography"
+      },
+      {
+        "name": "The Slashed Zero Rule",
+        "body": "Figures inside prose stay in the text face, slashed zero and all. Atkinson's zero is slashed for legibility and has no plain alternate; switching faces mid-sentence reads worse.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper-Only Shadow Rule",
+        "body": "Only loose paper casts a shadow, and only the paper edge. Posted cards (the house card) are framed in ink instead.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Rule Rule",
+        "body": "When two pieces of paper are the same thing seen twice, a single 1px ink rule connects them. No arrows, no icons.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** put anything printed or written on paper and everything else directly on steel.",
+      "**Do** pair every age stripe with its word in ink: New, Waiting, Late, Very late.",
+      "**Do** change state instantly: a claimed ticket swaps its key for the stamp with no transition.",
+      "**Do** keep motion to the printer: the first ticket's printed fields feed in once on load (900ms, `cubic-bezier(0.16, 1, 0.3, 1)`, after 350ms), and only when the visitor allows motion.",
+      "**Do** label every figure built on made-up data as made-up, on the same line."
+    ],
+    "donts": [
+      "**Don't** use an age colour for anything that is not a lead's waiting time.",
+      "**Don't** round a corner.",
+      "**Don't** shadow anything that is not loose paper, and don't use any shadow but the paper edge.",
+      "**Don't** set prose in Big Shoulders or printed output in Atkinson.",
+      "**Don't** build the SaaS landing page: no headline beside a dashboard screenshot, no row of feature cards.",
+      "**Don't** take the signed-in app's current styles as a reference until it is restyled into this world."
+    ]
+  }
+}

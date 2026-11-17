@@ -195,8 +195,9 @@ def create_app(
 
 
 def serve_pages(app: FastAPI, dist: Path) -> None:
-    """The built pages. Any path that is not a file and not an API or intake route gets
-    index.html, so a reload on a page's own address works."""
+    """The built pages. "/" is the public front page (index.html). Any other path that is not
+    a file and not an API or intake route gets the app (app.html), so a reload on a page's
+    own address works."""
     root = dist.resolve()
 
     @app.get("/{path:path}", include_in_schema=False)
@@ -206,4 +207,5 @@ def serve_pages(app: FastAPI, dist: Path) -> None:
         target = (root / path).resolve()
         if path and target.is_file() and root in target.parents:
             return FileResponse(target)
-        return FileResponse(root / "index.html", headers={"Cache-Control": "no-cache"})
+        name = "index.html" if path == "" else "app.html"
+        return FileResponse(root / name, headers={"Cache-Control": "no-cache"})

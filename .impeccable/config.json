@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-17T18:18:31.282Z",
+        "reason": "orchestrator: CSS loads through src/front/main.ts, which the detector does not read; the front CSS sets the display headline far above the 1rem body (see web/src/front/front.css)"
+      }
+    ]
+  }
+}

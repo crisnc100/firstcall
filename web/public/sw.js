@@ -15,16 +15,20 @@ self.addEventListener("push", (event) => {
       body: typeof data.body === "string" ? data.body : "",
       tag: typeof data.tag === "string" ? data.tag : "firstcall",
       renotify: true,
-      data: { url: typeof data.url === "string" ? data.url : "/" },
+      data: { url: typeof data.url === "string" ? data.url : "/mine" },
     }),
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url ?? "/", self.location.origin);
-  // Only this app's own pages open from a notification.
-  const url = target.origin === self.location.origin ? target.pathname : "/";
+  const target = new URL(event.notification.data?.url ?? "/mine", self.location.origin);
+  // Only this app's own pages open from a notification. A path that starts with "//" is
+  // read by navigate() as another host, so it falls back too. "/mine" sends anyone without
+  // a team on to their own home page; "/" is the public front page, not the app.
+  const path = target.pathname;
+  const ours = target.origin === self.location.origin && path.startsWith("/") && !path.startsWith("//");
+  const url = ours ? path : "/mine";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
       for (const client of windows) {

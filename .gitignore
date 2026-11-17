@@ -223,3 +223,7 @@ __marimo__/
 node_modules/
 web/dist/
 coverage.json
+
+# Impeccable decision-round scratch files
+.impeccable/decision/
+.impeccable/review/
