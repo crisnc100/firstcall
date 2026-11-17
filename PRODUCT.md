@@ -17,7 +17,7 @@ Firstcall is an open-source lead hub. Every lead from email, web forms and call 
 
 ## Positioning
 
-The AI reads; people decide. Fixed rules handle every field they can, and a model reads only what the rules can't, per field, chosen by measurement. The note reader turns a salesperson's note into a tidied note, buyer profile updates and suggested contacts. A suggested contact is logged only when a person taps Confirm, so a wrong suggestion costs one tap. Budget and needs go straight to the buyer's profile, but never over a value a person set. Firstcall never emails a buyer.
+The AI reads; people decide. Fixed rules handle every field they can. When the model is on, it reads most messages, but its answer is used only for a field the rules left empty or were unsure of, and only for the fields where measurement chose it (name and category). The note reader turns a salesperson's note into a tidied note, buyer profile updates and suggested contacts. A suggested contact is logged only when a person taps Confirm, so a wrong suggestion costs one tap. Budget and needs go straight to the buyer's profile, but never over a value a person set. Firstcall never emails a buyer.
 
 ## Operating Context
 
