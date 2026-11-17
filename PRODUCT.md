@@ -25,7 +25,7 @@ The AI reads; people decide. Fixed rules handle every field they can. When the m
 - People sign in to a board. A new lead waits in its team's pool with a timer and an urgency label (New, Waiting, Late, Very late). The first person to press Claim owns it; a teammate who is too late sees "Already claimed by a teammate". Team leads are alerted when a lead turns Late.
 - Leads with no team wait in Unassigned; vendor, support and spam messages go to the Not-a-lead tray, where a monitor can rescue one.
 - Alerts go to an in-app inbox, email digests and web push.
-- Not yet built: voice memos, the leadership dashboard, the hosted beta (with a paste-an-email preview) and CRM events. There is no public front page yet and no live demo.
+- Not yet built: voice memos, the leadership dashboard, the hosted beta (with a paste-an-email preview) and CRM events. There is a public front page with a client-side demo (made-up leads, no backend), and no hosted live app yet.
 
 ## Capabilities and Constraints
 

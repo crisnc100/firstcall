@@ -9,18 +9,10 @@ html {
   scroll-padding-top: 24px;
 }
 
-/* Brushed steel: hairline grain on the steel ground. It is the material, kept faint. */
 body {
   margin: 0;
   color: var(--ink);
-  background-color: var(--steel);
-  background-image: repeating-linear-gradient(
-    90deg,
-    rgb(255 255 255 / 0.07) 0 1px,
-    transparent 1px 3px,
-    rgb(27 29 32 / 0.035) 3px 4px,
-    transparent 4px 7px
-  );
+  background: var(--steel);
   font-family: var(--face-label);
   font-optical-sizing: auto;
   font-size: 1.25rem;
@@ -120,33 +112,45 @@ h3 {
 }
 
 .intro {
-  padding-block: clamp(24px, 3vw, 40px) clamp(18px, 1.8vw, 26px);
+  padding-block: clamp(16px, 1.6vw, 32px) clamp(16px, 1.6vw, 24px);
 }
 h1 {
-  font-size: clamp(3.25rem, 7.4vw, 5.5rem);
+  font-size: clamp(3.25rem, 6.2vw, 5.5rem);
   letter-spacing: -0.005em;
   text-transform: uppercase;
 }
+.lede,
+.notes-text p,
+.claims li,
+.proof-text p,
+.foot,
+.under,
+.t-aside {
+  font-family: var(--face-text);
+  font-stretch: normal;
+  font-weight: 400;
+}
 .lede {
-  max-width: 58ch;
-  margin: 10px 0 0;
+  max-width: 70ch;
+  margin: 12px 0 0;
   color: var(--ink-soft);
-  font-size: clamp(1.2rem, 1.5vw, 1.375rem);
-  line-height: 1.35;
+  font-size: clamp(1.0625rem, 1.3vw, 1.1875rem);
+  line-height: 1.45;
 }
 
-/* The pass: one rail across the page, tickets hanging from it. */
+/* The pass: one steel bar across the page. Its lower lip overlaps the top of each ticket,
+   the way a rail grips the paper it holds. */
 .pass {
   position: relative;
 }
 .rail {
-  height: 20px;
+  position: relative;
+  z-index: 1;
+  height: 22px;
   margin-inline: calc(-1 * clamp(16px, 3.9vw, 56px));
-  background-color: var(--steel-light);
-  background-image:
-    linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 40%, rgb(27 29 32 / 0.16)),
-    repeating-linear-gradient(90deg, rgb(27 29 32 / 0.05) 0 1px, transparent 1px 5px);
-  border-block: 1px solid var(--steel-edge);
+  background: var(--steel-dark);
+  border-top: 2px solid var(--steel-edge);
+  border-bottom: 5px solid var(--steel-edge);
 }
 
 .tickets {
@@ -154,7 +158,7 @@ h1 {
   grid-template-columns: minmax(0, 2.3fr) repeat(3, minmax(0, 1fr));
   align-items: start;
   gap: clamp(14px, 1.6vw, 24px);
-  margin: 0;
+  margin: -6px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -169,7 +173,7 @@ h1 {
   font-size: 0.8125rem;
   font-stretch: 87.5%;
   line-height: 1.5;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 /* The bottom edge is where the printer's blade cut the paper: a fine saw, not a curve. */
 .ticket::after {
@@ -208,18 +212,30 @@ h1 {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding-top: 10px;
+  padding-block: 10px 6px;
   font-family: var(--face-label);
   font-weight: 700;
   font-stretch: normal;
 }
 .t-src {
+  display: flex;
+  flex-direction: column;
   font-size: 0.875rem;
   letter-spacing: 0.12em;
+  line-height: 1.2;
   text-transform: uppercase;
 }
-.t-src .dot {
-  letter-spacing: 0;
+.t-team {
+  color: var(--paper-ink-soft);
+}
+.t-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.nowrap {
+  white-space: nowrap;
 }
 .t-timer {
   font-size: 1.625rem;
@@ -229,17 +245,15 @@ h1 {
 }
 
 .t-age {
-  margin-block: 0 8px;
   font-family: var(--face-label);
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-/* The one ticket that has waited longest takes the hottest colour across its label. */
+/* The one ticket that has waited longest takes the hottest colour behind its label. */
 .ticket[data-age="verylate"] .t-age {
-  margin-inline: 0;
-  padding: 3px 16px;
+  padding: 1px 6px;
   background: var(--age-verylate);
   color: var(--on-verylate);
 }
@@ -257,7 +271,7 @@ h1 {
 /* The message as it arrived and the ticket the reader printed from it, joined by one rule. */
 .split {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 0;
   border-top: 1px dashed var(--paper-rule);
   padding-top: 10px;
@@ -277,9 +291,17 @@ h1 {
   color: var(--paper-ink-soft);
   font-family: inherit;
   font-size: 0.6875rem;
-  line-height: 1.38;
+  line-height: 1.3;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+}
+.t-cut {
+  margin: 4px 0 0;
+  color: var(--paper-ink-soft);
+  font-family: var(--face-label);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .fields {
@@ -290,7 +312,7 @@ h1 {
 .fields dt,
 .fields dd {
   margin: 0;
-  padding-block: 5px;
+  padding-block: 3px;
   border-bottom: 1px dashed var(--paper-rule);
 }
 .fields dt {
@@ -305,7 +327,6 @@ h1 {
 }
 .fields dd {
   font-weight: 500;
-  overflow-wrap: anywhere;
 }
 
 /* The printed fields come off the head line by line, once, as the page opens. */
@@ -323,14 +344,19 @@ h1 {
   }
 }
 
+/* A margin note in a person's text face, not the printer's: it explains the ticket. */
 .t-aside {
   margin: 8px 0 0;
+  padding-left: 10px;
+  border-left: 1px solid var(--paper-ink-soft);
   color: var(--paper-ink-soft);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
+  font-style: italic;
+  line-height: 1.4;
 }
 
 .heard {
-  margin-top: 14px;
+  margin-top: 10px;
   padding: 9px 12px 8px;
   border: 2px solid var(--ink);
   border-radius: 0;
@@ -369,9 +395,9 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 6px 32px;
-  padding-block: 18px 0;
-  font-size: 1.0625rem;
+  gap: 4px 24px;
+  padding-block: 12px 0;
+  font-size: 0.9375rem;
 }
 .under p {
   margin: 0;
@@ -407,6 +433,11 @@ h2 {
 .notes-text p {
   max-width: 40ch;
   margin: 16px 0 0;
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+main > .pass + .notes {
+  margin-top: 20px;
 }
 .note-pair {
   display: grid;
@@ -439,10 +470,17 @@ h2 {
 .print {
   margin: 0 0 10px;
 }
+/* Two parts under the tidied note: what was written at once, and what waits for a person. */
+.written,
 .suggestion {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--paper-rule);
+  margin: 12px -16px 0;
+  padding: 10px 16px 0;
+  border-top: 2px solid var(--ink);
+}
+.suggestion {
+  margin-bottom: -16px;
+  padding-bottom: 14px;
+  background: var(--steel-light);
 }
 .keys {
   display: flex;
@@ -460,47 +498,104 @@ h2 {
   display: none;
 }
 
-.ledger .columns {
+/* The house rules: one card posted at the pass, the way a kitchen posts its rules. */
+.house {
+  max-width: 1080px;
+  border: 3px solid var(--ink);
+  background: var(--paper);
+}
+.house h2 {
+  padding: 14px 24px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+}
+.house .columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 28px;
-  border-top: 2px solid var(--ink);
 }
-.ledger .columns > div {
-  padding-top: 18px;
+.house .columns > div {
+  padding: 20px 24px 8px;
 }
-.ledger .columns > div + div {
-  padding-left: clamp(20px, 3vw, 48px);
-  border-left: 1px solid var(--ink);
-}
-.ledger .columns > div:first-child {
-  padding-right: clamp(20px, 3vw, 48px);
+.house .columns > div + div {
+  border-left: 3px solid var(--ink);
 }
 h3 {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 .claims {
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
+  margin: 8px 0 0;
+  padding: 0 0 0 1.4em;
+  font-size: 1.0625rem;
+  line-height: 1.5;
 }
 .claims li {
-  max-width: 52ch;
-  padding-block: 12px;
-  border-bottom: 1px solid rgb(27 29 32 / 0.25);
+  padding-block: 8px;
+}
+.claims li::marker {
+  color: var(--ink);
 }
 
-.proof p {
-  max-width: 68ch;
-  margin: 16px 0 0;
+.proof-body {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: start;
+  margin-top: 24px;
 }
-.proof .proof-run {
-  max-width: 46ch;
-  font-size: clamp(1.375rem, 2vw, 1.75rem);
+/* The printer's end-of-run slip: one figure per line, dotted out to the margin. */
+.tally {
+  margin: 0;
+  padding: 16px 18px 20px;
+  background: var(--paper);
+  box-shadow: var(--paper-edge);
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+}
+.tally figcaption {
+  margin-bottom: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--paper-rule);
+  color: var(--paper-ink-soft);
+  font-family: var(--face-label);
+  font-size: 0.8125rem;
   font-weight: 700;
-  line-height: 1.15;
+  font-stretch: normal;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.tally dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin: 0;
+}
+.tally dt,
+.tally dd {
+  margin: 0;
+  padding-block: 4px;
+}
+.tally dt {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.tally dt::after {
+  content: " ............................................................";
+  color: var(--paper-ink-soft);
+}
+.tally dd {
+  padding-left: 8px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.proof-text p {
+  max-width: 62ch;
+  margin: 0 0 14px;
+  font-size: 1.125rem;
+  line-height: 1.5;
 }
 .proof a {
   font-weight: 700;
@@ -564,17 +659,22 @@ h3 {
   .slip.typed::after {
     display: none;
   }
-  .ledger .columns {
+  .house .columns,
+  .proof-body {
     grid-template-columns: minmax(0, 1fr);
   }
-  .ledger .columns > div + div {
-    padding-left: 0;
+  .house .columns > div + div {
     border-left: 0;
-    margin-top: 24px;
-    border-top: 1px solid var(--ink);
+    border-top: 3px solid var(--ink);
   }
-  .ledger .columns > div:first-child {
-    padding-right: 0;
+  .raw {
+    font-size: 0.75rem;
+  }
+  .tally dt {
+    white-space: normal;
+  }
+  .tally dt::after {
+    content: none;
   }
   .under {
     flex-direction: column;

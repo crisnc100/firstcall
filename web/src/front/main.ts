@@ -55,14 +55,33 @@ function ageOf(minutes: number): Urgency {
   return urgency(null, minutes, null);
 }
 
-function rawLines(body: string): string {
-  const [head, ...rest] = body.split("\n\n");
+/** An excerpt of the email, every line as it arrived: the From and Subject headers, then
+ * the body without its last paragraph, the sender's signature. */
+function excerpt(body: string): string {
+  const [head, ...paragraphs] = body.trimEnd().split("\n\n");
   const kept = head.split("\n").filter((line) => line.startsWith("From:") || line.startsWith("Subject:"));
-  return `${kept.join("\n")}\n\n${rest.join("\n\n").trimEnd()}`;
+  return `${kept.join("\n")}\n\n${paragraphs.slice(0, -1).join("\n\n")}`;
+}
+
+/** Text that may wrap only after an "@" or before a dot, so an address never splits
+ * mid-word, and a phone number written with dashes stays on one line. */
+function breakable(text: string): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  text.split(/(\d{3}-\d{3}-\d{4})/).forEach((chunk, odd) => {
+    if (odd % 2) {
+      fragment.append(h("span", { class: "nowrap", text: chunk }));
+      return;
+    }
+    chunk.split(/(?<=@)|(?=\.(?=\w))/).forEach((part, index) => {
+      if (index) fragment.append(document.createElement("wbr"));
+      fragment.append(part);
+    });
+  });
+  return fragment;
 }
 
 function field(term: string, value: string | null): HTMLElement[] {
-  return [h("dt", { text: term }), h("dd", { text: value ?? "Not given" })];
+  return [h("dt", { text: term }), h("dd", {}, breakable(value ?? "Not given"))];
 }
 
 function ticketCard(ticket: Ticket, index: number): HTMLLIElement {
@@ -74,10 +93,15 @@ function ticketCard(ticket: Ticket, index: number): HTMLLIElement {
   const head = h(
     "header",
     { class: "t-head" },
-    h("span", { class: "t-src" }, sourceLabel(message.source), h("span", { class: "dot", text: " · " }), labels.team ?? "unassigned"),
-    timer,
+    h(
+      "span",
+      { class: "t-src" },
+      h("span", { text: sourceLabel(message.source) }),
+      h("span", { class: "sr", text: ", team " }),
+      h("span", { class: "t-team", text: labels.team ?? "unassigned" }),
+    ),
+    h("span", { class: "t-clock" }, timer, h("span", { class: "t-age" }, word, spoken)),
   );
-  const age = h("p", { class: "t-age" }, word, spoken);
   const fields = h(
     "dl",
     { class: "fields" },
@@ -93,7 +117,7 @@ function ticketCard(ticket: Ticket, index: number): HTMLLIElement {
     text: first ? "Heard — Claim" : "Heard",
     attrs: { type: "button", "aria-label": `Heard: claim ${name}'s lead` },
   });
-  const body: HTMLElement[] = [h("div", { class: "stripe" }), head, age];
+  const body: HTMLElement[] = [h("div", { class: "stripe" }), head];
   if (first) {
     body.push(
       h(
@@ -103,19 +127,20 @@ function ticketCard(ticket: Ticket, index: number): HTMLLIElement {
           "div",
           { class: "received" },
           h("p", { class: "t-label", text: "Received" }),
-          h("pre", { class: "raw", text: rawLines(message.body) }),
+          h("pre", { class: "raw" }, breakable(excerpt(message.body))),
+          h("p", { class: "t-cut", text: "Signature not shown" }),
         ),
         h(
           "div",
           { class: "printed" },
           h("p", { class: "t-label", text: "Printed by the reader" }),
           fields,
-          h("p", {
-            class: "t-aside",
-            text: "Two phone numbers in this email. The buyer's went on the ticket; the agent's stayed with the agent.",
-          }),
         ),
       ),
+      h("p", {
+        class: "t-aside",
+        text: "Two phone numbers in this email: the buyer's, and the agent's in the signature. The buyer's went on the ticket; the agent's stayed with the agent.",
+      }),
     );
   } else {
     body.push(fields);
@@ -208,12 +233,16 @@ function renderNote(): void {
       choose("Dismiss", "Dismissed. Nothing was logged."),
     );
     return h(
-      "div",
+      "section",
       { class: "suggestion" },
-      h("p", { class: "t-label", text: "Suggested contact" }),
+      h("p", { class: "t-label", text: "Waits for Confirm: suggested contact" }),
       h("p", { class: "print" }, `${verb}: “${action.quote}”`),
       keys,
       result,
+      h("p", {
+        class: "t-aside",
+        text: "“Will call Charles tomorrow” gets no suggestion: it hasn't happened yet.",
+      }),
     );
   });
 
@@ -222,12 +251,14 @@ function renderNote(): void {
     { class: "slip read" },
     h("figcaption", { class: "t-label", text: "As read" }),
     h("p", { class: "print", text: answer.clean_note }),
-    profile,
+    h(
+      "section",
+      { class: "written" },
+      h("p", { class: "t-label", text: "Written to the profile now" }),
+      profile,
+      h("p", { class: "t-aside", text: "Never over a value a person set." }),
+    ),
     ...suggestions,
-    h("p", {
-      class: "t-aside",
-      text: "“Will call Charles tomorrow” gets no suggestion: it hasn't happened yet.",
-    }),
   );
   (document.getElementById("note-pair") as HTMLElement).replaceChildren(typed, read);
 }

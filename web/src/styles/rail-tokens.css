@@ -2,8 +2,8 @@
    that only ever mean how long a lead has waited. The front page uses this file today; the
    app can adopt it later without a name clash with tokens.css.
 
-   Contrast, measured: ink on steel 10.6:1, ink-soft on steel 6.6:1, ink on paper 16.0:1,
-   paper-ink-soft on paper 7.3:1, paper on age-verylate 7.1:1. The other age colours are
+   Contrast, measured: ink on steel 10.6:1, ink-soft on steel 6.6:1, ink on paper 16.4:1,
+   paper-ink-soft on paper 7.0:1, paper on age-verylate 7.3:1. The other age colours are
    stripes, never text (waiting is only 2.6:1 on paper), and every stripe has its label word
    beside it. */
 
@@ -13,6 +13,16 @@
   font-weight: 100 900;
   font-display: swap;
   src: url("/fonts/big-shoulders-latin.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* The app's own text face, the same file, for prose a visitor reads at length. */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/atkinson-next-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
     U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
@@ -30,20 +40,21 @@
 :root {
   --steel: #c9ced2;
   --steel-light: #dfe3e6;
-  --steel-dark: #8d959c;
-  --steel-edge: #6c747b;
+  --steel-dark: #5b6268;
+  --steel-edge: #3a4045;
   --ink: #1b1d20;
   --ink-soft: #3b4046;
-  --paper: #fbf9f2;
-  --paper-ink-soft: #57534a;
-  --paper-rule: #cfc9b8;
+  --paper: #fbfcfc;
+  --paper-ink-soft: #53585c;
+  --paper-rule: #c4cacd;
   --age-new: #2b7a4b;
   --age-waiting: #e3861c;
   --age-late: #d2491f;
   --age-verylate: #a8191b;
-  --on-verylate: #fbf9f2;
+  --on-verylate: #fbfcfc;
 
   --face-label: "Big Shoulders", "Arial Narrow", sans-serif-condensed, sans-serif;
+  --face-text: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --face-print: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   --paper-edge: 0 1px 1px rgb(27 29 32 / 0.18), 0 3px 6px -2px rgb(27 29 32 / 0.22);

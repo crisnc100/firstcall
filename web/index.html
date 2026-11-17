@@ -41,12 +41,12 @@
         <ol class="tickets" id="tickets"></ol>
         <div class="under">
           <p class="proof-line">
-            On 500 made-up test messages: 0 messages added to the wrong buyer, 0 agent contacts
-            taken as the buyer's.
-            <a href="#proof">The proof and its limits</a>
+            These four leads are made-up test messages. On 500 of them, 0 went to the wrong
+            buyer.
+            <a href="#proof">See the proof</a>
           </p>
           <p class="demo-note" id="claim-status" role="status">
-            Nobody owns these leads yet. The AI has read them; only a person can claim one.
+            Nobody owns them yet; only a person can claim one.
           </p>
         </div>
       </section>
@@ -55,67 +55,97 @@
         <div class="notes-text">
           <h2 id="notes-title">Notes get the same reading</h2>
           <p>
-            After a call, a salesperson types a quick note. The AI tidies it, fills in the buyer's
-            budget and needs, and suggests the contact the note describes. Nothing is logged until a
-            person presses Confirm, so a wrong suggestion costs one tap.
+            After a call, a salesperson types a quick note. The AI tidies it and writes the buyer's
+            budget and needs to the profile at once, never over a value a person set.
+          </p>
+          <p>
+            Only the contact it suggests waits: nothing is logged until a person presses Confirm,
+            so a wrong suggestion costs one tap.
           </p>
         </div>
         <div class="note-pair" id="note-pair"></div>
       </section>
 
-      <section class="ledger" aria-labelledby="ledger-title">
-        <h2 id="ledger-title">What the AI does, and what it never does</h2>
-        <div class="columns">
-          <div>
-            <h3>Does</h3>
-            <ul class="claims">
-              <li>
-                Reads every message and prints the ticket: the buyer, their phone and email, what
-                they want, their agent, and the team.
-              </li>
-              <li>
-                Uses fixed rules first. The model's answer counts for only two fields, the buyer's
-                name and the kind of message, and only where the rules found nothing or weren't sure.
-                Tests on made-up messages picked those two.
-              </li>
-              <li>
-                Tidies a salesperson's note, fills in the buyer's budget and needs, and suggests the
-                contacts the note describes. A value a person typed is never overwritten.
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h3>Never</h3>
-            <ul class="claims">
-              <li>Emails a buyer. Email goes only to the company's own active users.</li>
-              <li>Logs a contact by itself. A suggestion saves nothing until a person presses Confirm.</li>
-              <li>Claims a lead. A person does, and the timer shows how long it took.</li>
-              <li>
-                Runs unless someone switches it on. The model is off by default, and then every
-                message takes the rules path.
-              </li>
-            </ul>
+      <section class="rules" aria-labelledby="rules-title">
+        <div class="house">
+          <h2 id="rules-title">House rules for the AI</h2>
+          <div class="columns">
+            <div>
+              <h3>It does</h3>
+              <ul class="claims">
+                <li>
+                  Read every message and print the ticket: the buyer, their phone and email, what
+                  they want, their agent, and the team.
+                </li>
+                <li>
+                  Use fixed rules first. The model's answer counts for only two fields, the buyer's
+                  name and the kind of message, and only where the rules found nothing or weren't
+                  sure. Tests on made-up messages picked those two.
+                </li>
+                <li>
+                  Tidy a salesperson's note, write the buyer's budget and needs to the profile, and
+                  suggest the contacts the note describes. A value a person set is never
+                  overwritten.
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3>It never</h3>
+              <ul class="claims">
+                <li>Emails a buyer. Email goes only to the company's own active users.</li>
+                <li>
+                  Logs a contact by itself. A suggested contact saves nothing until a person presses
+                  Confirm.
+                </li>
+                <li>Claims a lead. A person does, and the timer shows how long it took.</li>
+                <li>
+                  Runs unless someone switches it on. The model is off by default, and then every
+                  message takes the rules path.
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
       <section class="proof" id="proof" aria-labelledby="proof-title">
         <h2 id="proof-title">The proof, and its limits</h2>
-        <p class="proof-run">
-          500 made-up messages through the shipped pipeline, in one run set up before it started:
-          0 times two different buyers were merged, 0 messages added to the wrong buyer, 0 planted
-          instructions that changed a field, 0 agent contacts taken as the buyer's.
-        </p>
-        <p>
-          The messages and their right answers come from the same generator, so this shows the
-          pipeline does what it was built to do. It does not measure accuracy on real mail. Misses
-          are published, and each decision states its prediction before the result.
-        </p>
-        <p>
-          <a href="https://github.com/crisnc100/firstcall/blob/main/evals/reports/2026-11-12-confirm-seed-13.md"
-            >Read the full report</a
-          >
-        </p>
+        <div class="proof-body">
+          <figure class="tally">
+            <figcaption>End of run · 12 Nov 2026 · confirm run, seed 13</figcaption>
+            <dl>
+              <dt>Made-up messages read</dt>
+              <dd>500</dd>
+              <dt>Two different buyers merged</dt>
+              <dd>0</dd>
+              <dt>Messages added to the wrong buyer</dt>
+              <dd>0</dd>
+              <dt>Planted instructions that changed a field</dt>
+              <dd>0</dd>
+              <dt>Agent contacts taken as the buyer's</dt>
+              <dd>0</dd>
+              <dt>Messages read fully right</dt>
+              <dd>500</dd>
+            </dl>
+          </figure>
+          <div class="proof-text">
+            <p>
+              500 made-up messages went through the shipped pipeline in one run, with its methods
+              fixed before it started.
+            </p>
+            <p>
+              The messages and their right answers come from the same generator, so this shows the
+              pipeline does what it was built to do. It does not measure accuracy on real mail.
+              Misses are published, and each decision states its prediction before the result.
+            </p>
+            <p>
+              <a
+                href="https://github.com/crisnc100/firstcall/blob/main/evals/reports/2026-11-12-confirm-seed-13.md"
+                >Read the full report</a
+              >
+            </p>
+          </div>
+        </div>
       </section>
     </main>
 
