@@ -257,7 +257,7 @@ The thresholds are the app's own defaults, read through its urgency function, no
 **The Hottest-Colour Rule.** Only the lead that has waited longest gets its age word reversed out of Very Late Red. A claimed ticket's stripe turns to ink. In the app, where several leads can be very late at once, every Very late word is reversed: there it is a state, and the board sorts the longest wait first.
 
 ### Night shift (app only)
-When the device asks for dark, the app moves to a night palette; the front page stays in daylight. The ground goes to dark steel (`#1e2225`), the rail to near-black (`#0e1012`) with lighter lips (`#4a5258`), and paper dims to `#b9bec0` so it still reads as paper under the lights. Ink on paper stays dark (`#14161a`), Faded Print darkens to `#393e42`, Pale Steel becomes `#a9afb2`, and text on steel turns light (`#e3e6e8`, soft `#a7aeb3`). The four age colours keep their hues.
+When the device asks for dark, the app moves to a night palette; the front page stays in daylight. The ground goes to dark steel (`#1e2225`), the rail turns lighter than the ground (`#444c52`, lips `#6a737a`) like steel catching the light, so it never reads as a black slab, and paper dims to `#b9bec0` so it still reads as paper under the lights. Ink on paper stays dark (`#14161a`), Faded Print darkens to `#393e42`, Pale Steel becomes `#a9afb2`, and text on steel turns light (`#e3e6e8`, soft `#a7aeb3`). The four age colours keep their hues.
 
 Measured contrast, day / night: text on steel 10.6 / 12.8; muted text on steel 6.6 / 7.1; ink on paper 16.4 / 9.7; Faded Print on paper 7.0 / 5.8; ink on Pale Steel 13.1 / 8.2; Faded Print on Pale Steel 5.6 / 4.9; the Very late word 7.3 / 6.8. Stripes against paper: New 5.1 / 2.8, Waiting 2.7 / 1.5, Late 5.0 / 2.7, Very late 7.3 / 4.0. Late against Waiting 1.9, against Very late 1.5. The word beside every stripe carries the state, so the stripe is never the only signal.
 
@@ -304,7 +304,7 @@ Two-part sections (notes, proof) use an asymmetric two-column grid separated by 
 ### The app
 A sticky top rule on steel carries the wordmark, the tabs this person may use and, at right, the Inbox count and the account key; a 2px rule runs under it. Pages sit in a 1120px column with a 24px gutter (16px on a phone). On a phone the tabs move to a bottom bar under a 2px rule, and the page title moves into the top rule.
 
-A list of leads is the rail again: a 14px steel bar across the top of the list, tickets hanging below it in one column with 8px of steel between them. A ticket row runs timer and age word, name and item, the printed team and arrival line, then the key, in a four-column grid; on a phone it stacks to timer and key, name, then the printed line. A lead's own page puts its printed facts, slips and messages in a column capped near 760px, with the posted card of keys beside it at 280px; on a phone the card pins above the bottom bar with only its first key and More actions showing.
+A list of leads is the rail again, in the front page's proportions: a 22px steel bar with a 2px top lip and a 5px bottom lip, running the full width of the list and 8px past it on each side, with the first ticket hanging 6px under the bottom lip and the rest below it in one column with 8px of steel between them. A ticket row runs timer and age word, name and item, the printed team and arrival line, then the key, in a four-column grid; on a phone it stacks to timer and key, name, then the printed line. A lead's own page puts its printed facts, slips and messages in a column capped near 760px, with the posted card of keys beside it at 280px; on a phone the card pins above the bottom bar with only its first key and More actions showing.
 
 ## Elevation & Depth
 
@@ -365,8 +365,8 @@ The signature component.
 
 ### Keys
 - Every app button is a key: square, 44px tall (48px for Claim on a phone), a 2px frame, the label in Label at 0.9375rem with 0.12em tracking.
-- **Primary** (Claim, Save, Sign in, Place): ink fill, paper label; hover goes to Rail Edge. One primary per group.
-- **Secondary**: paper fill, ink label; hover inverts to ink, like Heard.
+- **Primary** (Claim, Save, Sign in, Place): filled with the surface's text colour, its label reversed out: ink with a paper label by day and on paper, the light on-steel colour with an ink label on steel at night. Hover mixes the fill a fifth toward the label. One primary per group.
+- **Secondary**: paper fill, ink label; hover inverts to ink, like Heard. On steel at night the key is open (no fill, light frame and label), so the filled primary still outranks it.
 - **Danger** (Delete lead): a 4px double ink frame, so it never passes for an ordinary key. No red.
 - Pressed keys drop 1px. A disabled key fades to 55%. A busy key keeps its width and shows the spinner beside its working word.
 - The password field's Show key sits inside the field, frameless.
@@ -390,7 +390,7 @@ The signature component.
 - The note as typed, in print, then one ink rule, then the tidied note in Atkinson. A suggested contact still waiting for Confirm or Dismiss is set on Pale Steel under a 2px ink rule; a settled one is a dashed line with its stamp.
 
 ### Lists and tables
-- Plain lists (Inbox, the tray, escalations, Account) are one paper strip with dashed rules between rows. An Inbox row is one wide frameless button; the open one sits on Pale Steel and unread ones carry a square ink mark and bold subject.
+- Plain lists (Inbox, the tray, escalations, Account) are one paper strip with dashed rules between rows. An Inbox row is one wide frameless button; the open row, time included, sits on Pale Steel edge to edge, and unread ones carry a square ink mark and bold subject. An open alert's links to its leads are secondary keys under its slip, in the slip's width.
 - Tables are paper with Label small headers over a 2px ink rule and dashed rules between rows. A row's own header is set like its cells, only bolder.
 
 ### Navigation (app)

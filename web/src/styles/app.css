@@ -14,6 +14,8 @@
   --fg: var(--on-steel);
   --muted: var(--on-steel-soft);
   --focus: var(--on-steel);
+  --on-fg: var(--on-steel-reverse);
+  --key-fill: var(--steel-key-fill);
 }
 html {
   background: var(--ground);
@@ -67,6 +69,8 @@ dl,
   --fg: var(--ink);
   --muted: var(--paper-ink-soft);
   --focus: var(--ink);
+  --on-fg: var(--paper);
+  --key-fill: var(--paper);
 }
 
 h1,
@@ -314,15 +318,16 @@ main {
   display: none;
 }
 
-/* Keys: square, ink-framed, the label stamped in the pass's face. The primary key is
-   filled; every other key is paper until it is pressed. */
+/* Keys: square, framed in the text colour, the label stamped in the pass's face. The
+   primary key is filled with the text colour; every other key is paper (on steel at night,
+   open) until it is pressed. */
 .btn {
   min-height: 44px;
   padding: 3px 14px 0;
   border: 2px solid var(--fg);
   border-radius: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--key-fill);
+  color: var(--fg);
   font-size: 0.9375rem;
   font-weight: 800;
   line-height: 1.1;
@@ -339,16 +344,15 @@ main {
   margin-top: -3px;
 }
 .btn.secondary:hover:not([disabled]) {
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
+  background: var(--fg);
+  color: var(--on-fg);
 }
 .btn.primary {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--fg);
+  color: var(--on-fg);
 }
 .btn.primary:hover:not([disabled]) {
-  background: var(--steel-edge);
+  background: color-mix(in srgb, var(--fg) 80%, var(--on-fg));
 }
 /* A key that cannot be taken back gets a double frame, so it never passes for an ordinary
    one at a glance. */
@@ -356,8 +360,8 @@ main {
   border: 4px double var(--fg);
 }
 .btn.danger:hover:not([disabled]) {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--fg);
+  color: var(--on-fg);
 }
 .btn:active:not([disabled]) {
   transform: translateY(1px);
@@ -493,15 +497,17 @@ label {
   flex-direction: column;
   gap: var(--s2);
 }
+/* Front-page proportions: a 22px bar with a top lip and a heavier bottom lip that grips
+   the first ticket 6px down, whichever edge carries the ticket's stripe. */
 .leads::before {
   content: "";
   position: relative;
   z-index: 1;
-  height: 14px;
-  margin-bottom: -12px;
+  height: 22px;
+  margin: 0 calc(-1 * var(--s2)) calc(-1 * (var(--s2) + 6px));
   background: var(--steel-dark);
   border-top: 2px solid var(--steel-edge);
-  border-bottom: 4px solid var(--steel-edge);
+  border-bottom: 5px solid var(--steel-edge);
 }
 .row {
   --stripe: var(--age-new);
@@ -532,7 +538,7 @@ label {
 }
 /* Owned, won or lost to a teammate: someone has it, so the stripe turns to ink. */
 .row:not(:has(> .timer[data-wait])),
-.row.won {
+.row.won:has(> .timer) {
   --stripe: var(--ink);
 }
 .timer {
@@ -1058,12 +1064,17 @@ textarea {
   min-height: 44px;
 }
 /* An Inbox row is one wide button that opens the alert: it reads as a row, not a key. */
+/* The whole row takes the fill, time column included. */
 .list-plain li:has(> .btn[aria-expanded]) {
-  padding: 4px var(--s4) 4px 4px;
+  padding: 0 var(--s4) 0 0;
+}
+.list-plain li:has(> .btn[aria-expanded="true"]),
+.list-plain li:has(> .btn[aria-expanded]:hover) {
+  background: var(--steel-light);
 }
 .list-plain .btn[aria-expanded] {
-  min-height: 48px;
-  padding: 0 var(--s3);
+  min-height: 52px;
+  padding: 0 var(--s4);
   border: 0;
   background: none;
   font-family: var(--face-text);
@@ -1072,11 +1083,31 @@ textarea {
   text-transform: none;
 }
 .list-plain .btn[aria-expanded]:hover:not([disabled]) {
-  background: var(--steel-light);
+  background: none;
   color: var(--ink);
 }
-.list-plain .btn[aria-expanded="true"] {
-  background: var(--steel-light);
+.list-plain .btn[aria-expanded]:focus-visible {
+  outline-offset: -3px;
+}
+/* An alert's links to its leads are keys under the slip, in the slip's own width. */
+.msg + .list-plain {
+  max-width: 70ch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  background: none;
+  box-shadow: none;
+  color: var(--on-steel);
+  --fg: var(--on-steel);
+  --muted: var(--on-steel-soft);
+  --focus: var(--on-steel);
+  --on-fg: var(--on-steel-reverse);
+  --key-fill: var(--steel-key-fill);
+}
+.msg + .list-plain li {
+  min-height: 0;
+  padding: 0;
+  border: 0;
 }
 .list-plain .btn[aria-expanded] .icon,
 .list-plain .btn[aria-expanded] span {
@@ -1254,8 +1285,18 @@ tr.inactive th {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--s1) var(--s3);
+    gap: var(--s1) var(--s2);
     min-width: 0;
+  }
+  /* Sized so even a two-part wait keeps its age word on the same line as the Claim key. */
+  .row .t {
+    font-size: 1.5rem;
+  }
+  .row .badge.u {
+    letter-spacing: 0.08em;
+  }
+  .row .badge.u .icon {
+    display: none;
   }
   .row.lost,
   .row.wide-act {

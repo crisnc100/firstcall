@@ -68,6 +68,9 @@
   /* Text set straight on steel. By day it is the same ink as on paper. */
   --on-steel: #1b1d20;
   --on-steel-soft: #3b4046;
+  /* A key on steel: by day paper with an ink label inside a filled ink key. */
+  --on-steel-reverse: #fbfcfc;
+  --steel-key-fill: #fbfcfc;
 
   --face-label: "Big Shoulders", "Arial Narrow", sans-serif-condensed, sans-serif;
   --face-text: "Atkinson Hyperlegible Next", system-ui, sans-serif;
@@ -91,14 +94,17 @@
    9.7:1, paper-ink-soft on paper 5.8:1, ink on steel-light 8.2:1, paper-ink-soft on
    steel-light 4.9:1, on-verylate on age-verylate 6.8:1. Stripes against the dimmed paper:
    new 2.8:1, waiting 1.5:1, late 2.7:1, very late 4.0:1; against the dark steel beside them:
-   3.0, 5.9, 3.1 and 2.2. The word beside each stripe carries the state. */
+   3.0, 5.9, 3.1 and 2.2. The word beside each stripe carries the state. The rail turns
+   lighter than the ground, steel catching the light (1.8:1, its lips 3.3:1), so it never
+   reads as a black slab. A key on steel is open, and a primary key fills with on-steel
+   under an ink label (14.5:1; 12.8:1 against the ground), so it outranks the open keys. */
 @media (prefers-color-scheme: dark) {
   :root.app {
     color-scheme: dark;
     --steel: #1e2225;
     --steel-light: #a9afb2;
-    --steel-dark: #0e1012;
-    --steel-edge: #4a5258;
+    --steel-dark: #444c52;
+    --steel-edge: #6a737a;
     --ink: #14161a;
     --paper: #b9bec0;
     --paper-ink-soft: #393e42;
@@ -106,6 +112,8 @@
     --on-verylate: #f3f5f5;
     --on-steel: #e3e6e8;
     --on-steel-soft: #a7aeb3;
+    --on-steel-reverse: #14161a;
+    --steel-key-fill: transparent;
     --paper-edge: 0 1px 1px rgb(0 0 0 / 0.5), 0 3px 6px -2px rgb(0 0 0 / 0.6);
   }
 }

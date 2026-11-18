@@ -47,7 +47,7 @@
           "#c5cace",
           "#eceff2"
         ],
-        "night": "#0e1012"
+        "night": "#444c52"
       },
       "steel-edge": {
         "role": "neutral",
@@ -62,7 +62,7 @@
           "#c5cacd",
           "#eceff1"
         ],
-        "night": "#4a5258"
+        "night": "#6a737a"
       },
       "ink": {
         "role": "primary",
@@ -379,6 +379,14 @@
         "late vs very late": [
           1.5,
           1.5
+        ],
+        "night rail vs ground": [
+          3.9,
+          1.8
+        ],
+        "primary key label on steel": [
+          16.4,
+          14.5
         ]
       },
       "note": "Pairs are [day, night]. Stripes always sit beside their word in ink."
@@ -458,7 +466,7 @@
       "name": "App Primary Key",
       "kind": "button",
       "refersTo": "app-key-primary",
-      "description": "Claim, Save, Sign in, Place: one per group.",
+      "description": "Claim, Save, Sign in, Place: one per group. Filled with the surface's text colour, label reversed out; on steel at night a light fill with an ink label.",
       "html": "<button class=\"ds-key-primary\" type=\"button\">Claim</button>",
       "css": ".ds-key-primary { min-height: 44px; padding: 3px 14px 0; border: 2px solid var(--ink); border-radius: 0; background: var(--ink); color: var(--paper); font-family: var(--face-label); font-size: 0.9375rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; } .ds-key-primary:hover { background: var(--steel-edge); }"
     },
