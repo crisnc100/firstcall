@@ -138,6 +138,12 @@ export function frame(root: HTMLElement): HTMLElement {
     if ((event.target as Element).closest("a")) closeMenu();
   });
 
+  const tabs = h("nav", { class: "tabs", attrs: { "aria-label": "Main" } }, ...topItems(s).map((i) => navLink(i, false)));
+  // The tab row scrolls sideways when the bar runs out of room; a focused tab that is only
+  // partly in view is brought all the way in, so its focus ring shows.
+  tabs.addEventListener("focusin", (event) => {
+    (event.target as Element).scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
   const header = h(
     "header",
     { class: "topbar" },
@@ -146,7 +152,7 @@ export function frame(root: HTMLElement): HTMLElement {
       { class: "in" },
       h("a", { class: "mark", text: "Firstcall", attrs: { href: homeFor(s), "data-link": true } }),
       h("span", { class: "page-title" }),
-      h("nav", { class: "tabs", attrs: { "aria-label": "Main" } }, ...topItems(s).map((i) => navLink(i, false))),
+      tabs,
       h("div", { class: "right" }, inbox, who, menu),
     ),
   );

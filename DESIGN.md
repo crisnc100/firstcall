@@ -167,8 +167,9 @@ components:
     rounded: "{rounded.none}"
     padding: "3px 14px 0"
     height: "44px"
-  # The fill mixed 80% with its label colour (color-mix in srgb): #484a4c by day and on
-  # paper; on steel at night, on-steel with ink, #babcbf.
+  # The fill mixed 80% with its label colour (color-mix in srgb), so it changes with both:
+  # #484a4c by day (on steel and on paper); at night #35383b on paper and #babcbf on steel.
+  # The value below is the day one.
   app-key-primary-hover:
     backgroundColor: "#484a4c"
     textColor: "{colors.paper}"
@@ -217,7 +218,7 @@ Every lead is a printed ticket clipped to a steel rail at a kitchen pass. The pa
 
 The system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.
 
-Scope: the public front page (`web/index.html`, `web/src/front/`) and the signed-in app (`web/app.html`, `web/src/styles/app.css`). Both read every colour, face and spacing step from `web/src/styles/rail-tokens.css`. The front page persuades; the app is worked in all day, so it keeps the world's palette, faces, square edges and stripes, and spends them on scanning speed rather than spectacle.
+Scope: the public front page (`web/index.html`, `web/src/front/`) and the signed-in app (`web/app.html`, `web/src/styles/app.css`). Both read every colour and face from `web/src/styles/rail-tokens.css`, and the app its spacing steps too; the front page keeps its own fluid gutter in `front.css`. The front page persuades; the app is worked in all day, so it keeps the world's palette, faces, square edges and stripes, and spends them on scanning speed rather than spectacle.
 
 **Key Characteristics:**
 - Steel ground, paper objects, ink type; nothing else competes.
@@ -366,7 +367,7 @@ The signature component.
 ## App components
 
 ### Keys
-- Every app button is a key: square, 44px tall (48px for Claim on a phone), a 2px frame, the label in Label at 0.9375rem with 0.12em tracking.
+- Every app button is a key: square, at least 44px tall (48px for Claim on a phone), a 2px frame, the label in Label at 0.9375rem with 0.12em tracking.
 - **Primary** (Claim, Save, Sign in, Place): filled with the surface's text colour, its label reversed out: ink with a paper label by day and on paper, the light on-steel colour with an ink label on steel at night. Hover mixes the fill a fifth toward the label. One primary per group.
 - **Secondary**: paper fill, ink label; hover inverts to ink, like Heard. On steel at night the key is open (no fill, light frame and label), so the filled primary still outranks it.
 - **Danger** (Delete lead): a 4px double ink frame, so it never passes for an ordinary key. No red.
@@ -383,7 +384,7 @@ The signature component.
 - Small tracked caps in a 1px frame: a lead's state, a message's status, Handled, Confirmed. Stamps sit beside text, never over it.
 
 ### Fields and forms
-- Paper fill, a 1px Faded Print frame and a 2px ink baseline, square, 44px tall. Labels sit above in Atkinson 600. Checkboxes take the text colour of the surface they sit on.
+- Paper fill, a 1px Faded Print frame and a 2px ink baseline, square, at least 44px tall. Labels sit above in Atkinson 600. Checkboxes take the text colour of the surface they sit on.
 - Panels that open under a key are posted: paper, 2px ink frame. Inside a lead's card of keys they open on Pale Steel under a 2px ink rule instead, because they wait for a person.
 
 ### Printed fields
@@ -397,7 +398,7 @@ The signature component.
 - Tables are paper with Label small headers over a 2px ink rule and dashed rules between rows. A row's own header is set like its cells, only bolder.
 
 ### Navigation (app)
-- Top tabs are Label in Soft Ink; the current one turns to ink with a 4px bar over the top rule. Team tabs are stamps that fill with ink when current; the Waiting / Owned switch under them is a tab row. The phone's bottom bar shows icon and short word, the current one in ink with a 4px bar on its top edge.
+- Top tabs are Label in Soft Ink; the current one turns to ink with a 4px bar along the top rule. When the bar runs out of room (large default text, a fallback font, a narrow window) the tab row scrolls sideways inside it, a focused tab scrolls fully into view, and Inbox and the account key stay pinned at right. The account key shows as much of the name as fits. Team tabs are stamps that fill with ink when current; the Waiting / Owned switch under them is a tab row. The phone's bottom bar shows icon and short word, the current one in ink with a 4px bar on its top edge.
 - The Inbox count is a square of the text colour with the ground colour reversed out.
 
 ### Toast

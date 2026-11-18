@@ -182,6 +182,7 @@ h2 {
   padding: 0 24px;
 }
 .mark {
+  flex: none;
   align-self: center;
   font-size: 1.625rem;
   font-weight: 800;
@@ -204,12 +205,21 @@ h2 {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* The tabs give way first: when the bar runs out of room (large default text, a fallback
+   font, a narrow window) they scroll sideways inside it, and Inbox and the account key stay
+   in place. */
 .tabs {
   display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
   gap: var(--s1);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 .tabs a {
   display: flex;
+  flex: none;
   align-items: center;
   padding: 4px var(--s3) 0;
   color: var(--muted);
@@ -218,8 +228,12 @@ h2 {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   text-decoration: none;
+  white-space: nowrap;
   border-bottom: 4px solid transparent;
-  margin-bottom: -2px;
+}
+/* Inside the scrolling row an outside ring would be clipped. */
+.tabs a:focus-visible {
+  outline-offset: -4px;
 }
 .tabs a:hover {
   color: var(--fg);
@@ -229,6 +243,7 @@ h2 {
   border-bottom-color: var(--fg);
 }
 .right {
+  flex: none;
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -612,6 +627,11 @@ a.name:hover {
   font-size: 0.8125rem;
   font-stretch: 87.5%;
   line-height: 1.45;
+}
+/* A select sizes to its longest option; a long team name must not widen the row. */
+.act select {
+  min-width: 0;
+  max-width: min(14rem, 100%);
 }
 .act {
   display: flex;
@@ -1163,23 +1183,16 @@ td {
   border-top: 1px dashed var(--paper-rule);
   overflow-wrap: anywhere;
 }
-/* Short words (Monitor, Deactivated) break only if they truly cannot fit; a long email or
-   name still wraps anywhere, so the table never pushes past its column. */
+/* Roles and status are short fixed words (Monitor, Deactivated) and break only if they truly
+   cannot fit; names, emails and team names wrap anywhere, so the table never pushes past its
+   column. */
 td:nth-child(3),
-td:nth-child(4),
 td:nth-child(5) {
   overflow-wrap: break-word;
 }
 td:last-child {
   width: 1%;
   white-space: nowrap;
-}
-/* Room for an ordinary name and address before a long one wraps anywhere. */
-tbody th {
-  min-width: 7.5rem;
-}
-td:nth-child(2) {
-  min-width: 10rem;
 }
 /* A row's own header names the row: set it like the cells beside it, only bolder. */
 tbody th {
@@ -1442,9 +1455,8 @@ tr.inactive th {
     display: none;
   }
 }
-/* From 768px up the full bar must fit even an admin on a team (six tabs, an unread count and
-   a long name): tighter tabs, and the account key shows as much of the name as fits. Its
-   accessible name stays whole. */
+/* Below 1100px the bar tightens so the usual six tabs show without scrolling at ordinary
+   text sizes. */
 @media (min-width: 768px) and (max-width: 1099px) {
   .topbar .in {
     gap: var(--s3);
@@ -1463,26 +1475,17 @@ tr.inactive th {
   .right {
     gap: var(--s2);
   }
-  .right .who {
-    max-width: 7.5rem;
-  }
 }
+/* The account key shows as much of the name as fits; its accessible name stays whole. */
 @media (min-width: 768px) {
-  .tabs a {
-    white-space: nowrap;
-  }
   .right .who {
     display: block;
+    max-width: min(12rem, 15vw);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     line-height: 38px;
     padding-top: 2px;
-  }
-}
-@media (min-width: 1100px) {
-  .right .who {
-    max-width: 12rem;
   }
 }
 
