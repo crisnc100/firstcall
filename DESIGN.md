@@ -167,8 +167,10 @@ components:
     rounded: "{rounded.none}"
     padding: "3px 14px 0"
     height: "44px"
+  # The fill mixed 80% with its label colour (color-mix in srgb): #484a4c by day and on
+  # paper; on steel at night, on-steel with ink, #babcbf.
   app-key-primary-hover:
-    backgroundColor: "{colors.steel-edge}"
+    backgroundColor: "#484a4c"
     textColor: "{colors.paper}"
   lead-ticket:
     backgroundColor: "{colors.paper}"

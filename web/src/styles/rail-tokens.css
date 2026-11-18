@@ -2,13 +2,13 @@
    that only ever mean how long a lead has waited. The front page and the signed-in app both
    take every colour, face and spacing step from here.
 
-   Contrast, measured: ink on steel 10.6:1, ink-soft on steel 6.6:1, ink on paper 16.4:1,
+   Contrast, measured: ink on steel 10.7:1, ink-soft on steel 6.6:1, ink on paper 16.4:1,
    paper-ink-soft on paper 7.0:1, ink on steel-light 13.1:1, paper-ink-soft on steel-light
-   5.6:1, paper on age-verylate 7.3:1. The other age colours are stripes, never text (waiting
+   5.6:1, paper on age-verylate 7.2:1. The other age colours are stripes, never text (waiting
    is only 2.6:1 on paper), and every stripe has its label word beside it. Late is a true red
    (hue 5) so it never reads as Waiting's orange beside it: 1.9:1 against waiting and 1.5:1
    against very late, which also keeps its label reversed out. Stripes on paper: new 5.1:1,
-   waiting 2.7:1, late 5.0:1, very late 7.3:1. */
+   waiting 2.7:1, late 5.0:1, very late 7.2:1. */
 
 @font-face {
   font-family: "Big Shoulders";
@@ -97,7 +97,7 @@
    3.0, 5.9, 3.1 and 2.2. The word beside each stripe carries the state. The rail turns
    lighter than the ground, steel catching the light (1.8:1, its lips 3.3:1), so it never
    reads as a black slab. A key on steel is open, and a primary key fills with on-steel
-   under an ink label (14.5:1; 12.8:1 against the ground), so it outranks the open keys. */
+   under an ink label (14.4:1; 12.8:1 against the ground), so it outranks the open keys. */
 @media (prefers-color-scheme: dark) {
   :root.app {
     color-scheme: dark;
