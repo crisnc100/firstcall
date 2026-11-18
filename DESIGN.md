@@ -259,7 +259,7 @@ The thresholds are the app's own defaults, read through its urgency function, no
 ### Night shift (app only)
 When the device asks for dark, the app moves to a night palette; the front page stays in daylight. The ground goes to dark steel (`#1e2225`), the rail turns lighter than the ground (`#444c52`, lips `#6a737a`) like steel catching the light, so it never reads as a black slab, and paper dims to `#b9bec0` so it still reads as paper under the lights. Ink on paper stays dark (`#14161a`), Faded Print darkens to `#393e42`, Pale Steel becomes `#a9afb2`, and text on steel turns light (`#e3e6e8`, soft `#a7aeb3`). The four age colours keep their hues.
 
-Measured contrast, day / night: text on steel 10.6 / 12.8; muted text on steel 6.6 / 7.1; ink on paper 16.4 / 9.7; Faded Print on paper 7.0 / 5.8; ink on Pale Steel 13.1 / 8.2; Faded Print on Pale Steel 5.6 / 4.9; the Very late word 7.3 / 6.8. Stripes against paper: New 5.1 / 2.8, Waiting 2.7 / 1.5, Late 5.0 / 2.7, Very late 7.3 / 4.0. Late against Waiting 1.9, against Very late 1.5. The word beside every stripe carries the state, so the stripe is never the only signal.
+Measured contrast, day / night: text on steel 10.7 / 12.8; muted text on steel 6.6 / 7.1; ink on paper 16.4 / 9.7; Faded Print on paper 7.0 / 5.8; ink on Pale Steel 13.1 / 8.2; Faded Print on Pale Steel 5.6 / 4.9; the Very late word 7.2 / 6.8. Stripes against paper: New 5.1 / 2.8, Waiting 2.7 / 1.5, Late 5.0 / 2.7, Very late 7.2 / 4.0. Late against Waiting 1.9, against Very late 1.5. The word beside every stripe carries the state, so the stripe is never the only signal.
 
 ### Errors
 Errors stay in ink, set bold with the alert mark beside them. Red belongs to the age stripes, so an error never borrows it.
