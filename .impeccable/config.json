@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-11-17T18:18:31.282Z",
         "reason": "orchestrator: CSS loads through src/front/main.ts, which the detector does not read; the front CSS sets the display headline far above the 1rem body (see web/src/front/front.css)"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "web/src/styles/app.css"
+        ],
+        "createdAt": "2026-11-18T11:47:01.106Z",
+        "reason": "orchestrator: the left stripe on a lead row is the world's age stripe (DESIGN.md Stripe-Not-Text rule), a state signal with its age word beside it, not decoration"
       }
     ]
   }

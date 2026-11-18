@@ -5,7 +5,10 @@
    Contrast, measured: ink on steel 10.6:1, ink-soft on steel 6.6:1, ink on paper 16.4:1,
    paper-ink-soft on paper 7.0:1, ink on steel-light 13.1:1, paper-ink-soft on steel-light
    5.6:1, paper on age-verylate 7.3:1. The other age colours are stripes, never text (waiting
-   is only 2.6:1 on paper), and every stripe has its label word beside it. */
+   is only 2.6:1 on paper), and every stripe has its label word beside it. Late is a true red
+   (hue 5) so it never reads as Waiting's orange beside it: 1.9:1 against waiting and 1.5:1
+   against very late, which also keeps its label reversed out. Stripes on paper: new 5.1:1,
+   waiting 2.7:1, late 5.0:1, very late 7.3:1. */
 
 @font-face {
   font-family: "Big Shoulders";
@@ -58,7 +61,7 @@
   --paper-rule: #c4cacd;
   --age-new: #2b7a4b;
   --age-waiting: #e3861c;
-  --age-late: #d2491f;
+  --age-late: #d12d1f;
   --age-verylate: #a8191b;
   --on-verylate: #fbfcfc;
 
@@ -87,8 +90,8 @@
    Contrast, measured: on-steel on steel 12.8:1, on-steel-soft on steel 7.1:1, ink on paper
    9.7:1, paper-ink-soft on paper 5.8:1, ink on steel-light 8.2:1, paper-ink-soft on
    steel-light 4.9:1, on-verylate on age-verylate 6.8:1. Stripes against the dimmed paper:
-   new 2.8:1, waiting 1.5:1, late 2.4:1, very late 4.0:1; against the dark steel beside them:
-   3.0, 5.9, 3.6 and 2.2. The word beside each stripe carries the state. */
+   new 2.8:1, waiting 1.5:1, late 2.7:1, very late 4.0:1; against the dark steel beside them:
+   3.0, 5.9, 3.1 and 2.2. The word beside each stripe carries the state. */
 @media (prefers-color-scheme: dark) {
   :root.app {
     color-scheme: dark;

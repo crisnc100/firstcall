@@ -170,15 +170,16 @@
         "role": "tertiary",
         "displayName": "Late Red",
         "tonalRamp": [
-          "#220000",
-          "#4d0200",
-          "#7b1700",
-          "#ab2f00",
-          "#d35530",
-          "#ee8365",
-          "#ffb097",
-          "#ffdecd"
-        ]
+          "#220300",
+          "#4d0600",
+          "#7b0a00",
+          "#ab0e00",
+          "#d33d30",
+          "#ee7065",
+          "#ff9f97",
+          "#ffd1cd"
+        ],
+        "purpose": "A true red (hue 5), apart from Waiting orange; Very late stays the darker crimson with its word reversed out."
       },
       "age-verylate": {
         "role": "tertiary",
@@ -364,12 +365,20 @@
           1.5
         ],
         "late stripe on paper": [
-          4.3,
-          2.4
+          5.0,
+          2.7
         ],
         "very late stripe on paper": [
           7.3,
           4.0
+        ],
+        "late vs waiting": [
+          1.9,
+          1.9
+        ],
+        "late vs very late": [
+          1.5,
+          1.5
         ]
       },
       "note": "Pairs are [day, night]. Stripes always sit beside their word in ink."
@@ -512,7 +521,7 @@
   ],
   "narrative": {
     "northStar": "On the Rail",
-    "overview": "**Creative North Star: \"On the Rail\"**\n\nEvery lead is a printed ticket clipped to a steel rail at a kitchen pass. The page is brushed steel; anything a machine printed or a person wrote sits on bright thermal paper; ink is near-black. A ticket's top stripe ages from green to heat-lamp orange to late red while it waits, and a person claims it by pressing Heard. The world is an operating object, not a landing page: there is no headline beside a dashboard screenshot and no row of feature cards.\n\nThe system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.\n\nScope: the public front page (`web/index.html`, `web/src/front/`) and the signed-in app (`web/app.html`, `web/src/styles/app.css`). Both read every colour, face and spacing step from `web/src/styles/rail-tokens.css`. The front page persuades; the app is worked in all day, so it keeps the world's palette, faces, square edges and stripes, and spends them on scanning speed rather than spectacle.",
+    "overview": "**Creative North Star: \"On the Rail\"**\n\nEvery lead is a printed ticket clipped to a steel rail at a kitchen pass. The page is brushed steel; anything a machine printed or a person wrote sits on bright thermal paper; ink is near-black. A ticket's stripe (along its top on the front page, down its left edge in the app) ages from green to heat-lamp orange to late red while it waits, and a person claims it by pressing Heard. The world is an operating object, not a landing page: there is no headline beside a dashboard screenshot and no row of feature cards.\n\nThe system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.\n\nScope: the public front page (`web/index.html`, `web/src/front/`) and the signed-in app (`web/app.html`, `web/src/styles/app.css`). Both read every colour, face and spacing step from `web/src/styles/rail-tokens.css`. The front page persuades; the app is worked in all day, so it keeps the world's palette, faces, square edges and stripes, and spends them on scanning speed rather than spectacle.",
     "keyCharacteristics": [
       "Steel ground, paper objects, ink type; nothing else competes.",
       "Age colours are state, never decoration.",

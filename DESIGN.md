@@ -13,7 +13,7 @@ colors:
   paper-rule: "#c4cacd"
   age-new: "#2b7a4b"
   age-waiting: "#e3861c"
-  age-late: "#d2491f"
+  age-late: "#d12d1f"
   age-verylate: "#a8191b"
   on-verylate: "#fbfcfc"
   on-steel: "#1b1d20"
@@ -211,7 +211,7 @@ components:
 
 **Creative North Star: "On the Rail"**
 
-Every lead is a printed ticket clipped to a steel rail at a kitchen pass. The page is brushed steel; anything a machine printed or a person wrote sits on bright thermal paper; ink is near-black. A ticket's top stripe ages from green to heat-lamp orange to late red while it waits, and a person claims it by pressing Heard. The world is an operating object, not a landing page: there is no headline beside a dashboard screenshot and no row of feature cards.
+Every lead is a printed ticket clipped to a steel rail at a kitchen pass. The page is brushed steel; anything a machine printed or a person wrote sits on bright thermal paper; ink is near-black. A ticket's stripe (along its top on the front page, down its left edge in the app) ages from green to heat-lamp orange to late red while it waits, and a person claims it by pressing Heard. The world is an operating object, not a landing page: there is no headline beside a dashboard screenshot and no row of feature cards.
 
 The system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.
 
@@ -245,7 +245,7 @@ A cool, near-neutral steel and paper palette with four saturated age colours hel
 ### Tertiary: the age stripes
 - **Fresh Green** (`age-new`): a lead under 5 minutes old.
 - **Heat-Lamp Orange** (`age-waiting`): Waiting, from 5 minutes.
-- **Late Red** (`age-late`): Late, from 15 minutes.
+- **Late Red** (`age-late`): Late, from 15 minutes. A true red (hue 5), so beside Waiting's orange it never reads as a second orange; Very late stays apart as the darker crimson with its word reversed out.
 - **Very Late Red** (`age-verylate`): Very late, from 60 minutes; also the fill behind the Very late word, with `on-verylate` text.
 
 The thresholds are the app's own defaults, read through its urgency function, not front-page constants.
@@ -259,7 +259,7 @@ The thresholds are the app's own defaults, read through its urgency function, no
 ### Night shift (app only)
 When the device asks for dark, the app moves to a night palette; the front page stays in daylight. The ground goes to dark steel (`#1e2225`), the rail to near-black (`#0e1012`) with lighter lips (`#4a5258`), and paper dims to `#b9bec0` so it still reads as paper under the lights. Ink on paper stays dark (`#14161a`), Faded Print darkens to `#393e42`, Pale Steel becomes `#a9afb2`, and text on steel turns light (`#e3e6e8`, soft `#a7aeb3`). The four age colours keep their hues.
 
-Measured contrast, day / night: text on steel 10.6 / 12.8; muted text on steel 6.6 / 7.1; ink on paper 16.4 / 9.7; Faded Print on paper 7.0 / 5.8; ink on Pale Steel 13.1 / 8.2; Faded Print on Pale Steel 5.6 / 4.9; the Very late word 7.3 / 6.8. Stripes against paper: New 5.1 / 2.8, Waiting 2.7 / 1.5, Late 4.3 / 2.4, Very late 7.3 / 4.0. The word beside every stripe carries the state, so the stripe is never the only signal.
+Measured contrast, day / night: text on steel 10.6 / 12.8; muted text on steel 6.6 / 7.1; ink on paper 16.4 / 9.7; Faded Print on paper 7.0 / 5.8; ink on Pale Steel 13.1 / 8.2; Faded Print on Pale Steel 5.6 / 4.9; the Very late word 7.3 / 6.8. Stripes against paper: New 5.1 / 2.8, Waiting 2.7 / 1.5, Late 5.0 / 2.7, Very late 7.3 / 4.0. Late against Waiting 1.9, against Very late 1.5. The word beside every stripe carries the state, so the stripe is never the only signal.
 
 ### Errors
 Errors stay in ink, set bold with the alert mark beside them. Red belongs to the age stripes, so an error never borrows it.
@@ -340,7 +340,7 @@ Tactile and blunt: the button you slap at the pass.
 ### Ticket
 The signature component.
 - **Background:** paper, with the paper-edge shadow and the saw-cut bottom.
-- **Stripe:** a 10px top band in the age colour (ink once claimed).
+- **Stripe:** a 10px top band in the age colour (ink once claimed). In the app's lead rows the same stripe runs 8px down the left edge instead (see Lead ticket).
 - **Head:** source and team stacked at left in small tracked caps, team in Faded Print; timer and age word stacked at right.
 - **Body:** field list in print type, label column in small caps, values in mono, dashed rules between rows. A missing value prints "Not given".
 - **The large ticket** splits into Received (the raw email excerpt) and Printed by the reader, joined by the one ink rule, with a margin note under them.
