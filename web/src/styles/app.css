@@ -6,67 +6,126 @@
 [hidden] {
   display: none !important;
 }
+
+/* Colours are read through three names that every paper surface resets, so one rule (a
+   muted line, a focus ring, a key's frame) reads right on steel and on paper alike. */
+:root {
+  color-scheme: light;
+  --ground: var(--steel);
+  --fg: var(--on-steel);
+  --muted: var(--on-steel-soft);
+  --focus: var(--on-steel);
+}
 html {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
+  background: var(--ground);
+  color: var(--fg);
+  font-family: var(--face-text);
   font-size: 100%;
   line-height: 1.5;
-  scrollbar-color: var(--border-strong) transparent;
-  accent-color: var(--accent);
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--steel-dark) var(--ground);
+  accent-color: var(--ink);
 }
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--ground);
 }
 ::selection {
-  background: var(--accent-tint);
-  color: var(--text);
+  background: var(--ink);
+  color: var(--paper);
 }
 a {
-  color: var(--accent);
-  text-underline-offset: 3px;
+  color: inherit;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+}
+a:hover {
+  text-decoration-thickness: 3px;
 }
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
+
+/* Loose paper: everything a person or the printer wrote sits on it. */
+.row,
+.skeleton,
+.empty,
+.nudge,
+.menu,
+.toast,
+.list-plain,
+table,
+.panel,
+.msg,
+.signin form {
+  background: var(--paper);
+  color: var(--ink);
+  --fg: var(--ink);
+  --muted: var(--paper-ink-soft);
+  --focus: var(--ink);
+}
+
+h1,
+h2,
+.mark,
+.page-title,
+.tabs a,
+.bottombar a,
+.teamtabs a,
+.menu a,
+.menu button,
+.btn,
+.badge,
+.count,
+.head > .muted,
+.t {
+  font-family: var(--face-label);
+}
 h1 {
-  font-size: var(--text-xl);
-  line-height: 1.75rem;
-  font-weight: 700;
   margin: 0;
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
 }
 h2 {
-  font-size: var(--text-lg);
-  line-height: 1.5rem;
-  font-weight: 600;
   margin: var(--s6) 0 var(--s3);
+  font-size: 1.25rem;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .num {
   font-variant-numeric: tabular-nums;
 }
 .muted {
-  color: var(--text-muted);
+  color: var(--muted);
 }
 .sm {
-  font-size: var(--text-sm);
+  font-size: 0.875rem;
   line-height: 1.25rem;
 }
 .sr {
   position: absolute;
   width: 1px;
   height: 1px;
+  margin: -1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 .skip {
   position: absolute;
   left: var(--s4);
   top: -100px;
-  background: var(--surface);
-  padding: var(--s2) var(--s4);
+  padding: var(--s2) var(--s3);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
   z-index: 20;
 }
 .skip:focus {
@@ -78,123 +137,151 @@ h2 {
   flex: none;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 .icon.lg {
   width: 20px;
   height: 20px;
 }
+/* Errors stay in ink: red belongs to the age stripes. Weight and the alert mark carry it. */
 .danger-text {
-  color: var(--danger);
+  color: var(--fg);
+  font-weight: 700;
   display: flex;
   gap: var(--s2);
   align-items: flex-start;
 }
+.danger-text .icon {
+  margin-top: 3px;
+}
 
+/* The top rule: wordmark, the tabs a person can use, Inbox and the account key. */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--ground);
+  border-bottom: 2px solid var(--fg);
 }
 .topbar .in {
   max-width: 1120px;
   margin: 0 auto;
   height: 56px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: var(--s5);
   padding: 0 24px;
 }
 .mark {
-  font-weight: 700;
-  font-size: var(--text-lg);
-  color: var(--text);
+  align-self: center;
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--fg);
   text-decoration: none;
 }
 .page-title {
   display: none;
-  font-weight: 600;
+  align-self: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .tabs {
   display: flex;
   gap: var(--s1);
-  height: 100%;
 }
 .tabs a {
   display: flex;
   align-items: center;
-  padding: 0 var(--s3);
-  color: var(--text-muted);
+  padding: 4px var(--s3) 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
-  font-weight: 500;
-  border-bottom: 2px solid transparent;
+  border-bottom: 4px solid transparent;
+  margin-bottom: -2px;
+}
+.tabs a:hover {
+  color: var(--fg);
 }
 .tabs a[aria-current="page"] {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--fg);
+  border-bottom-color: var(--fg);
 }
 .right {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: var(--s4);
-  color: var(--text-muted);
+  color: var(--fg);
   position: relative;
 }
 .right a.inbox {
-  color: var(--text);
+  color: var(--fg);
   text-decoration: none;
   display: flex;
   gap: 6px;
   align-items: center;
   min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
 }
 .count {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 0 7px;
+  min-width: 22px;
+  padding: 1px 5px 0;
+  background: var(--fg);
+  color: var(--ground);
+  font-size: 0.875rem;
+  font-weight: 800;
   line-height: 1.25rem;
+  text-align: center;
 }
 .menu {
   position: absolute;
   right: 0;
-  top: 52px;
-  background: var(--float);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: var(--s2);
+  top: 50px;
+  box-shadow: var(--paper-edge);
+  border-top: 2px solid var(--ink);
+  padding: var(--s1) 0;
   display: flex;
   flex-direction: column;
-  min-width: 220px;
+  min-width: 240px;
   z-index: 10;
 }
 .menu a,
 .menu button {
   text-align: left;
   min-height: 44px;
-  padding: 0 var(--s3);
+  padding: 2px var(--s4) 0;
   display: flex;
   align-items: center;
   gap: var(--s2);
-  color: var(--text);
+  color: var(--ink);
   background: none;
   border: 0;
-  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
-  border-radius: var(--r-sm);
+}
+.menu a + button {
+  border-top: 1px dashed var(--paper-rule);
 }
 .menu a:hover,
 .menu button:hover {
-  background: var(--surface-sunken);
+  background: var(--ink);
+  color: var(--paper);
+}
+.menu :focus-visible {
+  outline-offset: -3px;
 }
 main {
   max-width: 1120px;
@@ -204,52 +291,76 @@ main {
 .head {
   display: flex;
   align-items: baseline;
-  gap: var(--s3);
+  gap: var(--s3) var(--s4);
   flex-wrap: wrap;
 }
+.head {
+  margin-bottom: var(--s5);
+}
+.head > .muted {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .lede {
+  max-width: 70ch;
   margin: var(--s2) 0 var(--s4);
 }
 .bottombar {
   display: none;
 }
 
+/* Keys: square, ink-framed, the label stamped in the pass's face. The primary key is
+   filled; every other key is paper until it is pressed. */
 .btn {
-  font: inherit;
-  font-weight: 600;
-  border-radius: var(--r-md);
   min-height: 44px;
-  padding: 0 var(--s4);
-  border: 1px solid transparent;
+  padding: 3px 14px 0;
+  border: 2px solid var(--fg);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
   justify-content: center;
-  text-decoration: none;
+}
+.btn .icon {
+  margin-top: -3px;
+}
+.btn.secondary:hover:not([disabled]) {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
 }
 .btn.primary {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--ink);
+  color: var(--paper);
 }
-.btn.primary:hover {
-  background: var(--accent-hover);
+.btn.primary:hover:not([disabled]) {
+  background: var(--steel-edge);
 }
-.btn.secondary {
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border-strong);
-}
+/* A key that cannot be taken back gets a double frame, so it never passes for an ordinary
+   one at a glance. */
 .btn.danger {
-  background: var(--surface);
-  color: var(--danger);
-  border-color: var(--danger);
+  border: 4px double var(--fg);
+}
+.btn.danger:hover:not([disabled]) {
+  background: var(--ink);
+  color: var(--paper);
 }
 .btn:active:not([disabled]) {
   transform: translateY(1px);
 }
 .btn[disabled] {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 .btn[aria-busy="true"] {
@@ -259,17 +370,26 @@ main {
 .claim {
   min-width: 104px;
 }
+
 input,
 select,
 textarea {
   font: inherit;
-  font-size: var(--text-md);
+  font-size: 1rem;
   min-height: 44px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid var(--paper-ink-soft);
+  border-bottom: 2px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
   padding: 0 var(--s3);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  min-height: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
 }
 label {
   font-weight: 600;
@@ -294,20 +414,27 @@ label {
 .signin .pw .reveal,
 .pw .reveal {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 1px;
+  right: 1px;
+  bottom: 2px;
   width: auto;
   min-height: 0;
-  padding: 0 var(--s3);
+  padding: 3px var(--s3) 0;
   background: transparent;
-  border-color: transparent;
-  color: var(--accent);
+  border: 0;
+  color: var(--ink);
+  font-size: 0.875rem;
 }
+.pw .reveal:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+.pw .reveal:focus-visible {
+  outline-offset: -3px;
+}
+
 .panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  border: 2px solid var(--ink);
   padding: var(--s4);
   margin-top: var(--s2);
   display: flex;
@@ -328,75 +455,139 @@ label {
   }
 }
 
+/* A stamp in small tracked caps. The age word is the same stamp, larger, and only Very
+   late is reversed out of its colour. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--text-xs);
-  line-height: 1rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  padding: 2px 8px;
-  border-radius: var(--r-sm);
-  background: var(--surface-sunken);
-  color: var(--text);
+  padding: 2px 6px 0;
+  border: 1px solid var(--muted);
+  color: var(--fg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   width: max-content;
+  max-width: 100%;
   white-space: nowrap;
 }
 .badge .icon {
   width: 12px;
   height: 12px;
+  margin-top: -2px;
 }
 
-ul.leads {
+/* The pool is a rail with tickets hanging from it. Each ticket's gripped edge is its age
+   stripe; the word beside the timer says the same thing in ink. */
+.leads {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.leads::before {
+  content: "";
+  position: relative;
+  z-index: 1;
+  height: 14px;
+  margin-bottom: -12px;
+  background: var(--steel-dark);
+  border-top: 2px solid var(--steel-edge);
+  border-bottom: 4px solid var(--steel-edge);
 }
 .row {
+  --stripe: var(--age-new);
+  position: relative;
   display: grid;
-  grid-template-columns: 136px 1fr 210px auto;
+  grid-template-columns: 136px minmax(0, 1fr) 210px auto;
   gap: var(--s4);
   align-items: center;
-  padding: var(--s3) var(--s4);
-  min-height: 72px;
-  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--s4) var(--s3) calc(var(--s4) + 8px);
+  min-height: 76px;
+  box-shadow: var(--paper-edge);
 }
-.row:first-child {
-  border-top: 0;
+.row::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: var(--stripe);
+}
+.row:has(> .timer.u-waiting) {
+  --stripe: var(--age-waiting);
+}
+.row:has(> .timer.u-late) {
+  --stripe: var(--age-late);
+}
+.row:has(> .timer.u-verylate) {
+  --stripe: var(--age-verylate);
+}
+/* Owned, won or lost to a teammate: someone has it, so the stripe turns to ink. */
+.row:not(:has(> .timer[data-wait])),
+.row.won {
+  --stripe: var(--ink);
 }
 .timer {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 3px;
 }
 .t {
-  font-size: var(--text-xl);
-  line-height: 1.75rem;
-  font-weight: 650;
+  font-size: 1.625rem;
+  line-height: 1;
+  font-weight: 800;
   white-space: nowrap;
 }
+.badge.u {
+  padding: 2px 0 0;
+  border: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.u-verylate .badge.u {
+  padding: 2px 6px 0;
+  background: var(--age-verylate);
+  color: var(--on-verylate);
+}
 .name {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--fg);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
 a.name:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 .name.none {
-  color: var(--text-muted);
+  color: var(--muted);
+  font-family: var(--face-print);
+  font-stretch: 87.5%;
+  font-weight: 600;
 }
 .meta {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
+  color: var(--muted);
+  font-size: 0.875rem;
   overflow-wrap: anywhere;
+}
+.item-line .badge {
+  margin-top: 4px;
+}
+/* What the printer stamped on the ticket: team, arrival, owner. */
+.where,
+.owned-since,
+.stale {
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+  line-height: 1.45;
 }
 .act {
   display: flex;
@@ -405,49 +596,28 @@ a.name:hover {
   align-items: center;
   flex-wrap: wrap;
 }
-.u-new .t {
-  color: var(--text);
-}
-.u-waiting .t {
-  color: var(--waiting-fg);
-}
-.u-waiting .badge.u {
-  background: var(--waiting-bg);
-  color: var(--waiting-fg);
-}
-.u-late .t {
-  color: var(--late-fg);
-}
-.u-late .badge.u {
-  background: var(--late-bg);
-  color: var(--late-fg);
-}
-.u-verylate .t {
-  color: var(--verylate-fg);
-}
-.u-verylate .badge.u {
-  background: var(--verylate-solid);
-  color: var(--on-verylate);
-}
 .row.lost .t,
 .row.lost .name,
 .row.lost {
-  color: var(--text-muted);
+  color: var(--paper-ink-soft);
 }
 .gone {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+  font-family: var(--face-label);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   display: flex;
   gap: 6px;
   align-items: center;
+  color: var(--ink);
 }
 .row-error {
   grid-column: 1 / -1;
-  color: var(--danger);
-  font-size: var(--text-sm);
-}
-.row.won {
-  background: var(--accent-tint);
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.875rem;
 }
 .row.leaving {
   overflow: hidden;
@@ -458,44 +628,84 @@ a.name:hover {
   opacity: 0;
 }
 .skeleton {
-  height: 72px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-sunken);
+  height: 76px;
+  opacity: 0.6;
+  box-shadow: var(--paper-edge);
 }
 .stale {
   margin: 0 0 var(--s2);
 }
 .empty {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: var(--s5);
+  box-shadow: var(--paper-edge);
+  padding: var(--s4) var(--s5) var(--s5);
 }
 .empty h2 {
-  margin: 0 0 var(--s1);
+  margin: 0 0 var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: 1px dashed var(--paper-rule);
+}
+.empty p {
+  margin: 0 0 var(--s3);
+}
+.empty > :last-child {
+  margin-bottom: 0;
 }
 .teamtabs {
   display: flex;
   gap: var(--s2);
-  margin: var(--s4) 0 var(--s5);
+  margin: 0 0 var(--s4);
   flex-wrap: wrap;
 }
 .teamtabs a {
-  padding: 6px 12px;
-  border-radius: var(--r-sm);
+  padding: 3px 12px 0;
+  border: 2px solid transparent;
+  color: var(--fg);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
-  color: var(--text-muted);
-  font-weight: 500;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
 }
+.teamtabs a:hover {
+  border-color: var(--fg);
+}
 .teamtabs a[aria-current="page"] {
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--fg);
+  color: var(--ground);
+  border-color: var(--fg);
+}
+/* The view switch inside one team reads as tabs, under the team stamps above it. */
+.viewtabs {
+  gap: var(--s1);
+  border-bottom: 2px solid var(--fg);
+}
+.viewtabs a {
+  border: 0;
+  border-bottom: 4px solid transparent;
+  margin-bottom: -2px;
+  color: var(--muted);
+}
+.viewtabs a:hover {
+  color: var(--fg);
+  border-bottom-color: var(--muted);
+}
+.viewtabs a[aria-current="page"] {
+  background: none;
+  color: var(--fg);
+  border-bottom-color: var(--fg);
+}
+.teamtabs + .viewtabs,
+.teamselect + .viewtabs {
+  margin-top: 0;
 }
 .teamselect {
   margin: var(--s4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
 }
 .teamselect.phone-only {
   display: none;
@@ -507,11 +717,9 @@ a.name:hover {
   display: flex;
   gap: var(--s3);
   align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  box-shadow: var(--paper-edge);
   padding: var(--s3) var(--s4);
-  margin-bottom: var(--s5);
+  margin: var(--s4) 0 var(--s5);
 }
 .nudge .btn:first-of-type {
   margin-left: auto;
@@ -556,7 +764,6 @@ dd {
   overflow-wrap: anywhere;
 }
 .msg {
-  background: var(--surface-sunken);
   border-radius: var(--r-md);
   padding: var(--s4);
   white-space: pre-wrap;
@@ -642,9 +849,7 @@ textarea {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-md);
 }
 .list-plain li {
   padding: var(--s3) var(--s4);
@@ -668,9 +873,7 @@ textarea {
 table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--r-md);
 }
 th {
   text-align: left;
@@ -697,10 +900,34 @@ tr.inactive td {
   color: var(--text-muted);
 }
 
+/* Sign-in: the wordmark over the pass, and the form posted under it in an ink frame. */
 .signin {
-  max-width: 360px;
-  margin: 18vh auto 0;
-  padding: 0 16px;
+  max-width: 400px;
+  margin: 16vh auto 0;
+  padding: 0 16px 48px;
+}
+.signin .mark {
+  display: block;
+  margin: 0 0 var(--s2);
+  font-size: 2.25rem;
+  line-height: 1;
+}
+.signin h1 {
+  font-size: 1.25rem;
+  letter-spacing: 0.14em;
+}
+.signin form {
+  padding: var(--s5) var(--s5) var(--s5);
+  border: 2px solid var(--ink);
+}
+.signin form .field:last-of-type {
+  margin-bottom: var(--s5);
+}
+.signin .notice {
+  margin: 0 0 var(--s4);
+}
+.signin > p.muted {
+  margin-top: var(--s4);
 }
 @media (max-width: 767px) {
   .signin {
@@ -715,19 +942,18 @@ tr.inactive td {
   position: fixed;
   right: 24px;
   bottom: 24px;
-  background: var(--float);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  border-radius: var(--r-md);
+  max-width: min(440px, calc(100vw - 32px));
+  box-shadow: var(--paper-edge);
+  border-top: 2px solid var(--ink);
   padding: var(--s3) var(--s4);
   display: flex;
   gap: var(--s3);
   align-items: center;
-  border: 1px solid var(--border);
+  flex-wrap: wrap;
   z-index: 30;
 }
-.toast .ok {
-  color: var(--success);
+.toast a {
+  font-weight: 700;
 }
 .toast:empty {
   display: none;
@@ -758,25 +984,28 @@ tr.inactive td {
   main {
     padding: var(--s5) 16px 160px;
   }
+  h1 {
+    font-size: 1.75rem;
+  }
   .teamtabs:not(.viewtabs) {
     display: none;
   }
   .teamselect.phone-only {
-    display: block;
+    display: flex;
   }
   .row {
     /* minmax lets the timer column shrink, so the action never gets pushed past the edge. */
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "timer act" "who who" "where where";
     gap: var(--s2) var(--s3);
-    padding: var(--s4);
+    padding: var(--s3) var(--s4) var(--s4) calc(var(--s4) + 8px);
   }
   .row .timer {
     grid-area: timer;
     flex-direction: row;
     flex-wrap: wrap;
-    align-items: center;
-    gap: var(--s1) var(--s2);
+    align-items: baseline;
+    gap: var(--s1) var(--s3);
     min-width: 0;
   }
   .row.lost,
@@ -842,23 +1071,40 @@ tr.inactive td {
     left: 0;
     right: 0;
     height: calc(64px + env(safe-area-inset-bottom));
-    background: var(--surface);
-    border-top: 1px solid var(--border);
+    background: var(--ground);
+    border-top: 2px solid var(--fg);
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 6;
   }
   .bottombar a {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    font-size: var(--text-xs);
-    color: var(--text-muted);
+    gap: 3px;
+    padding-top: 2px;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     text-decoration: none;
   }
   .bottombar a[aria-current="page"] {
-    color: var(--accent);
+    color: var(--fg);
+  }
+  .bottombar a[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: 18%;
+    right: 18%;
+    height: 4px;
+    background: var(--fg);
+  }
+  .bottombar :focus-visible {
+    outline-offset: -3px;
   }
   .users-table {
     display: none;
@@ -875,7 +1121,7 @@ tr.inactive td {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: var(--bg);
+  background: var(--ground);
   display: grid;
   place-items: center;
   padding: 16px;
