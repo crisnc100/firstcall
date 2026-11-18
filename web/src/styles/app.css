@@ -1295,9 +1295,6 @@ tr.inactive th {
   .row .badge.u {
     letter-spacing: 0.08em;
   }
-  .row .badge.u .icon {
-    display: none;
-  }
   .row.lost,
   .row.wide-act {
     grid-template-areas: "timer timer" "who who" "where where" "act act";
