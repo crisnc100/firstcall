@@ -10,7 +10,6 @@
 /* Colours are read through three names that every paper surface resets, so one rule (a
    muted line, a focus ring, a key's frame) reads right on steel and on paper alike. */
 :root {
-  color-scheme: light;
   --ground: var(--steel);
   --fg: var(--on-steel);
   --muted: var(--on-steel-soft);
@@ -58,6 +57,10 @@ a:hover {
 table,
 .panel,
 .msg,
+dl,
+.notice,
+.notes > li,
+.actions,
 .signin form {
   background: var(--paper);
   color: var(--ink);
@@ -386,6 +389,7 @@ textarea {
 }
 input[type="checkbox"],
 input[type="radio"] {
+  accent-color: var(--fg);
   min-height: 0;
   width: 20px;
   height: 20px;
@@ -732,17 +736,27 @@ a.name:hover {
   margin: var(--s4) 0;
 }
 
+/* One lead: its printed facts and slips on the left, the posted card of keys on the
+   right. */
 .detail {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: var(--s6);
 }
-.detail .lead-name {
-  font-size: var(--text-2xl);
-  line-height: 2.125rem;
-  font-weight: 650;
-  margin: var(--s2) 0;
+.lead-name {
+  font-size: 2.5rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  margin: var(--s2) 0 var(--s3);
   overflow-wrap: anywhere;
+}
+.lead-name.none {
+  font-family: var(--face-print);
+  font-stretch: 87.5%;
+  font-size: 1.75rem;
+  font-weight: 600;
 }
 .line {
   display: flex;
@@ -750,39 +764,124 @@ a.name:hover {
   flex-wrap: wrap;
   align-items: center;
 }
+/* The pool timer on a lead's own page is a stub torn from its ticket: stripe on top. */
+.line > .timer:only-child {
+  --stripe: var(--age-new);
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: 12px var(--s4) var(--s2);
+  background: var(--paper);
+  color: var(--ink);
+  --fg: var(--ink);
+  --muted: var(--paper-ink-soft);
+  box-shadow: var(--paper-edge);
+  border-top: 8px solid var(--stripe);
+}
+.line > .timer.u-waiting {
+  --stripe: var(--age-waiting);
+}
+.line > .timer.u-late {
+  --stripe: var(--age-late);
+}
+.line > .timer.u-verylate {
+  --stripe: var(--age-verylate);
+}
+/* Figures the system measured, set as the printer would. */
+p.num,
+.first-contact {
+  margin: var(--s3) 0;
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+}
+
+/* Printed fields: a ticket's label column in small tracked caps, dashed rules between. */
 dl {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: var(--s2) var(--s4);
+  grid-template-columns: 180px minmax(0, 1fr);
   margin: var(--s4) 0;
+  padding: var(--s1) var(--s4);
+  max-width: 760px;
+  box-shadow: var(--paper-edge);
 }
-dt {
-  color: var(--text-muted);
-}
+dt,
 dd {
   margin: 0;
+  padding: 9px 0 8px;
+  border-bottom: 1px dashed var(--paper-rule);
+}
+dt:last-of-type,
+dd:last-of-type {
+  border-bottom: 0;
+}
+dt {
+  padding-right: var(--s4);
+  color: var(--paper-ink-soft);
+  font-family: var(--face-label);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+dd {
   overflow-wrap: anywhere;
 }
+dd.num,
+dd.line > a {
+  font-family: var(--face-print);
+  font-size: 0.875rem;
+  font-stretch: 87.5%;
+  font-weight: 500;
+}
+dd.line {
+  padding-block: 4px;
+}
+dd.line .btn {
+  min-height: 36px;
+  padding-inline: 10px;
+  font-size: 0.8125rem;
+}
+
+/* A message as it arrived, on its own slip in the printer's raw face. */
 .msg {
-  border-radius: var(--r-md);
-  padding: var(--s4);
-  white-space: pre-wrap;
   max-width: 70ch;
-  overflow-wrap: anywhere;
   margin: var(--s2) 0 var(--s4);
+  padding: var(--s4);
+  box-shadow: var(--paper-edge);
+  font-family: var(--face-print);
+  font-size: 0.875rem;
+  font-stretch: 87.5%;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .msg.clipped {
   max-height: 18rem;
   overflow: hidden;
 }
 .notice {
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-md);
-  padding: var(--s3) var(--s4);
   display: flex;
-  gap: var(--s2);
+  gap: var(--s3);
+  align-items: flex-start;
   margin: var(--s4) 0;
+  padding: var(--s3) var(--s4);
+  border: 2px solid var(--ink);
+  max-width: 760px;
 }
+.notice.followup {
+  flex-direction: column;
+  gap: var(--s1);
+}
+.notice > .icon {
+  margin-top: 2px;
+}
+.notice p {
+  margin: 0;
+}
+
+/* The posted card: every key a person may press on this lead, framed in ink. */
 .actions {
   position: sticky;
   top: 80px;
@@ -790,10 +889,11 @@ dd {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  border: 2px solid var(--ink);
   padding: var(--s4);
+}
+.actions .btn {
+  width: 100%;
 }
 .actions .more {
   display: none;
@@ -803,6 +903,16 @@ dd {
   flex-direction: column;
   gap: var(--s2);
 }
+.actions .panel {
+  margin-top: var(--s2);
+  border: 0;
+  border-top: 2px solid var(--ink);
+  background: var(--steel-light);
+}
+.actions .row-buttons .btn {
+  width: auto;
+  flex: 1;
+}
 textarea {
   padding: var(--s2) var(--s3);
   resize: vertical;
@@ -811,93 +921,232 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  margin: var(--s3) 0 var(--s4);
+  max-width: 760px;
+  margin: var(--s4) 0 var(--s4);
 }
+.note-form .row-buttons,
+.panel .row-buttons {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+/* A note slip: the note as typed, one ink rule, then the note as the reader tidied it and
+   any contact it suggests, set apart on pale steel until a person decides. */
 .notes {
   list-style: none;
+  max-width: 760px;
   padding: 0;
   margin: 0 0 var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
 }
-.notes li {
-  padding: var(--s2) 0;
-  border-top: 1px solid var(--border);
+.notes > li {
+  padding: var(--s3) var(--s4) var(--s4);
+  box-shadow: var(--paper-edge);
+}
+.notes > li > .line:first-child {
+  padding-bottom: var(--s2);
+  border-bottom: 1px dashed var(--paper-rule);
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+}
+.notes .msg {
+  margin: var(--s2) 0 0;
+  padding: 0;
+  box-shadow: none;
+  max-width: none;
 }
 .notes .tidied,
 .notes .read-state {
-  margin: var(--s1) 0 0;
+  margin: var(--s3) 0 0;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--ink);
+}
+.notes .tidied {
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 .notes .suggestion {
+  margin: var(--s3) 0 0;
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--paper-rule);
+}
+/* Only a suggestion still waiting for a person is set apart. */
+.notes .suggestion:has(.row-buttons) {
+  margin: var(--s3) calc(-1 * var(--s4)) calc(-1 * var(--s4));
+  padding: var(--s3) var(--s4) var(--s4);
+  border-top: 2px solid var(--ink);
+  background: var(--steel-light);
+}
+.notes .suggestion:has(.row-buttons):not(:last-child) {
+  margin-bottom: 0;
+}
+.notes .suggestion .row-buttons {
+  display: flex;
+  gap: 10px;
   margin-top: var(--s2);
 }
+.notes .suggestion .row-buttons .btn {
+  flex: 1;
+  max-width: 180px;
+}
+.notes .suggestion > .badge {
+  margin-left: var(--s1);
+}
+
 .history {
   list-style: none;
+  max-width: 760px;
   padding: 0;
   margin: 0;
 }
 .history li {
   display: flex;
   gap: var(--s4);
-  padding: 6px 0;
-  border-top: 1px solid var(--border);
+  padding: 7px 0 6px;
+  border-top: 1px dashed var(--steel-edge);
+}
+.history li:first-child {
+  border-top: 0;
 }
 .history time {
-  color: var(--text-muted);
+  color: var(--muted);
   width: 112px;
   flex: none;
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+  padding-top: 2px;
 }
+
+/* Plain lists (Inbox, the tray, escalations, Account): one paper strip, rows split by
+   dashed rules the way a receipt prints them. */
 .list-plain {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
+  box-shadow: var(--paper-edge);
 }
 .list-plain li {
   padding: var(--s3) var(--s4);
-  border-top: 1px solid var(--border);
+  min-height: 52px;
+  border-top: 1px dashed var(--paper-rule);
   display: flex;
-  gap: var(--s3);
+  gap: var(--s2) var(--s3);
   align-items: center;
   flex-wrap: wrap;
 }
 .list-plain li:first-child {
   border-top: 0;
 }
+.list-plain time,
+.list-plain .muted.num {
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+}
+.list-plain a {
+  font-weight: 600;
+}
+.list-plain li > a:only-child {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+}
+/* An Inbox row is one wide button that opens the alert: it reads as a row, not a key. */
+.list-plain li:has(> .btn[aria-expanded]) {
+  padding: 4px var(--s4) 4px 4px;
+}
+.list-plain .btn[aria-expanded] {
+  min-height: 48px;
+  padding: 0 var(--s3);
+  border: 0;
+  background: none;
+  font-family: var(--face-text);
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.list-plain .btn[aria-expanded]:hover:not([disabled]) {
+  background: var(--steel-light);
+  color: var(--ink);
+}
+.list-plain .btn[aria-expanded="true"] {
+  background: var(--steel-light);
+}
+.list-plain .btn[aria-expanded] .icon,
+.list-plain .btn[aria-expanded] span {
+  margin-top: 0;
+}
 .unread-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
   flex: none;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid var(--border);
+  box-shadow: var(--paper-edge);
 }
 th {
   text-align: left;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  background: var(--surface-sunken);
-  padding: var(--s2) var(--s3);
+  padding: 12px var(--s3) 8px;
+  border-bottom: 2px solid var(--ink);
+  color: var(--paper-ink-soft);
+  font-family: var(--face-label);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 td {
-  padding: var(--s3);
-  border-top: 1px solid var(--border);
-  overflow-wrap: anywhere;
+  padding: var(--s2) var(--s3);
+  border-top: 1px dashed var(--paper-rule);
+  overflow-wrap: break-word;
+}
+td:last-child {
+  width: 1%;
+  white-space: nowrap;
 }
 /* A row's own header names the row: set it like the cells beside it, only bolder. */
 tbody th {
+  font-family: var(--face-text);
   font-size: inherit;
-  font-weight: 600;
-  background: none;
-  padding: var(--s3);
-  border-top: 1px solid var(--border);
-  overflow-wrap: anywhere;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  padding: var(--s2) var(--s3);
+  border-bottom: 0;
+  border-top: 1px dashed var(--paper-rule);
+  overflow-wrap: break-word;
 }
-tr.inactive td {
-  color: var(--text-muted);
+tbody tr:first-child > * {
+  border-top: 0;
+}
+tr.inactive td,
+tr.inactive th {
+  color: var(--paper-ink-soft);
+}
+/* Users' add and edit forms. */
+.panel h2,
+.panel p {
+  margin: 0;
+}
+.panel fieldset {
+  margin: 0;
+  padding: var(--s3) var(--s4) var(--s4);
+  border: 1px dashed var(--paper-rule);
+}
+.panel legend {
+  padding: 0 var(--s1);
+  font-weight: 600;
 }
 
 /* Sign-in: the wordmark over the pass, and the form posted under it in an ink frame. */
@@ -1053,10 +1302,14 @@ tr.inactive td {
     display: inline-flex;
   }
   dl {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   dt {
-    margin-top: var(--s2);
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  dd {
+    padding-top: 0;
   }
   .toast {
     left: 16px;

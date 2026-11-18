@@ -16,6 +16,8 @@ colors:
   age-late: "#d2491f"
   age-verylate: "#a8191b"
   on-verylate: "#fbfcfc"
+  on-steel: "#1b1d20"
+  on-steel-soft: "#3b4046"
 typography:
   display:
     fontFamily: "Big Shoulders, Arial Narrow, sans-serif-condensed, sans-serif"
@@ -72,6 +74,23 @@ typography:
     fontWeight: 500
     lineHeight: 1.5
     fontVariation: "'wdth' 87.5"
+  app-title:
+    fontFamily: "Big Shoulders, Arial Narrow, sans-serif-condensed, sans-serif"
+    fontSize: "2rem"
+    fontWeight: 800
+    lineHeight: 1
+    letterSpacing: "0.01em"
+  app-heading:
+    fontFamily: "Big Shoulders, Arial Narrow, sans-serif-condensed, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 800
+    lineHeight: 1.1
+    letterSpacing: "0.1em"
+  app-body:
+    fontFamily: "Atkinson Hyperlegible Next, system-ui, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.5
   print-raw:
     fontFamily: "Martian Mono, ui-monospace, SFMono-Regular, Menlo, monospace"
     fontSize: "0.6875rem"
@@ -86,6 +105,13 @@ spacing:
   column-gap: "clamp(24px, 4vw, 64px)"
   section: "clamp(64px, 8vw, 112px)"
   ticket-inset: "16px"
+  app-1: "4px"
+  app-2: "8px"
+  app-3: "12px"
+  app-4: "16px"
+  app-5: "24px"
+  app-6: "32px"
+  app-7: "48px"
 components:
   button-heard:
     backgroundColor: "{colors.paper}"
@@ -124,6 +150,59 @@ components:
   nav-link:
     textColor: "{colors.ink}"
     typography: "{typography.label}"
+  app-key:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.none}"
+    padding: "3px 14px 0"
+    height: "44px"
+  app-key-hover:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.paper}"
+  app-key-primary:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.paper}"
+    typography: "{typography.label}"
+    rounded: "{rounded.none}"
+    padding: "3px 14px 0"
+    height: "44px"
+  app-key-primary-hover:
+    backgroundColor: "{colors.steel-edge}"
+    textColor: "{colors.paper}"
+  lead-ticket:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    typography: "{typography.app-body}"
+    rounded: "{rounded.none}"
+    padding: "12px 16px 12px 24px"
+  stamp:
+    textColor: "{colors.ink}"
+    typography: "{typography.label-small}"
+    rounded: "{rounded.none}"
+    padding: "2px 6px 0"
+  field:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    typography: "{typography.app-body}"
+    rounded: "{rounded.none}"
+    padding: "0 12px"
+    height: "44px"
+  posted-card:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.none}"
+    padding: "16px"
+  toast:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    typography: "{typography.app-body}"
+    rounded: "{rounded.none}"
+    padding: "12px 16px"
+  team-stamp-current:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.paper}"
+    typography: "{typography.label}"
 ---
 
 # Design System: Firstcall
@@ -136,7 +215,7 @@ Every lead is a printed ticket clipped to a steel rail at a kitchen pass. The pa
 
 The system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.
 
-Scope today: the public front page (`web/index.html`, `web/src/front/`, `web/src/styles/rail-tokens.css`). The signed-in app (`web/app.html`, `web/src/styles/app.css`, `web/src/styles/tokens.css`) is not yet in this world and is restyled into it in a later phase. Its current look is not part of this system and is not a reference for new work.
+Scope: the public front page (`web/index.html`, `web/src/front/`) and the signed-in app (`web/app.html`, `web/src/styles/app.css`). Both read every colour, face and spacing step from `web/src/styles/rail-tokens.css`. The front page persuades; the app is worked in all day, so it keeps the world's palette, faces, square edges and stripes, and spends them on scanning speed rather than spectacle.
 
 **Key Characteristics:**
 - Steel ground, paper objects, ink type; nothing else competes.
@@ -151,7 +230,7 @@ A cool, near-neutral steel and paper palette with four saturated age colours hel
 
 ### Primary
 - **Ticket Ink** (`ink`): all headlines, body text on steel, the top and footer rules, borders of keys and the house card, the claimed stripe, focus rings, text selection.
-- **Thermal Paper** (`paper`): every printed or written object: tickets, note slips, the tally slip, the house card, key fills.
+- **Thermal Paper** (`paper`): every printed or written object: tickets, note slips, the tally slip, the house card, key fills. In the app also every lead, list, table, message, form card and menu.
 
 ### Neutral
 - **Brushed Steel** (`steel`): the page ground.
@@ -159,6 +238,7 @@ A cool, near-neutral steel and paper palette with four saturated age colours hel
 - **Rail Steel** (`steel-dark`): the rail bar itself.
 - **Rail Edge** (`steel-edge`): the rail's top lip and heavier bottom lip.
 - **Soft Ink** (`ink-soft`): secondary prose on steel (the lede, the demo note, the footer).
+- **On Steel** (`on-steel`, `on-steel-soft`): text set straight on the steel ground in the app. By day they equal Ticket Ink and Soft Ink; at night they turn light while ink on paper stays dark, which is why the app never reads `ink` for text on steel.
 - **Faded Print** (`paper-ink-soft`): secondary text on paper: field labels, team names, the raw email, margin notes, the tally's leader dots.
 - **Paper Rule** (`paper-rule`): dashed rules between printed fields and under slip headers.
 
@@ -174,7 +254,15 @@ The thresholds are the app's own defaults, read through its urgency function, no
 
 **The Stripe-Not-Text Rule.** Fresh Green, Heat-Lamp Orange and Late Red are stripes, never text or text grounds (Heat-Lamp Orange is 2.6:1 on paper). Every stripe has its label word beside it in ink, so colour is never the only signal.
 
-**The Hottest-Colour Rule.** Only the lead that has waited longest gets its age word reversed out of Very Late Red. A claimed ticket's stripe turns to ink.
+**The Hottest-Colour Rule.** Only the lead that has waited longest gets its age word reversed out of Very Late Red. A claimed ticket's stripe turns to ink. In the app, where several leads can be very late at once, every Very late word is reversed: there it is a state, and the board sorts the longest wait first.
+
+### Night shift (app only)
+When the device asks for dark, the app moves to a night palette; the front page stays in daylight. The ground goes to dark steel (`#1e2225`), the rail to near-black (`#0e1012`) with lighter lips (`#4a5258`), and paper dims to `#b9bec0` so it still reads as paper under the lights. Ink on paper stays dark (`#14161a`), Faded Print darkens to `#393e42`, Pale Steel becomes `#a9afb2`, and text on steel turns light (`#e3e6e8`, soft `#a7aeb3`). The four age colours keep their hues.
+
+Measured contrast, day / night: text on steel 10.6 / 12.8; muted text on steel 6.6 / 7.1; ink on paper 16.4 / 9.7; Faded Print on paper 7.0 / 5.8; ink on Pale Steel 13.1 / 8.2; Faded Print on Pale Steel 5.6 / 4.9; the Very late word 7.3 / 6.8. Stripes against paper: New 5.1 / 2.8, Waiting 2.7 / 1.5, Late 4.3 / 2.4, Very late 7.3 / 4.0. The word beside every stripe carries the state, so the stripe is never the only signal.
+
+### Errors
+Errors stay in ink, set bold with the alert mark beside them. Red belongs to the age stripes, so an error never borrows it.
 
 ## Typography
 
@@ -198,6 +286,9 @@ The thresholds are the app's own defaults, read through its urgency function, no
 
 **The Three Speakers Rule.** Pick the face by who is speaking: the pass (Big Shoulders), the printer (Martian Mono), a person (Atkinson). Prose never runs in Big Shoulders, and printed output never runs in Atkinson. Atkinson is the page's default face; Big Shoulders and Martian Mono are opted into per element, so new prose cannot come out condensed.
 
+### In the app
+The app uses a fixed rem scale. **App title** (2rem, 1.75rem on a phone) names the page; **App heading** (1.25rem, 0.1em tracking) names a section; both are uppercase Big Shoulders. Nav tabs, keys, stamps, counts and the age word are Label. Field labels on paper are Label small. Body and form text is **App body** (1rem Atkinson); a lead's name is Atkinson 700, because people read names, not the printer. The printer's face covers what the system stamped: team and arrival lines, times, history times, phone numbers and emails in a lead's fields, a nameless lead's number, the raw message and note text, and the measured "claimed in" and "first contact" lines. The running timer is Figure, as on the front ticket. A lead's name on its own page is Big Shoulders 800 in its own case, since it is data.
+
 **The Slashed Zero Rule.** Figures inside prose stay in the text face, slashed zero and all. Atkinson's zero is slashed for legibility and has no plain alternate; switching faces mid-sentence reads worse.
 
 ## Layout
@@ -210,14 +301,19 @@ Two-part sections (notes, proof) use an asymmetric two-column grid separated by 
 
 **Responsive.** Below 1100px the first ticket takes a full row above the other three, and the notes section stacks. Below 760px everything is one column: tickets stack under the rail so all four ages stay in view while scrolling, the received and printed halves of the first ticket stack with an ink rule between them, the house card's two columns stack, and the tally drops its leader dots and lets labels wrap.
 
+### The app
+A sticky top rule on steel carries the wordmark, the tabs this person may use and, at right, the Inbox count and the account key; a 2px rule runs under it. Pages sit in a 1120px column with a 24px gutter (16px on a phone). On a phone the tabs move to a bottom bar under a 2px rule, and the page title moves into the top rule.
+
+A list of leads is the rail again: a 14px steel bar across the top of the list, tickets hanging below it in one column with 8px of steel between them. A ticket row runs timer and age word, name and item, the printed team and arrival line, then the key, in a four-column grid; on a phone it stacks to timer and key, name, then the printed line. A lead's own page puts its printed facts, slips and messages in a column capped near 760px, with the posted card of keys beside it at 280px; on a phone the card pins above the bottom bar with only its first key and More actions showing.
+
 ## Elevation & Depth
 
 Depth is physical and flat. Steel is the ground and never casts or takes a shadow. Paper sits on it with one shadow, `--paper-edge`, the thickness of a sheet. Steel structure (the rail) gets depth from its edge colour and heavier bottom lip, not from a shadow.
 
 ### Shadow Vocabulary
-- **Paper edge** (`box-shadow: 0 1px 1px rgb(27 29 32 / 0.18), 0 3px 6px -2px rgb(27 29 32 / 0.22)`): tickets, note slips and the tally slip. Nothing else.
+- **Paper edge** (`box-shadow: 0 1px 1px rgb(27 29 32 / 0.18), 0 3px 6px -2px rgb(27 29 32 / 0.22)`): tickets, note slips and the tally slip; in the app also lead rows, plain lists, tables, field lists, message slips, empty states, the account menu and the toast. At night it deepens to black at 0.5 and 0.6 so paper still lifts off dark steel. Nothing else.
 
-**The Paper-Only Shadow Rule.** Only loose paper casts a shadow, and only the paper edge. Posted cards (the house card) are framed in ink instead.
+**The Paper-Only Shadow Rule.** Only loose paper casts a shadow, and only the paper edge. Posted cards (the house card; in the app the sign-in card, a lead's card of keys, panels and notices) are framed in ink instead.
 
 ## Shapes
 
@@ -265,6 +361,48 @@ The signature component.
 ### Links
 - Ink, underlined at 2px with a 0.18em offset; 3px on hover. No colour change.
 
+## App components
+
+### Keys
+- Every app button is a key: square, 44px tall (48px for Claim on a phone), a 2px frame, the label in Label at 0.9375rem with 0.12em tracking.
+- **Primary** (Claim, Save, Sign in, Place): ink fill, paper label; hover goes to Rail Edge. One primary per group.
+- **Secondary**: paper fill, ink label; hover inverts to ink, like Heard.
+- **Danger** (Delete lead): a 4px double ink frame, so it never passes for an ordinary key. No red.
+- Pressed keys drop 1px. A disabled key fades to 55%. A busy key keeps its width and shows the spinner beside its working word.
+- The password field's Show key sits inside the field, frameless.
+
+### Lead ticket
+- A paper row with the paper edge and an 8px age stripe down its left, gripped edge: New, Waiting, Late, Very late, or ink once someone owns it. The stripe follows the timer's own urgency class, so it changes exactly when the word does.
+- Timer in Figure over the age word in Label; only Very late is reversed out of its colour. A name in Atkinson 700 links to the lead; a nameless lead shows its phone or email in print. The item line takes the stamps (Possible duplicate, Follow-up due).
+- A claim lost to a teammate keeps the ticket on the rail, turns its stripe to ink and replaces the key with "Already claimed by a teammate" in Label.
+
+### Stamps
+- Small tracked caps in a 1px frame: a lead's state, a message's status, Handled, Confirmed. Stamps sit beside text, never over it.
+
+### Fields and forms
+- Paper fill, a 1px Faded Print frame and a 2px ink baseline, square, 44px tall. Labels sit above in Atkinson 600. Checkboxes take the text colour of the surface they sit on.
+- Panels that open under a key are posted: paper, 2px ink frame. Inside a lead's card of keys they open on Pale Steel under a 2px ink rule instead, because they wait for a person.
+
+### Printed fields
+- A lead's facts, its buyer profile and a tray message's details are one paper slip: Label small names in Faded Print on the left, values on the right, dashed Paper Rule between rows. On a phone the name sits over its value.
+
+### Note slip (app)
+- The note as typed, in print, then one ink rule, then the tidied note in Atkinson. A suggested contact still waiting for Confirm or Dismiss is set on Pale Steel under a 2px ink rule; a settled one is a dashed line with its stamp.
+
+### Lists and tables
+- Plain lists (Inbox, the tray, escalations, Account) are one paper strip with dashed rules between rows. An Inbox row is one wide frameless button; the open one sits on Pale Steel and unread ones carry a square ink mark and bold subject.
+- Tables are paper with Label small headers over a 2px ink rule and dashed rules between rows. A row's own header is set like its cells, only bolder.
+
+### Navigation (app)
+- Top tabs are Label in Soft Ink; the current one turns to ink with a 4px bar over the top rule. Team tabs are stamps that fill with ink when current; the Waiting / Owned switch under them is a tab row. The phone's bottom bar shows icon and short word, the current one in ink with a 4px bar on its top edge.
+- The Inbox count is a square of the text colour with the ground colour reversed out.
+
+### Toast
+- Loose paper with the paper edge and a 2px ink rule on top, at the bottom right (full width above the bottom bar on a phone). One at a time; it never carries an error.
+
+### Focus
+- A 3px ring in the text colour of the surface it sits on, offset 2px: ink on paper, the steel text colour on steel, so it shows by day and at night.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -280,4 +418,5 @@ The signature component.
 - **Don't** shadow anything that is not loose paper, and don't use any shadow but the paper edge.
 - **Don't** set prose in Big Shoulders or printed output in Atkinson.
 - **Don't** build the SaaS landing page: no headline beside a dashboard screenshot, no row of feature cards.
-- **Don't** take the signed-in app's current styles as a reference until it is restyled into this world.
+- **Don't** use red for an error or a destructive key in the app; weight, the alert mark and the double frame carry it.
+- **Don't** read `ink` for text on steel in the app; read `on-steel`, or the night shift loses it.

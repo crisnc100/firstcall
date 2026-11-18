@@ -3,9 +3,9 @@
    take every colour, face and spacing step from here.
 
    Contrast, measured: ink on steel 10.6:1, ink-soft on steel 6.6:1, ink on paper 16.4:1,
-   paper-ink-soft on paper 7.0:1, paper on age-verylate 7.3:1. The other age colours are
-   stripes, never text (waiting is only 2.6:1 on paper), and every stripe has its label word
-   beside it. */
+   paper-ink-soft on paper 7.0:1, ink on steel-light 13.1:1, paper-ink-soft on steel-light
+   5.6:1, paper on age-verylate 7.3:1. The other age colours are stripes, never text (waiting
+   is only 2.6:1 on paper), and every stripe has its label word beside it. */
 
 @font-face {
   font-family: "Big Shoulders";
@@ -79,4 +79,30 @@
   --s5: 24px;
   --s6: 32px;
   --s7: 48px;
+}
+
+/* The night shift, for the signed-in app only (the front page stays in daylight): dark steel
+   ground, paper dimmed but still paper, ink unchanged on it. The age colours keep their hues.
+
+   Contrast, measured: on-steel on steel 12.8:1, on-steel-soft on steel 7.1:1, ink on paper
+   9.7:1, paper-ink-soft on paper 5.8:1, ink on steel-light 8.2:1, paper-ink-soft on
+   steel-light 4.9:1, on-verylate on age-verylate 6.8:1. Stripes against the dimmed paper:
+   new 2.8:1, waiting 1.5:1, late 2.4:1, very late 4.0:1; against the dark steel beside them:
+   3.0, 5.9, 3.6 and 2.2. The word beside each stripe carries the state. */
+@media (prefers-color-scheme: dark) {
+  :root.app {
+    color-scheme: dark;
+    --steel: #1e2225;
+    --steel-light: #a9afb2;
+    --steel-dark: #0e1012;
+    --steel-edge: #4a5258;
+    --ink: #14161a;
+    --paper: #b9bec0;
+    --paper-ink-soft: #393e42;
+    --paper-rule: #8d9497;
+    --on-verylate: #f3f5f5;
+    --on-steel: #e3e6e8;
+    --on-steel-soft: #a7aeb3;
+    --paper-edge: 0 1px 1px rgb(0 0 0 / 0.5), 0 3px 6px -2px rgb(0 0 0 / 0.6);
+  }
 }

@@ -1,5 +1,5 @@
 // Working a lead: notes and the contacts they log, the buyer profile, the open follow-up,
-// and the outcome, reopen and delete controls. Plain on purpose; the redesign comes later.
+// and the outcome, reopen and delete controls.
 
 import { api, ApiError, type LeadDetail, type Note, type Profile } from "../api";
 import { announce, h } from "../dom";
