@@ -24,5 +24,8 @@ FIRST VIEWPORT: Top bar on steel: wordmark left, uppercase tracked tabs, Inbox k
 FORM: On the Rail, inherited from the front page (DESIGN.md); seed:9d37311b472382c0. Extension inside an established world, code-led, no new roll.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
+## Decisions
+- 2026-11-18: Cristian approved the left-edge age stripe on lead rows ("Left edge (as now)") over the front page's top band, because it scans down a long list.
+
 ## Unresolved
-- None at the start of the build.
+- None.

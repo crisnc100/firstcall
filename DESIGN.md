@@ -373,6 +373,7 @@ The signature component.
 
 ### Lead ticket
 - A paper row with the paper edge and an 8px age stripe down its left, gripped edge: New, Waiting, Late, Very late, or ink once someone owns it. The stripe follows the timer's own urgency class, so it changes exactly when the word does.
+- Cristian approved the left-edge stripe for the app on 2026-11-18, over the front page's top band, because it scans down a long list.
 - Timer in Figure over the age word in Label; only Very late is reversed out of its colour. A name in Atkinson 700 links to the lead; a nameless lead shows its phone or email in print. The item line takes the stamps (Possible duplicate, Follow-up due).
 - A claim lost to a teammate keeps the ticket on the rail, turns its stripe to ink and replaces the key with "Already claimed by a teammate" in Label.
 
