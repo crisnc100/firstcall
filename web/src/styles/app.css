@@ -189,9 +189,16 @@ h2 {
   color: var(--fg);
   text-decoration: none;
 }
+/* A long title (a nameless sender's address) is cut short on screen, never in the DOM, so
+   the Inbox control always stays in reach. */
 .page-title {
   display: none;
   align-self: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -289,6 +296,10 @@ h2 {
 }
 .menu :focus-visible {
   outline-offset: -3px;
+}
+.menu a:hover:focus-visible,
+.menu button:hover:focus-visible {
+  outline-color: var(--paper);
 }
 main {
   max-width: 1120px;
@@ -433,7 +444,10 @@ label {
   color: var(--ink);
   font-size: 0.875rem;
 }
-.pw .reveal:hover {
+/* Show stays unfilled on hover, so its inset focus ring never vanishes into an ink fill. */
+.pw .reveal.btn:hover:not([disabled]) {
+  background: transparent;
+  color: var(--ink);
   text-decoration: underline;
   text-decoration-thickness: 2px;
 }
@@ -1106,8 +1120,16 @@ textarea {
 }
 .msg + .list-plain li {
   min-height: 0;
+  max-width: 100%;
   padding: 0;
   border: 0;
+}
+.msg + .list-plain .btn {
+  max-width: 100%;
+  min-height: 44px;
+  padding-block: 8px 6px;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 .list-plain .btn[aria-expanded] .icon,
 .list-plain .btn[aria-expanded] span {
@@ -1139,11 +1161,25 @@ th {
 td {
   padding: var(--s2) var(--s3);
   border-top: 1px dashed var(--paper-rule);
+  overflow-wrap: anywhere;
+}
+/* Short words (Monitor, Deactivated) break only if they truly cannot fit; a long email or
+   name still wraps anywhere, so the table never pushes past its column. */
+td:nth-child(3),
+td:nth-child(4),
+td:nth-child(5) {
   overflow-wrap: break-word;
 }
 td:last-child {
   width: 1%;
   white-space: nowrap;
+}
+/* Room for an ordinary name and address before a long one wraps anywhere. */
+tbody th {
+  min-width: 7.5rem;
+}
+td:nth-child(2) {
+  min-width: 10rem;
 }
 /* A row's own header names the row: set it like the cells beside it, only bolder. */
 tbody th {
@@ -1156,7 +1192,7 @@ tbody th {
   padding: var(--s2) var(--s3);
   border-bottom: 0;
   border-top: 1px dashed var(--paper-rule);
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 tbody tr:first-child > * {
   border-top: 0;
@@ -1404,6 +1440,49 @@ tr.inactive th {
 @media (min-width: 768px) {
   .users-list {
     display: none;
+  }
+}
+/* From 768px up the full bar must fit even an admin on a team (six tabs, an unread count and
+   a long name): tighter tabs, and the account key shows as much of the name as fits. Its
+   accessible name stays whole. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .topbar .in {
+    gap: var(--s3);
+  }
+  .mark {
+    font-size: 1.375rem;
+  }
+  .tabs {
+    gap: 0;
+  }
+  .tabs a {
+    padding-inline: 6px;
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+  }
+  .right {
+    gap: var(--s2);
+  }
+  .right .who {
+    max-width: 7.5rem;
+  }
+}
+@media (min-width: 768px) {
+  .tabs a {
+    white-space: nowrap;
+  }
+  .right .who {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 38px;
+    padding-top: 2px;
+  }
+}
+@media (min-width: 1100px) {
+  .right .who {
+    max-width: 12rem;
   }
 }
 
