@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-17T18:35:53Z",
+  "generatedAt": "2026-11-18T12:00:00Z",
   "title": "Design System: Firstcall",
   "extensions": {
     "colorMeta": {
@@ -16,7 +16,8 @@
           "#a2a5a8",
           "#c6c9cc",
           "#edeff0"
-        ]
+        ],
+        "night": "#1e2225"
       },
       "steel-light": {
         "role": "neutral",
@@ -30,7 +31,8 @@
           "#a2a5a8",
           "#c7c9cb",
           "#edeff0"
-        ]
+        ],
+        "night": "#a9afb2"
       },
       "steel-dark": {
         "role": "neutral",
@@ -44,7 +46,8 @@
           "#a0a6ab",
           "#c5cace",
           "#eceff2"
-        ]
+        ],
+        "night": "#444c52"
       },
       "steel-edge": {
         "role": "neutral",
@@ -58,7 +61,8 @@
           "#a0a6aa",
           "#c5cacd",
           "#eceff1"
-        ]
+        ],
+        "night": "#6a737a"
       },
       "ink": {
         "role": "primary",
@@ -72,7 +76,8 @@
           "#a3a5a8",
           "#c7c9cc",
           "#edeef0"
-        ]
+        ],
+        "night": "#14161a"
       },
       "ink-soft": {
         "role": "neutral",
@@ -100,7 +105,8 @@
           "#a4a5a5",
           "#c9c9c9",
           "#eeeeee"
-        ]
+        ],
+        "night": "#b9bec0"
       },
       "paper-ink-soft": {
         "role": "neutral",
@@ -114,7 +120,8 @@
           "#a1a6a9",
           "#c6cacc",
           "#eceff1"
-        ]
+        ],
+        "night": "#393e42"
       },
       "paper-rule": {
         "role": "neutral",
@@ -128,7 +135,8 @@
           "#a1a6a8",
           "#c6cacb",
           "#eceff0"
-        ]
+        ],
+        "night": "#8d9497"
       },
       "age-new": {
         "role": "tertiary",
@@ -162,15 +170,16 @@
         "role": "tertiary",
         "displayName": "Late Red",
         "tonalRamp": [
-          "#220000",
-          "#4d0200",
-          "#7b1700",
-          "#ab2f00",
-          "#d35530",
-          "#ee8365",
-          "#ffb097",
-          "#ffdecd"
-        ]
+          "#220300",
+          "#4d0600",
+          "#7b0a00",
+          "#ab0e00",
+          "#d33d30",
+          "#ee7065",
+          "#ff9f97",
+          "#ffd1cd"
+        ],
+        "purpose": "A true red (hue 5), apart from Waiting orange; Very late stays the darker crimson with its word reversed out."
       },
       "age-verylate": {
         "role": "tertiary",
@@ -198,7 +207,20 @@
           "#a4a5a5",
           "#c9c9c9",
           "#eeeeee"
-        ]
+        ],
+        "night": "#f3f5f5"
+      },
+      "on-steel": {
+        "role": "neutral",
+        "displayName": "On Steel",
+        "purpose": "Text set straight on steel in the app; light at night while ink on paper stays dark.",
+        "night": "#e3e6e8"
+      },
+      "on-steel-soft": {
+        "role": "neutral",
+        "displayName": "On Steel, soft",
+        "purpose": "Muted text and inactive tabs on steel in the app.",
+        "night": "#a7aeb3"
       }
     },
     "typographyMeta": {
@@ -245,13 +267,25 @@
       "print-raw": {
         "displayName": "Print raw",
         "purpose": "A message excerpt as it arrived."
+      },
+      "app-title": {
+        "displayName": "App title",
+        "purpose": "The page name in the app; uppercase, fixed 2rem (1.75rem on a phone)."
+      },
+      "app-heading": {
+        "displayName": "App heading",
+        "purpose": "Section names in the app; uppercase, 0.1em tracking."
+      },
+      "app-body": {
+        "displayName": "App body",
+        "purpose": "Prose, names and every form field in the app."
       }
     },
     "shadows": [
       {
         "name": "paper-edge",
         "value": "0 1px 1px rgb(27 29 32 / 0.18), 0 3px 6px -2px rgb(27 29 32 / 0.22)",
-        "purpose": "The thickness of a sheet under tickets, note slips and the tally slip. Nothing else casts a shadow."
+        "purpose": "The thickness of a sheet under tickets, note slips and the tally slip; in the app under lead rows, lists, tables, field lists, message slips, empty states, the menu and the toast. At night: 0 1px 1px rgb(0 0 0 / 0.5), 0 3px 6px -2px rgb(0 0 0 / 0.6)."
       }
     ],
     "motion": [
@@ -264,6 +298,11 @@
         "name": "state-change",
         "value": "none (instant)",
         "purpose": "Claiming, confirming and stripe changes swap at once with no transition."
+      },
+      {
+        "name": "ticket-leave",
+        "value": "max-height, padding, opacity 180ms ease-out",
+        "purpose": "A claimed or placed ticket leaves the rail; skipped under prefers-reduced-motion."
       }
     ],
     "breakpoints": [
@@ -274,14 +313,84 @@
       {
         "name": "one-column",
         "value": "760px"
+      },
+      {
+        "name": "app-phone",
+        "value": "767px"
       }
     ],
     "focus": {
-      "value": "outline: 3px solid var(--ink); outline-offset: 3px",
-      "purpose": "Global focus ring."
+      "value": "outline: 3px solid var(--focus); outline-offset: 2px (front page: var(--ink), offset 3px)",
+      "purpose": "Global focus ring; in the app --focus is the text colour of the surface, so it shows on steel and paper by day and at night."
     },
     "cssSource": "web/src/styles/rail-tokens.css",
-    "scope": "Public front page only. The signed-in app (web/app.html, app.css, tokens.css) is not yet in this world."
+    "scope": "The public front page and the signed-in app (web/app.html, web/src/styles/app.css); both read rail-tokens.css. The app adds a night-shift palette under prefers-color-scheme: dark, scoped to :root.app.",
+    "nightShift": {
+      "scope": ":root.app under prefers-color-scheme: dark; the front page stays light.",
+      "contrast": {
+        "text on steel": [
+          10.6,
+          12.8
+        ],
+        "muted on steel": [
+          6.6,
+          7.1
+        ],
+        "ink on paper": [
+          16.4,
+          9.7
+        ],
+        "faded print on paper": [
+          7.0,
+          5.8
+        ],
+        "ink on pale steel": [
+          13.1,
+          8.2
+        ],
+        "faded print on pale steel": [
+          5.6,
+          4.9
+        ],
+        "very late word": [
+          7.3,
+          6.8
+        ],
+        "new stripe on paper": [
+          5.1,
+          2.8
+        ],
+        "waiting stripe on paper": [
+          2.7,
+          1.5
+        ],
+        "late stripe on paper": [
+          5.0,
+          2.7
+        ],
+        "very late stripe on paper": [
+          7.3,
+          4.0
+        ],
+        "late vs waiting": [
+          1.9,
+          1.9
+        ],
+        "late vs very late": [
+          1.5,
+          1.5
+        ],
+        "night rail vs ground": [
+          3.9,
+          1.8
+        ],
+        "primary key label on steel": [
+          16.4,
+          14.5
+        ]
+      },
+      "note": "Pairs are [day, night]. Stripes always sit beside their word in ink."
+    }
   },
   "components": [
     {
@@ -344,11 +453,83 @@
       "description": "The wordmark and three tracked uppercase links over a 2px ink rule.",
       "html": "<header class=\"ds-top\"><a class=\"ds-mark\" href=\"#\">Firstcall</a><nav><a href=\"#\">How it works</a><a href=\"#\">Proof</a><a href=\"#\">Code</a></nav></header>",
       "css": ".ds-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 18px 24px 14px; border-bottom: 2px solid var(--ink); background: var(--steel); color: var(--ink); font-family: var(--face-label); } .ds-mark { color: inherit; font-size: 1.75rem; font-weight: 800; letter-spacing: 0.01em; text-decoration: none; } .ds-top nav { display: flex; gap: 32px; } .ds-top nav a { color: inherit; font-size: 1rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; } .ds-top nav a:hover { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 0.18em; } .ds-top a:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }"
+    },
+    {
+      "name": "App Key",
+      "kind": "button",
+      "refersTo": "app-key",
+      "description": "Every secondary button in the app; inverts to ink on hover like Heard.",
+      "html": "<button class=\"ds-key\" type=\"button\">Edit profile</button>",
+      "css": ".ds-key { min-height: 44px; padding: 3px 14px 0; border: 2px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font-family: var(--face-label); font-size: 0.9375rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; } .ds-key:hover { background: var(--ink); color: var(--paper); } .ds-key:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "App Primary Key",
+      "kind": "button",
+      "refersTo": "app-key-primary",
+      "description": "Claim, Save, Sign in, Place: one per group. Filled with the surface's text colour, label reversed out; on steel at night a light fill with an ink label.",
+      "html": "<button class=\"ds-key-primary\" type=\"button\">Claim</button>",
+      "css": ".ds-key-primary { min-height: 44px; padding: 3px 14px 0; border: 2px solid var(--ink); border-radius: 0; background: var(--ink); color: var(--paper); font-family: var(--face-label); font-size: 0.9375rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; } .ds-key-primary:hover { background: var(--steel-edge); }"
+    },
+    {
+      "name": "Danger Key",
+      "kind": "button",
+      "refersTo": "app-key",
+      "description": "A key that cannot be taken back: double ink frame, no red.",
+      "html": "<button class=\"ds-key ds-danger\" type=\"button\">Delete lead…</button>",
+      "css": ".ds-danger { border: 4px double var(--ink); }"
+    },
+    {
+      "name": "Lead Ticket",
+      "kind": "list-item",
+      "refersTo": "lead-ticket",
+      "description": "A lead on the rail: paper row, 8px age stripe on the left edge, timer and age word, name and item, printed team and arrival line, key.",
+      "html": "<li class=\"ds-lead\" data-age=\"late\"><div><span class=\"ds-t\">23 min</span><span class=\"ds-age\">Late</span></div><div><a href=\"#\">Theo Lindqvist</a><div>Alder Ridge townhome</div></div><div class=\"ds-print\">North · Arrived 06:20</div><button class=\"ds-key-primary\" type=\"button\">Claim</button></li>",
+      "css": ".ds-lead { position: relative; display: grid; grid-template-columns: 136px 1fr 210px auto; gap: 16px; align-items: center; padding: 12px 16px 12px 24px; background: var(--paper); color: var(--ink); box-shadow: var(--paper-edge); list-style: none; } .ds-lead::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 8px; background: var(--age-new); } .ds-lead[data-age='waiting']::before { background: var(--age-waiting); } .ds-lead[data-age='late']::before { background: var(--age-late); } .ds-lead[data-age='verylate']::before { background: var(--age-verylate); } .ds-lead[data-age='owned']::before { background: var(--ink); } .ds-t { display: block; font-family: var(--face-label); font-size: 1.625rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; } .ds-age { font-family: var(--face-label); font-size: 0.9375rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; } .ds-print { font-family: var(--face-print); font-size: 0.8125rem; font-stretch: 87.5%; color: var(--paper-ink-soft); }"
+    },
+    {
+      "name": "Stamp",
+      "kind": "badge",
+      "refersTo": "stamp",
+      "description": "A state or status in small tracked caps inside a 1px frame.",
+      "html": "<span class=\"ds-stamp\">Owned</span>",
+      "css": ".ds-stamp { display: inline-flex; padding: 2px 6px 0; border: 1px solid var(--paper-ink-soft); font-family: var(--face-label); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Text, select and textarea: paper, a Faded Print frame and an ink baseline.",
+      "html": "<label for=\"ds-f\">Email</label><input id=\"ds-f\" class=\"ds-field\" type=\"email\">",
+      "css": ".ds-field { min-height: 44px; padding: 0 12px; border: 1px solid var(--paper-ink-soft); border-bottom: 2px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font: inherit; }"
+    },
+    {
+      "name": "Posted Card",
+      "kind": "container",
+      "refersTo": "posted-card",
+      "description": "The sign-in card, a lead's card of keys, panels and notices: paper framed in 2px ink, no shadow.",
+      "html": "<aside class=\"ds-posted\"><button class=\"ds-key\" type=\"button\">Release to pool</button></aside>",
+      "css": ".ds-posted { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 2px solid var(--ink); background: var(--paper); }"
+    },
+    {
+      "name": "Toast",
+      "kind": "feedback",
+      "refersTo": "toast",
+      "description": "One confirmation at a time on loose paper with an ink rule on top; never an error.",
+      "html": "<div class=\"ds-toast\">You own this lead now. <a href=\"#\">Open lead</a></div>",
+      "css": ".ds-toast { display: flex; gap: 12px; padding: 12px 16px; background: var(--paper); color: var(--ink); border-top: 2px solid var(--ink); box-shadow: var(--paper-edge); }"
+    },
+    {
+      "name": "App Tabs",
+      "kind": "navigation",
+      "refersTo": "nav-link",
+      "description": "Top-rule tabs: Label in soft ink, the current one in ink with a 4px bar over the rule.",
+      "html": "<nav class=\"ds-tabs\"><a aria-current=\"page\" href=\"#\">Pool</a><a href=\"#\">My leads</a></nav>",
+      "css": ".ds-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--ink); } .ds-tabs a { padding: 12px 12px 8px; margin-bottom: -2px; border-bottom: 4px solid transparent; color: var(--ink-soft); font-family: var(--face-label); font-size: 0.9375rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; } .ds-tabs a[aria-current='page'] { color: var(--ink); border-bottom-color: var(--ink); }"
     }
   ],
   "narrative": {
     "northStar": "On the Rail",
-    "overview": "**Creative North Star: \"On the Rail\"**\n\nEvery lead is a printed ticket clipped to a steel rail at a kitchen pass. The page is brushed steel; anything a machine printed or a person wrote sits on bright thermal paper; ink is near-black. A ticket's top stripe ages from green to heat-lamp orange to late red while it waits, and a person claims it by pressing Heard. The world is an operating object, not a landing page: there is no headline beside a dashboard screenshot and no row of feature cards.\n\nThe system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.\n\nScope today: the public front page (`web/index.html`, `web/src/front/`, `web/src/styles/rail-tokens.css`). The signed-in app (`web/app.html`, `web/src/styles/app.css`, `web/src/styles/tokens.css`) is not yet in this world and is restyled into it in a later phase. Its current look is not part of this system and is not a reference for new work.",
+    "overview": "**Creative North Star: \"On the Rail\"**\n\nEvery lead is a printed ticket clipped to a steel rail at a kitchen pass. The page is brushed steel; anything a machine printed or a person wrote sits on bright thermal paper; ink is near-black. A ticket's stripe (along its top on the front page, down its left edge in the app) ages from green to heat-lamp orange to late red while it waits, and a person claims it by pressing Heard. The world is an operating object, not a landing page: there is no headline beside a dashboard screenshot and no row of feature cards.\n\nThe system is plain and hard-edged. Three faces split the work by who is speaking: a condensed industrial sans for anything stamped or posted (headlines, labels, timers, keys), a narrow monospace for anything the printer produced, and a humanist text face for prose a person reads at length. Colour carries almost no decoration; the age colours exist only to say how long a lead has waited.\n\nScope: the public front page (`web/index.html`, `web/src/front/`) and the signed-in app (`web/app.html`, `web/src/styles/app.css`). Both read every colour, face and spacing step from `web/src/styles/rail-tokens.css`. The front page persuades; the app is worked in all day, so it keeps the world's palette, faces, square edges and stripes, and spends them on scanning speed rather than spectacle.",
     "keyCharacteristics": [
       "Steel ground, paper objects, ink type; nothing else competes.",
       "Age colours are state, never decoration.",
@@ -369,7 +550,7 @@
       },
       {
         "name": "The Hottest-Colour Rule",
-        "body": "Only the lead that has waited longest gets its age word reversed out of Very Late Red. A claimed ticket's stripe turns to ink.",
+        "body": "Only the lead that has waited longest gets its age word reversed out of Very Late Red. A claimed ticket's stripe turns to ink. In the app, where several leads can be very late at once, every Very late word is reversed: there it is a state, and the board sorts the longest wait first.",
         "section": "colors"
       },
       {
@@ -384,7 +565,7 @@
       },
       {
         "name": "The Paper-Only Shadow Rule",
-        "body": "Only loose paper casts a shadow, and only the paper edge. Posted cards (the house card) are framed in ink instead.",
+        "body": "Only loose paper casts a shadow, and only the paper edge. Posted cards (the house card; in the app the sign-in card, a lead's card of keys, panels and notices) are framed in ink instead.",
         "section": "elevation"
       },
       {
@@ -406,7 +587,8 @@
       "**Don't** shadow anything that is not loose paper, and don't use any shadow but the paper edge.",
       "**Don't** set prose in Big Shoulders or printed output in Atkinson.",
       "**Don't** build the SaaS landing page: no headline beside a dashboard screenshot, no row of feature cards.",
-      "**Don't** take the signed-in app's current styles as a reference until it is restyled into this world."
+      "**Don't** use red for an error or a destructive key in the app; weight, the alert mark and the double frame carry it.",
+      "**Don't** read `ink` for text on steel in the app; read `on-steel`, or the night shift loses it."
     ]
   }
 }

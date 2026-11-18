@@ -1,0 +1,13 @@
+{
+  "mode": "pr",
+  "purpose": "Restyle Firstcall's signed-in app into the On the Rail look the public front page already uses, so a visitor who signs in stays in one visual world. Look only: behaviour, routes and copy meaning stay the same.",
+  "mechanism": "web/src/styles/rail-tokens.css is the one token source for both pages; it adds on-steel text tokens, spacing steps, key tokens and an app-only night palette under :root.app (the front page stays light). web/src/styles/tokens.css is deleted and web/src/main.ts no longer imports it. web/app.html preloads the rail fonts and sets class app. web/src/styles/app.css restyles the shell, nav, lead rows (paper tickets hanging from a steel rail, an 8px age stripe on the left edge driven by the existing .timer.u-* classes), keys, fields, detail, notes, inbox, lists, tables and sign-in. web/src/leadlist.ts no longer renders age-word icons and web/src/icons.ts drops their shapes. web/src/pages/inbox.ts gives the digest's Open link key classes; it stays a link. The Late red token changed for both pages.",
+  "decisions": "Left-edge age stripe in the app (approved by Cristian 2026-11-18: it scans down a long list) instead of the front page's top band. Red means only late: errors use ink and an icon. Every Very late word is reversed out in the app. Age-word icons dropped at every width so a long wait stays on one line at 390. No claimed stamp: that would change behaviour. The repeated phone title is pre-existing and left alone.",
+  "readers": "DESIGN.md: whoever builds the next page in this look. README and docs/board.md: people running Firstcall. Comments in the CSS and TS: the next maintainer.",
+  "base": "origin/main",
+  "docMap": [
+    {"behavior": "The app's visual system (tokens, rows, keys, night palette)", "docs": ["DESIGN.md"]},
+    {"behavior": "Which stylesheet and tokens the pages load", "docs": ["docs/board.md"]}
+  ],
+  "untouchable": ["PRODUCT.md", ".impeccable/**", "evals/**", "config/**"]
+}

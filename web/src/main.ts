@@ -1,4 +1,4 @@
-import "./styles/tokens.css";
+import "./styles/rail-tokens.css";
 import "./styles/app.css";
 
 import { loadSession, session, whenSignedOut } from "./api";

@@ -14,7 +14,7 @@ import {
   waitWords,
   type Urgency,
 } from "./format";
-import { icon, type IconName } from "./icons";
+import { icon } from "./icons";
 import { toast } from "./toast";
 
 export type Mode = "pool" | "mine" | "team" | "unassigned" | "waiting";
@@ -26,11 +26,6 @@ const STATE_WORD: Record<string, string> = {
   won: "Won",
   lost: "Lost",
   not_real: "Not real",
-};
-const URGENCY_ICON: Partial<Record<Urgency, IconName>> = {
-  waiting: "clock",
-  late: "triangle",
-  verylate: "octagon",
 };
 // A lost claim stays on screen at least this long, so it never vanishes under the reader.
 const LOST_HOLD_MS = 5000;
@@ -73,8 +68,7 @@ function fillTimer(box: HTMLElement, lead: Lead): void {
   const level = leadUrgency(lead);
   box.className = `timer u-${level}`;
   box.setAttribute("aria-label", `${waitWords(minutes)}. ${URGENCY_WORD[level]}.`);
-  const glyph = URGENCY_ICON[level];
-  const badge = h("span", { class: "badge u" }, glyph ? icon(glyph) : null, URGENCY_WORD[level]);
+  const badge = h("span", { class: "badge u", text: URGENCY_WORD[level] });
   box.replaceChildren(h("span", { class: "t num", text: waitText(minutes) }), badge);
 }
 

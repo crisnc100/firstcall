@@ -40,7 +40,7 @@ function body(mail: Mail): HTMLElement {
       ? h(
           "ul",
           { class: "list-plain", attrs: { "aria-label": "Leads in this alert" } },
-          ...links.map((l) => h("li", {}, link(l.path, `Open ${l.label || "the lead"}`))),
+          ...links.map((l) => h("li", {}, link(l.path, `Open ${l.label || "the lead"}`, "btn secondary"))),
         )
       : null,
   );

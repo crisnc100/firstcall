@@ -6,67 +6,133 @@
 [hidden] {
   display: none !important;
 }
+
+/* Colours are read through three names that every paper surface resets, so one rule (a
+   muted line, a focus ring, a key's frame) reads right on steel and on paper alike. */
+:root {
+  --ground: var(--steel);
+  --fg: var(--on-steel);
+  --muted: var(--on-steel-soft);
+  --focus: var(--on-steel);
+  --on-fg: var(--on-steel-reverse);
+  --key-fill: var(--steel-key-fill);
+}
 html {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
+  background: var(--ground);
+  color: var(--fg);
+  font-family: var(--face-text);
   font-size: 100%;
   line-height: 1.5;
-  scrollbar-color: var(--border-strong) transparent;
-  accent-color: var(--accent);
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--steel-dark) var(--ground);
+  accent-color: var(--ink);
 }
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--ground);
 }
 ::selection {
-  background: var(--accent-tint);
-  color: var(--text);
+  background: var(--ink);
+  color: var(--paper);
 }
 a {
-  color: var(--accent);
-  text-underline-offset: 3px;
+  color: inherit;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
+}
+a:hover {
+  text-decoration-thickness: 3px;
 }
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
+
+/* Loose paper: everything a person or the printer wrote sits on it. */
+.row,
+.skeleton,
+.empty,
+.nudge,
+.menu,
+.toast,
+.list-plain,
+table,
+.panel,
+.msg,
+dl,
+.notice,
+.notes > li,
+.actions,
+.signin form {
+  background: var(--paper);
+  color: var(--ink);
+  --fg: var(--ink);
+  --muted: var(--paper-ink-soft);
+  --focus: var(--ink);
+  --on-fg: var(--paper);
+  --key-fill: var(--paper);
+}
+
+h1,
+h2,
+.mark,
+.page-title,
+.tabs a,
+.bottombar a,
+.teamtabs a,
+.menu a,
+.menu button,
+.btn,
+.badge,
+.count,
+.head > .muted,
+.t {
+  font-family: var(--face-label);
+}
 h1 {
-  font-size: var(--text-xl);
-  line-height: 1.75rem;
-  font-weight: 700;
   margin: 0;
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
 }
 h2 {
-  font-size: var(--text-lg);
-  line-height: 1.5rem;
-  font-weight: 600;
   margin: var(--s6) 0 var(--s3);
+  font-size: 1.25rem;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 .num {
   font-variant-numeric: tabular-nums;
 }
 .muted {
-  color: var(--text-muted);
+  color: var(--muted);
 }
 .sm {
-  font-size: var(--text-sm);
+  font-size: 0.875rem;
   line-height: 1.25rem;
 }
 .sr {
   position: absolute;
   width: 1px;
   height: 1px;
+  margin: -1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 .skip {
   position: absolute;
   left: var(--s4);
   top: -100px;
-  background: var(--surface);
-  padding: var(--s2) var(--s4);
+  padding: var(--s2) var(--s3);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
   z-index: 20;
 }
 .skip:focus {
@@ -78,123 +144,177 @@ h2 {
   flex: none;
   stroke: currentColor;
   fill: none;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-width: 2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 .icon.lg {
   width: 20px;
   height: 20px;
 }
+/* Errors stay in ink: red belongs to the age stripes. Weight and the alert mark carry it. */
 .danger-text {
-  color: var(--danger);
+  color: var(--fg);
+  font-weight: 700;
   display: flex;
   gap: var(--s2);
   align-items: flex-start;
 }
+.danger-text .icon {
+  margin-top: 3px;
+}
 
+/* The top rule: wordmark, the tabs a person can use, Inbox and the account key. */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--ground);
+  border-bottom: 2px solid var(--fg);
 }
 .topbar .in {
   max-width: 1120px;
   margin: 0 auto;
   height: 56px;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: var(--s5);
   padding: 0 24px;
 }
 .mark {
-  font-weight: 700;
-  font-size: var(--text-lg);
-  color: var(--text);
+  flex: none;
+  align-self: center;
+  font-size: 1.625rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--fg);
   text-decoration: none;
 }
+/* A long title (a nameless sender's address) is cut short on screen, never in the DOM, so
+   the Inbox control always stays in reach. */
 .page-title {
   display: none;
-  font-weight: 600;
+  align-self: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
+/* The tabs give way first: when the bar runs out of room (large default text, a fallback
+   font, a narrow window) they scroll sideways inside it, and Inbox and the account key stay
+   in place. */
 .tabs {
   display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
   gap: var(--s1);
-  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 .tabs a {
   display: flex;
+  flex: none;
   align-items: center;
-  padding: 0 var(--s3);
-  color: var(--text-muted);
+  padding: 4px var(--s3) 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
-  font-weight: 500;
-  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  border-bottom: 4px solid transparent;
+}
+/* Inside the scrolling row an outside ring would be clipped. */
+.tabs a:focus-visible {
+  outline-offset: -4px;
+}
+.tabs a:hover {
+  color: var(--fg);
 }
 .tabs a[aria-current="page"] {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--fg);
+  border-bottom-color: var(--fg);
 }
 .right {
+  flex: none;
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: var(--s4);
-  color: var(--text-muted);
+  color: var(--fg);
   position: relative;
 }
 .right a.inbox {
-  color: var(--text);
+  color: var(--fg);
   text-decoration: none;
   display: flex;
   gap: 6px;
   align-items: center;
   min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
 }
 .count {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 0 7px;
+  min-width: 22px;
+  padding: 1px 5px 0;
+  background: var(--fg);
+  color: var(--ground);
+  font-size: 0.875rem;
+  font-weight: 800;
   line-height: 1.25rem;
+  text-align: center;
 }
 .menu {
   position: absolute;
   right: 0;
-  top: 52px;
-  background: var(--float);
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: var(--s2);
+  top: 50px;
+  box-shadow: var(--paper-edge);
+  border-top: 2px solid var(--ink);
+  padding: var(--s1) 0;
   display: flex;
   flex-direction: column;
-  min-width: 220px;
+  min-width: 240px;
   z-index: 10;
 }
 .menu a,
 .menu button {
   text-align: left;
   min-height: 44px;
-  padding: 0 var(--s3);
+  padding: 2px var(--s4) 0;
   display: flex;
   align-items: center;
   gap: var(--s2);
-  color: var(--text);
+  color: var(--ink);
   background: none;
   border: 0;
-  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
-  border-radius: var(--r-sm);
+}
+.menu a + button {
+  border-top: 1px dashed var(--paper-rule);
 }
 .menu a:hover,
 .menu button:hover {
-  background: var(--surface-sunken);
+  background: var(--ink);
+  color: var(--paper);
+}
+.menu :focus-visible {
+  outline-offset: -3px;
+}
+.menu a:hover:focus-visible,
+.menu button:hover:focus-visible {
+  outline-color: var(--paper);
 }
 main {
   max-width: 1120px;
@@ -204,52 +324,76 @@ main {
 .head {
   display: flex;
   align-items: baseline;
-  gap: var(--s3);
+  gap: var(--s3) var(--s4);
   flex-wrap: wrap;
 }
+.head {
+  margin-bottom: var(--s5);
+}
+.head > .muted {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .lede {
+  max-width: 70ch;
   margin: var(--s2) 0 var(--s4);
 }
 .bottombar {
   display: none;
 }
 
+/* Keys: square, framed in the text colour, the label stamped in the pass's face. The
+   primary key is filled with the text colour; every other key is paper (on steel at night,
+   open) until it is pressed. */
 .btn {
-  font: inherit;
-  font-weight: 600;
-  border-radius: var(--r-md);
   min-height: 44px;
-  padding: 0 var(--s4);
-  border: 1px solid transparent;
+  padding: 3px 14px 0;
+  border: 2px solid var(--fg);
+  border-radius: 0;
+  background: var(--key-fill);
+  color: var(--fg);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
   justify-content: center;
-  text-decoration: none;
+}
+.btn .icon {
+  margin-top: -3px;
+}
+.btn.secondary:hover:not([disabled]) {
+  background: var(--fg);
+  color: var(--on-fg);
 }
 .btn.primary {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--fg);
+  color: var(--on-fg);
 }
-.btn.primary:hover {
-  background: var(--accent-hover);
+.btn.primary:hover:not([disabled]) {
+  background: color-mix(in srgb, var(--fg) 80%, var(--on-fg));
 }
-.btn.secondary {
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border-strong);
-}
+/* A key that cannot be taken back gets a double frame, so it never passes for an ordinary
+   one at a glance. */
 .btn.danger {
-  background: var(--surface);
-  color: var(--danger);
-  border-color: var(--danger);
+  border: 4px double var(--fg);
+}
+.btn.danger:hover:not([disabled]) {
+  background: var(--fg);
+  color: var(--on-fg);
 }
 .btn:active:not([disabled]) {
   transform: translateY(1px);
 }
 .btn[disabled] {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 .btn[aria-busy="true"] {
@@ -259,17 +403,27 @@ main {
 .claim {
   min-width: 104px;
 }
+
 input,
 select,
 textarea {
   font: inherit;
-  font-size: var(--text-md);
+  font-size: 1rem;
   min-height: 44px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid var(--paper-ink-soft);
+  border-bottom: 2px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
   padding: 0 var(--s3);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--fg);
+  min-height: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
 }
 label {
   font-weight: 600;
@@ -294,20 +448,30 @@ label {
 .signin .pw .reveal,
 .pw .reveal {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 1px;
+  right: 1px;
+  bottom: 2px;
   width: auto;
   min-height: 0;
-  padding: 0 var(--s3);
+  padding: 3px var(--s3) 0;
   background: transparent;
-  border-color: transparent;
-  color: var(--accent);
+  border: 0;
+  color: var(--ink);
+  font-size: 0.875rem;
 }
+/* Show stays unfilled on hover, so its inset focus ring never vanishes into an ink fill. */
+.pw .reveal.btn:hover:not([disabled]) {
+  background: transparent;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+.pw .reveal:focus-visible {
+  outline-offset: -3px;
+}
+
 .panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  border: 2px solid var(--ink);
   padding: var(--s4);
   margin-top: var(--s2);
   display: flex;
@@ -328,75 +492,146 @@ label {
   }
 }
 
+/* A stamp in small tracked caps. The age word is the same stamp, larger, and only Very
+   late is reversed out of its colour. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: var(--text-xs);
-  line-height: 1rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  padding: 2px 8px;
-  border-radius: var(--r-sm);
-  background: var(--surface-sunken);
-  color: var(--text);
+  padding: 2px 6px 0;
+  border: 1px solid var(--muted);
+  color: var(--fg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.15rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   width: max-content;
+  max-width: 100%;
   white-space: nowrap;
 }
 .badge .icon {
   width: 12px;
   height: 12px;
+  margin-top: -2px;
 }
 
-ul.leads {
+/* The pool is a rail with tickets hanging from it. Each ticket's gripped edge is its age
+   stripe; the word beside the timer says the same thing in ink. */
+.leads {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+/* Front-page proportions: a 22px bar with a top lip and a heavier bottom lip that grips
+   the first ticket 6px down, whichever edge carries the ticket's stripe. */
+.leads::before {
+  content: "";
+  position: relative;
+  z-index: 1;
+  height: 22px;
+  margin: 0 calc(-1 * var(--s2)) calc(-1 * (var(--s2) + 6px));
+  background: var(--steel-dark);
+  border-top: 2px solid var(--steel-edge);
+  border-bottom: 5px solid var(--steel-edge);
 }
 .row {
+  --stripe: var(--age-new);
+  position: relative;
   display: grid;
-  grid-template-columns: 136px 1fr 210px auto;
+  grid-template-columns: 136px minmax(0, 1fr) 210px auto;
   gap: var(--s4);
   align-items: center;
-  padding: var(--s3) var(--s4);
-  min-height: 72px;
-  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--s4) var(--s3) calc(var(--s4) + 8px);
+  min-height: 76px;
+  box-shadow: var(--paper-edge);
 }
-.row:first-child {
-  border-top: 0;
+.row::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 8px;
+  background: var(--stripe);
+}
+.row:has(> .timer.u-waiting) {
+  --stripe: var(--age-waiting);
+}
+.row:has(> .timer.u-late) {
+  --stripe: var(--age-late);
+}
+.row:has(> .timer.u-verylate) {
+  --stripe: var(--age-verylate);
+}
+/* Owned, won or lost to a teammate: someone has it, so the stripe turns to ink. */
+.row:not(:has(> .timer[data-wait])),
+.row.won:has(> .timer) {
+  --stripe: var(--ink);
 }
 .timer {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 3px;
 }
 .t {
-  font-size: var(--text-xl);
-  line-height: 1.75rem;
-  font-weight: 650;
+  font-size: 1.625rem;
+  line-height: 1;
+  font-weight: 800;
   white-space: nowrap;
 }
+.badge.u {
+  padding: 2px 0 0;
+  border: 0;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+.u-verylate .badge.u {
+  padding: 2px 6px 0;
+  background: var(--age-verylate);
+  color: var(--on-verylate);
+}
 .name {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  color: var(--text);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--fg);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
 a.name:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 .name.none {
-  color: var(--text-muted);
+  color: var(--muted);
+  font-family: var(--face-print);
+  font-stretch: 87.5%;
+  font-weight: 600;
 }
 .meta {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
+  color: var(--muted);
+  font-size: 0.875rem;
   overflow-wrap: anywhere;
+}
+.item-line .badge {
+  margin-top: 4px;
+}
+/* What the printer stamped on the ticket: team, arrival, owner. */
+.where,
+.owned-since,
+.stale {
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+  line-height: 1.45;
+}
+/* A select sizes to its longest option; a long team name must not widen the row. */
+.act select {
+  min-width: 0;
+  max-width: min(14rem, 100%);
 }
 .act {
   display: flex;
@@ -405,49 +640,28 @@ a.name:hover {
   align-items: center;
   flex-wrap: wrap;
 }
-.u-new .t {
-  color: var(--text);
-}
-.u-waiting .t {
-  color: var(--waiting-fg);
-}
-.u-waiting .badge.u {
-  background: var(--waiting-bg);
-  color: var(--waiting-fg);
-}
-.u-late .t {
-  color: var(--late-fg);
-}
-.u-late .badge.u {
-  background: var(--late-bg);
-  color: var(--late-fg);
-}
-.u-verylate .t {
-  color: var(--verylate-fg);
-}
-.u-verylate .badge.u {
-  background: var(--verylate-solid);
-  color: var(--on-verylate);
-}
 .row.lost .t,
 .row.lost .name,
 .row.lost {
-  color: var(--text-muted);
+  color: var(--paper-ink-soft);
 }
 .gone {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+  font-family: var(--face-label);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   display: flex;
   gap: 6px;
   align-items: center;
+  color: var(--ink);
 }
 .row-error {
   grid-column: 1 / -1;
-  color: var(--danger);
-  font-size: var(--text-sm);
-}
-.row.won {
-  background: var(--accent-tint);
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.875rem;
 }
 .row.leaving {
   overflow: hidden;
@@ -458,44 +672,84 @@ a.name:hover {
   opacity: 0;
 }
 .skeleton {
-  height: 72px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-sunken);
+  height: 76px;
+  opacity: 0.6;
+  box-shadow: var(--paper-edge);
 }
 .stale {
   margin: 0 0 var(--s2);
 }
 .empty {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: var(--s5);
+  box-shadow: var(--paper-edge);
+  padding: var(--s4) var(--s5) var(--s5);
 }
 .empty h2 {
-  margin: 0 0 var(--s1);
+  margin: 0 0 var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: 1px dashed var(--paper-rule);
+}
+.empty p {
+  margin: 0 0 var(--s3);
+}
+.empty > :last-child {
+  margin-bottom: 0;
 }
 .teamtabs {
   display: flex;
   gap: var(--s2);
-  margin: var(--s4) 0 var(--s5);
+  margin: 0 0 var(--s4);
   flex-wrap: wrap;
 }
 .teamtabs a {
-  padding: 6px 12px;
-  border-radius: var(--r-sm);
+  padding: 3px 12px 0;
+  border: 2px solid transparent;
+  color: var(--fg);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   text-decoration: none;
-  color: var(--text-muted);
-  font-weight: 500;
   min-height: 44px;
   display: inline-flex;
   align-items: center;
 }
+.teamtabs a:hover {
+  border-color: var(--fg);
+}
 .teamtabs a[aria-current="page"] {
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--fg);
+  color: var(--ground);
+  border-color: var(--fg);
+}
+/* The view switch inside one team reads as tabs, under the team stamps above it. */
+.viewtabs {
+  gap: var(--s1);
+  border-bottom: 2px solid var(--fg);
+}
+.viewtabs a {
+  border: 0;
+  border-bottom: 4px solid transparent;
+  margin-bottom: -2px;
+  color: var(--muted);
+}
+.viewtabs a:hover {
+  color: var(--fg);
+  border-bottom-color: var(--muted);
+}
+.viewtabs a[aria-current="page"] {
+  background: none;
+  color: var(--fg);
+  border-bottom-color: var(--fg);
+}
+.teamtabs + .viewtabs,
+.teamselect + .viewtabs {
+  margin-top: 0;
 }
 .teamselect {
   margin: var(--s4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
 }
 .teamselect.phone-only {
   display: none;
@@ -507,11 +761,9 @@ a.name:hover {
   display: flex;
   gap: var(--s3);
   align-items: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  box-shadow: var(--paper-edge);
   padding: var(--s3) var(--s4);
-  margin-bottom: var(--s5);
+  margin: var(--s4) 0 var(--s5);
 }
 .nudge .btn:first-of-type {
   margin-left: auto;
@@ -524,17 +776,27 @@ a.name:hover {
   margin: var(--s4) 0;
 }
 
+/* One lead: its printed facts and slips on the left, the posted card of keys on the
+   right. */
 .detail {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: var(--s6);
 }
-.detail .lead-name {
-  font-size: var(--text-2xl);
-  line-height: 2.125rem;
-  font-weight: 650;
-  margin: var(--s2) 0;
+.lead-name {
+  font-size: 2.5rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  margin: var(--s2) 0 var(--s3);
   overflow-wrap: anywhere;
+}
+.lead-name.none {
+  font-family: var(--face-print);
+  font-stretch: 87.5%;
+  font-size: 1.75rem;
+  font-weight: 600;
 }
 .line {
   display: flex;
@@ -542,40 +804,124 @@ a.name:hover {
   flex-wrap: wrap;
   align-items: center;
 }
+/* The pool timer on a lead's own page is a stub torn from its ticket: stripe on top. */
+.line > .timer:only-child {
+  --stripe: var(--age-new);
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: 12px var(--s4) var(--s2);
+  background: var(--paper);
+  color: var(--ink);
+  --fg: var(--ink);
+  --muted: var(--paper-ink-soft);
+  box-shadow: var(--paper-edge);
+  border-top: 8px solid var(--stripe);
+}
+.line > .timer.u-waiting {
+  --stripe: var(--age-waiting);
+}
+.line > .timer.u-late {
+  --stripe: var(--age-late);
+}
+.line > .timer.u-verylate {
+  --stripe: var(--age-verylate);
+}
+/* Figures the system measured, set as the printer would. */
+p.num,
+.first-contact {
+  margin: var(--s3) 0;
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+}
+
+/* Printed fields: a ticket's label column in small tracked caps, dashed rules between. */
 dl {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: var(--s2) var(--s4);
+  grid-template-columns: 180px minmax(0, 1fr);
   margin: var(--s4) 0;
+  padding: var(--s1) var(--s4);
+  max-width: 760px;
+  box-shadow: var(--paper-edge);
 }
-dt {
-  color: var(--text-muted);
-}
+dt,
 dd {
   margin: 0;
+  padding: 9px 0 8px;
+  border-bottom: 1px dashed var(--paper-rule);
+}
+dt:last-of-type,
+dd:last-of-type {
+  border-bottom: 0;
+}
+dt {
+  padding-right: var(--s4);
+  color: var(--paper-ink-soft);
+  font-family: var(--face-label);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+dd {
   overflow-wrap: anywhere;
 }
+dd.num,
+dd.line > a {
+  font-family: var(--face-print);
+  font-size: 0.875rem;
+  font-stretch: 87.5%;
+  font-weight: 500;
+}
+dd.line {
+  padding-block: 4px;
+}
+dd.line .btn {
+  min-height: 36px;
+  padding-inline: 10px;
+  font-size: 0.8125rem;
+}
+
+/* A message as it arrived, on its own slip in the printer's raw face. */
 .msg {
-  background: var(--surface-sunken);
-  border-radius: var(--r-md);
-  padding: var(--s4);
-  white-space: pre-wrap;
   max-width: 70ch;
-  overflow-wrap: anywhere;
   margin: var(--s2) 0 var(--s4);
+  padding: var(--s4);
+  box-shadow: var(--paper-edge);
+  font-family: var(--face-print);
+  font-size: 0.875rem;
+  font-stretch: 87.5%;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .msg.clipped {
   max-height: 18rem;
   overflow: hidden;
 }
 .notice {
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-md);
-  padding: var(--s3) var(--s4);
   display: flex;
-  gap: var(--s2);
+  gap: var(--s3);
+  align-items: flex-start;
   margin: var(--s4) 0;
+  padding: var(--s3) var(--s4);
+  border: 2px solid var(--ink);
+  max-width: 760px;
 }
+.notice.followup {
+  flex-direction: column;
+  gap: var(--s1);
+}
+.notice > .icon {
+  margin-top: 2px;
+}
+.notice p {
+  margin: 0;
+}
+
+/* The posted card: every key a person may press on this lead, framed in ink. */
 .actions {
   position: sticky;
   top: 80px;
@@ -583,10 +929,11 @@ dd {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  border: 2px solid var(--ink);
   padding: var(--s4);
+}
+.actions .btn {
+  width: 100%;
 }
 .actions .more {
   display: none;
@@ -596,6 +943,16 @@ dd {
   flex-direction: column;
   gap: var(--s2);
 }
+.actions .panel {
+  margin-top: var(--s2);
+  border: 0;
+  border-top: 2px solid var(--ink);
+  background: var(--steel-light);
+}
+.actions .row-buttons .btn {
+  width: auto;
+  flex: 1;
+}
 textarea {
   padding: var(--s2) var(--s3);
   resize: vertical;
@@ -604,103 +961,302 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  margin: var(--s3) 0 var(--s4);
+  max-width: 760px;
+  margin: var(--s4) 0 var(--s4);
 }
+.note-form .row-buttons,
+.panel .row-buttons {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+/* A note slip: the note as typed, one ink rule, then the note as the reader tidied it and
+   any contact it suggests, set apart on pale steel until a person decides. */
 .notes {
   list-style: none;
+  max-width: 760px;
   padding: 0;
   margin: 0 0 var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
 }
-.notes li {
-  padding: var(--s2) 0;
-  border-top: 1px solid var(--border);
+.notes > li {
+  padding: var(--s3) var(--s4) var(--s4);
+  box-shadow: var(--paper-edge);
+}
+.notes > li > .line:first-child {
+  padding-bottom: var(--s2);
+  border-bottom: 1px dashed var(--paper-rule);
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+}
+.notes .msg {
+  margin: var(--s2) 0 0;
+  padding: 0;
+  box-shadow: none;
+  max-width: none;
 }
 .notes .tidied,
 .notes .read-state {
-  margin: var(--s1) 0 0;
+  margin: var(--s3) 0 0;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--ink);
+}
+.notes .tidied {
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 .notes .suggestion {
+  margin: var(--s3) 0 0;
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--paper-rule);
+}
+/* Only a suggestion still waiting for a person is set apart. */
+.notes .suggestion:has(.row-buttons) {
+  margin: var(--s3) calc(-1 * var(--s4)) calc(-1 * var(--s4));
+  padding: var(--s3) var(--s4) var(--s4);
+  border-top: 2px solid var(--ink);
+  background: var(--steel-light);
+}
+.notes .suggestion:has(.row-buttons):not(:last-child) {
+  margin-bottom: 0;
+}
+.notes .suggestion .row-buttons {
+  display: flex;
+  gap: 10px;
   margin-top: var(--s2);
 }
+.notes .suggestion .row-buttons .btn {
+  flex: 1;
+  max-width: 180px;
+}
+.notes .suggestion > .badge {
+  margin-left: var(--s1);
+}
+
 .history {
   list-style: none;
+  max-width: 760px;
   padding: 0;
   margin: 0;
 }
 .history li {
   display: flex;
   gap: var(--s4);
-  padding: 6px 0;
-  border-top: 1px solid var(--border);
+  padding: 7px 0 6px;
+  border-top: 1px dashed var(--steel-edge);
+}
+.history li:first-child {
+  border-top: 0;
 }
 .history time {
-  color: var(--text-muted);
+  color: var(--muted);
   width: 112px;
   flex: none;
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+  padding-top: 2px;
 }
+
+/* Plain lists (Inbox, the tray, escalations, Account): one paper strip, rows split by
+   dashed rules the way a receipt prints them. */
 .list-plain {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  box-shadow: var(--paper-edge);
 }
 .list-plain li {
   padding: var(--s3) var(--s4);
-  border-top: 1px solid var(--border);
+  min-height: 52px;
+  border-top: 1px dashed var(--paper-rule);
   display: flex;
-  gap: var(--s3);
+  gap: var(--s2) var(--s3);
   align-items: center;
   flex-wrap: wrap;
 }
 .list-plain li:first-child {
   border-top: 0;
 }
+.list-plain time,
+.list-plain .muted.num {
+  font-family: var(--face-print);
+  font-size: 0.8125rem;
+  font-stretch: 87.5%;
+}
+.list-plain a {
+  font-weight: 600;
+}
+.list-plain li > a:only-child {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+}
+/* An Inbox row is one wide button that opens the alert: it reads as a row, not a key. */
+/* The whole row takes the fill, time column included. */
+.list-plain li:has(> .btn[aria-expanded]) {
+  padding: 0 var(--s4) 0 0;
+}
+.list-plain li:has(> .btn[aria-expanded="true"]),
+.list-plain li:has(> .btn[aria-expanded]:hover) {
+  background: var(--steel-light);
+}
+.list-plain .btn[aria-expanded] {
+  min-height: 52px;
+  padding: 0 var(--s4);
+  border: 0;
+  background: none;
+  font-family: var(--face-text);
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.list-plain .btn[aria-expanded]:hover:not([disabled]) {
+  background: none;
+  color: var(--ink);
+}
+.list-plain .btn[aria-expanded]:focus-visible {
+  outline-offset: -3px;
+}
+/* An alert's links to its leads are keys under the slip, in the slip's own width. */
+.msg + .list-plain {
+  max-width: 70ch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  background: none;
+  box-shadow: none;
+  color: var(--on-steel);
+  --fg: var(--on-steel);
+  --muted: var(--on-steel-soft);
+  --focus: var(--on-steel);
+  --on-fg: var(--on-steel-reverse);
+  --key-fill: var(--steel-key-fill);
+}
+.msg + .list-plain li {
+  min-height: 0;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+}
+.msg + .list-plain .btn {
+  max-width: 100%;
+  min-height: 44px;
+  padding-block: 8px 6px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.list-plain .btn[aria-expanded] .icon,
+.list-plain .btn[aria-expanded] span {
+  margin-top: 0;
+}
 .unread-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
   flex: none;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  box-shadow: var(--paper-edge);
 }
 th {
   text-align: left;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  background: var(--surface-sunken);
-  padding: var(--s2) var(--s3);
+  padding: 12px var(--s3) 8px;
+  border-bottom: 2px solid var(--ink);
+  color: var(--paper-ink-soft);
+  font-family: var(--face-label);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 td {
-  padding: var(--s3);
-  border-top: 1px solid var(--border);
+  padding: var(--s2) var(--s3);
+  border-top: 1px dashed var(--paper-rule);
   overflow-wrap: anywhere;
+}
+/* Roles and status are short fixed words (Monitor, Deactivated) and break only if they truly
+   cannot fit; names, emails and team names wrap anywhere, so the table never pushes past its
+   column. */
+td:nth-child(3),
+td:nth-child(5) {
+  overflow-wrap: break-word;
+}
+td:last-child {
+  width: 1%;
+  white-space: nowrap;
 }
 /* A row's own header names the row: set it like the cells beside it, only bolder. */
 tbody th {
+  font-family: var(--face-text);
   font-size: inherit;
-  font-weight: 600;
-  background: none;
-  padding: var(--s3);
-  border-top: 1px solid var(--border);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  padding: var(--s2) var(--s3);
+  border-bottom: 0;
+  border-top: 1px dashed var(--paper-rule);
   overflow-wrap: anywhere;
 }
-tr.inactive td {
-  color: var(--text-muted);
+tbody tr:first-child > * {
+  border-top: 0;
+}
+tr.inactive td,
+tr.inactive th {
+  color: var(--paper-ink-soft);
+}
+/* Users' add and edit forms. */
+.panel h2,
+.panel p {
+  margin: 0;
+}
+.panel fieldset {
+  margin: 0;
+  padding: var(--s3) var(--s4) var(--s4);
+  border: 1px dashed var(--paper-rule);
+}
+.panel legend {
+  padding: 0 var(--s1);
+  font-weight: 600;
 }
 
+/* Sign-in: the wordmark over the pass, and the form posted under it in an ink frame. */
 .signin {
-  max-width: 360px;
-  margin: 18vh auto 0;
-  padding: 0 16px;
+  max-width: 400px;
+  margin: 16vh auto 0;
+  padding: 0 16px 48px;
+}
+.signin .mark {
+  display: block;
+  margin: 0 0 var(--s2);
+  font-size: 2.25rem;
+  line-height: 1;
+}
+.signin h1 {
+  font-size: 1.25rem;
+  letter-spacing: 0.14em;
+}
+.signin form {
+  padding: var(--s5) var(--s5) var(--s5);
+  border: 2px solid var(--ink);
+}
+.signin form .field:last-of-type {
+  margin-bottom: var(--s5);
+}
+.signin .notice {
+  margin: 0 0 var(--s4);
+}
+.signin > p.muted {
+  margin-top: var(--s4);
 }
 @media (max-width: 767px) {
   .signin {
@@ -715,19 +1271,18 @@ tr.inactive td {
   position: fixed;
   right: 24px;
   bottom: 24px;
-  background: var(--float);
-  color: var(--text);
-  box-shadow: var(--shadow);
-  border-radius: var(--r-md);
+  max-width: min(440px, calc(100vw - 32px));
+  box-shadow: var(--paper-edge);
+  border-top: 2px solid var(--ink);
   padding: var(--s3) var(--s4);
   display: flex;
   gap: var(--s3);
   align-items: center;
-  border: 1px solid var(--border);
+  flex-wrap: wrap;
   z-index: 30;
 }
-.toast .ok {
-  color: var(--success);
+.toast a {
+  font-weight: 700;
 }
 .toast:empty {
   display: none;
@@ -758,26 +1313,36 @@ tr.inactive td {
   main {
     padding: var(--s5) 16px 160px;
   }
+  h1 {
+    font-size: 1.75rem;
+  }
   .teamtabs:not(.viewtabs) {
     display: none;
   }
   .teamselect.phone-only {
-    display: block;
+    display: flex;
   }
   .row {
     /* minmax lets the timer column shrink, so the action never gets pushed past the edge. */
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "timer act" "who who" "where where";
     gap: var(--s2) var(--s3);
-    padding: var(--s4);
+    padding: var(--s3) var(--s4) var(--s4) calc(var(--s4) + 8px);
   }
   .row .timer {
     grid-area: timer;
     flex-direction: row;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: baseline;
     gap: var(--s1) var(--s2);
     min-width: 0;
+  }
+  /* Sized so even a two-part wait keeps its age word on the same line as the Claim key. */
+  .row .t {
+    font-size: 1.5rem;
+  }
+  .row .badge.u {
+    letter-spacing: 0.08em;
   }
   .row.lost,
   .row.wide-act {
@@ -824,10 +1389,14 @@ tr.inactive td {
     display: inline-flex;
   }
   dl {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   dt {
-    margin-top: var(--s2);
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  dd {
+    padding-top: 0;
   }
   .toast {
     left: 16px;
@@ -842,23 +1411,40 @@ tr.inactive td {
     left: 0;
     right: 0;
     height: calc(64px + env(safe-area-inset-bottom));
-    background: var(--surface);
-    border-top: 1px solid var(--border);
+    background: var(--ground);
+    border-top: 2px solid var(--fg);
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 6;
   }
   .bottombar a {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    font-size: var(--text-xs);
-    color: var(--text-muted);
+    gap: 3px;
+    padding-top: 2px;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
     text-decoration: none;
   }
   .bottombar a[aria-current="page"] {
-    color: var(--accent);
+    color: var(--fg);
+  }
+  .bottombar a[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: 18%;
+    right: 18%;
+    height: 4px;
+    background: var(--fg);
+  }
+  .bottombar :focus-visible {
+    outline-offset: -3px;
   }
   .users-table {
     display: none;
@@ -869,13 +1455,46 @@ tr.inactive td {
     display: none;
   }
 }
+/* Below 1100px the bar tightens so the usual six tabs show without scrolling at ordinary
+   text sizes. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .topbar .in {
+    gap: var(--s3);
+  }
+  .mark {
+    font-size: 1.375rem;
+  }
+  .tabs {
+    gap: 0;
+  }
+  .tabs a {
+    padding-inline: 6px;
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+  }
+  .right {
+    gap: var(--s2);
+  }
+}
+/* The account key shows as much of the name as fits; its accessible name stays whole. */
+@media (min-width: 768px) {
+  .right .who {
+    display: block;
+    max-width: min(12rem, 15vw);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 38px;
+    padding-top: 2px;
+  }
+}
 
 /* covers the app while a sign-out waits for the server */
 .signing-out {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: var(--bg);
+  background: var(--ground);
   display: grid;
   place-items: center;
   padding: 16px;
