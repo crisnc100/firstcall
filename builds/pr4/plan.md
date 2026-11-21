@@ -1,488 +1,414 @@
-# Firstcall PR4: voice (build plan, rev 1)
+# Firstcall PR4: voice (build plan, rev 2)
 
 Source: `builds/v01/plan.md`, "PR4: voice" (F36 to F40), with the definitions it relies on:
 note scripts, voice memos, the notes floors, the missed-floor rule, seed 11, the no-model
-fallback, model modes, and the PR6 note that Whisper runs in the worker. PR3's shape and
-its build log (`builds/pr3/plan.md`, `builds/pr3/log.md`) are the model for this plan.
-Branch `voice`, cut from main at 3107006. Nothing here is built until Cristian approves it.
+fallback and model modes. Branch `voice`, cut from main at 3107006. Rev 2 answers the
+advisor's Bounce (`builds/pr4/bounce.md`). Each item was checked against the code first; the
+last section maps all 20 to their answers.
 
 Terms used below:
 - **Voice memo:** a short recording a salesperson makes about a lead. It becomes a note.
-- **Transcript:** the text Whisper writes from a memo.
 - **Whisper size:** Whisper comes in sizes. Bigger is more accurate, slower and uses more
-  memory. `.en` sizes are trained on English only, which suits an English demo.
-- **WER (word error rate):** the share of words a transcript gets wrong against what was said.
+  memory. `.en` sizes know only English, which suits an English demo.
+- **WER (word error rate):** the share of words a transcript gets wrong.
 - **Clean / degraded clip:** a memo rendered by text-to-speech as is, and the same memo made
-  harder: noise, a phone-band filter, a lossy codec and changed speed.
-- **Replay:** answers saved from a real run and read back, so tests and CI need no model,
-  no key and no Whisper. A missing answer raises.
-- **PR lane / slow lane:** the CI checks every pull request waits on, and the longer checks
-  that run on `main` and nightly.
+  harder with noise, a phone-band filter, a lossy codec and changed speed.
+- **Replay:** answers saved from a real run and read back, so tests need no model, key or
+  Whisper. A missing answer raises.
+- **Compose profile:** a tag on a compose service. Plain `docker compose build` and `up`
+  skip a service that has one, unless that profile is named.
 
 ## Outcome
 
-A salesperson records a memo on a lead's page, or picks an audio file. The browser uploads
-it. The server refuses a wrong format (415), a file over 5 MB (413) or a memo over 3 minutes
-(422) before any transcription. A separate transcriber process turns the audio into text with
-faster-whisper, locally, with no key. The transcript becomes a note marked "voice", and
-PR3's note reader reads it like a typed note: tidied note, profile updates, suggested actions
-a person confirms. The audio is deleted when transcription ends, whether it worked or not.
-With no model key the transcript is still saved, and its read says "Needs a model key".
-The voice eval runs seed 11's note scripts as audio, clean and degraded, through each
-candidate Whisper size, and ships the smallest size that meets the notes floors on degraded
-audio. PR CI never runs Whisper and never downloads a model.
+A salesperson records a memo on a lead's page, or picks an audio file, and may pick the
+contact it records (Called, Texted, Emailed, Met), as on a typed note. The api refuses a
+wrong format (415), over 5 MB (413) or over 3 minutes (422) before storing anything. The note
+appears at once as "Transcribing…", and its contact, if picked, is logged at once. A
+transcriber process turns the audio into text with faster-whisper, locally, with no key. The
+transcript fills the note, and PR3's reader reads it like a typed note. The audio is deleted
+when transcription ends, fails, or has waited 30 minutes. The voice eval runs seed 11's
+scripts as audio through each candidate size and ships the smallest that meets the notes
+floors on degraded audio and runs fast enough on the beta host. PR CI never runs Whisper,
+never downloads a model and never builds the voice image.
 
 ## Out of scope
 
-- The dashboard, including the "share of contacts logged by voice" figure (PR5). PR4 stores
-  what it needs: each note's source, typed or voice.
-- Hosting, HTTPS and the beta's limits (PR6). PR4 measures Whisper's speed on the beta host
-  only if Cristian says yes (decision 4); it deploys nothing.
+- The dashboard's voice share (PR5). PR4 stores each note's source, typed or voice.
+- Hosting and the beta's limits (PR6). PR4 times Whisper on Atlas once (decision 5) and
+  deploys nothing.
 - CRM events (PR7).
-- Tuning the note reader's prompt on voice. The PR3 prompt stays frozen
-  (sha256 `93a64f56…`, `builds/pr3/log.md:320`); voice is scored with it as is.
-- Choosing an action when recording. The reader suggests the contact from the transcript and
-  a person confirms it with one tap. (A typed note keeps its action select.)
-- Keeping audio for playback. Only the transcript is kept.
-- Speakers other than English, and live streaming transcription.
+- Tuning the reader's prompt on voice. The PR3 prompt stays frozen (`builds/pr3/log.md:320`).
+- Keeping audio for playback, languages other than English, live transcription.
 
-## Two PRs (recommended; Cristian to confirm)
+## Order: a CI PR first, then two voice PRs
 
-- **PR4a, the voice path (no key, no spend):** the seed-11 audio and its frozen scorer,
-  upload and limits, audio storage and deletion, the transcriber process, the voice note,
-  the recording page, and the compose and image changes. Covers F36, F37, F39 and the first
-  half of F40.
-- **PR4b, the voice eval and the size choice:** the eval runner, the free local
-  transcription runs, the paid reads of the transcripts (after your go), the size choice,
-  ADR-005 closed, the beta-host timing (after your go), and the rest of F40. Covers F38 and F40.
+- **CI first (decision 1):** Firstcall CI is one job running all of `verify.sh`
+  (`.github/workflows/verify.yml:41-42`); the last main run took 13.5 minutes (run
+  44320487195). A small PR gives it Docket's shape on main: `verify.sh --step`, parallel
+  lint, eval and sharded test jobs (pytest-split), a browser job, and the compose fault
+  tests only on main, nightly and manual runs. PR4a lands on that layout.
+- **PR4a, the voice path (no spend):** the seed-11 audio, upload and limits, storage and
+  deletion, the transcriber, the page, the image. Covers F36, F37, F39 and F40's first half.
+- **PR4b, the eval and the size choice:** the seed-7 dry run, the seed-11 runs, the Atlas
+  timing, ADR-005 closed. Covers F38 and F40's second half.
 
-Why two: PR3 split the same way (`builds/pr3/plan.md:33-51`) and it worked. 4a is about
-PR3a's size. Every paid call and every Whisper run that decides something sits in one small
-PR. 4a merged alone works: it ships with `small.en`, ADR-005's predicted size, as the
-default, and 4b changes the default only if the eval says so. 4b branches from main after
-4a merges.
+Two voice PRs, as PR3 split (`builds/pr3/plan.md:33-51`): every paid call and every Whisper
+run that decides something sits in one small PR. 4a ships `small.en`, ADR-005's predicted
+size, as the default; 4b changes it only if the eval says so.
 
 ## Plan versus code
 
-Where the code or a quick check disagrees with the master plan. None of these change a
-decision silently; each says what this plan does.
-
-1. **300 clips, not 160.** v01 assumed 80 scripts per seed (`builds/v01/plan.md:326-332`).
-   PR3 built 150 (`builds/pr3/log.md:10`), so seed 11 rendered clean and degraded is 300
-   clips. Seed 11's scripts hold 4,320 words (counted); at the rate measured on two test
-   clips (about 3 KB a second at 24 kbps) that is roughly 9 MB, still under v01's 15 MB check.
-   *This plan:* 300 clips, 16 kHz mono MP3 at 24 kbps (v01 did not set a bitrate).
-2. **piper-tts is GPL-3.0 now.** v01 lists piper-tts in the dev group and calls its license
-   unverified (`builds/v01/plan.md:60,68`). Checked today: piper-tts 1.8.0 declares
-   `GPL-3.0-or-later`. *This plan:* keep Piper (a v01 decision), but run it as a one-off
-   tool (`uv run --with piper-tts==1.8.0`), outside `pyproject.toml` and `uv.lock`, so the
-   Apache-2.0 project never lists a GPL package. The committed audio is its output. See
-   decision 3.
-3. **No ffmpeg in the image yet.** The image is `uv:…-bookworm-slim` with no system
-   packages (`Dockerfile:8-20`); v01 says ffmpeg is in the api and worker images
-   (`builds/v01/plan.md:61`). *This plan:* add it in 4a.
-4. **One worker runs every job, one at a time.** `work()` loops on `run_one`
-   (`firstcall/pipeline/worker.py:113`), and `claim` takes the oldest queued job of any kind
-   (`firstcall/pipeline/jobs.py:64-70`). A 20-second transcription would hold every new lead
-   behind it and break the 2-second alert floor (F28, `builds/v01/plan.md:388`). v01 says
-   "Whisper in the worker" (`builds/v01/plan.md:767`). *This plan:* a second worker process
-   from the same code that takes only transcription jobs. See decision 1.
-5. **faster-whisper breaks with the newest av.** faster-whisper 1.2.1 resolved av 19.0.2,
-   and every transcription failed with `TypeError: open() got an unexpected keyword
-   argument 'metadata_errors'` (measured). av 18.1.0 works. *This plan:* pin
-   `faster-whisper==1.2.1` and `av<19` in the lock.
-6. **"Run once" and "pick the smallest size" pull apart.** v01 says the voice confirm run on
-   seed 11 runs once per PR (`builds/v01/plan.md:407`) and also that the eval picks the
-   smallest size that meets the floors (`builds/v01/plan.md:685-686`), which needs one run per
-   size. *This plan:* each (size, clean or degraded) pair runs exactly once, smallest size
-   first, and stops at the first size that meets the floors. Every run is committed, and a
-   test checks there is one per pair.
-7. **F37 says "the test reads the disk".** With audio held in Postgres (decision 2), the
-   test reads the audio table and the scratch folder instead. Same promise, different place.
-8. **No multipart parser.** FastAPI needs `python-multipart` for form uploads, which is not
-   a dependency (`pyproject.toml:8-23`). *This plan:* the browser sends the audio as the raw
-   request body with its content type. No new dependency, and the existing capped reader
-   (`firstcall/intake/limits.py:66-75`) enforces 5 MB while reading.
-9. **CI today is one 13.5-minute job.** `verify.yml` runs all of `verify.sh` in one job, and
-   the last main run took 13.5 minutes (run 44320487195, 2026-11-18). The 3-minute CI is not
-   on main at 3107006. *This plan:* says which lane each voice check belongs in, so it fits
-   whatever lane split lands. If the split is not on main when 4a starts, the builder stops
-   and asks.
-10. **`data/LICENSES`.** v01 names this file (`builds/v01/plan.md:69`); there is no `data/`
-    folder. *This plan:* `evals/gold/voice/LICENSES.md`, beside the audio it covers.
+1. **300 clips, not 160.** v01 assumed 80 scripts (`builds/v01/plan.md:326-332`); PR3 built
+   150 (`builds/pr3/log.md:10`). Seed 11's scripts hold 4,320 words; at about 3 KB a second
+   (24 kbps, measured on two clips) that is roughly 9 MB, under v01's 15 MB check.
+2. **piper-tts is GPL-3.0.** v01 puts it in the dev group (`builds/v01/plan.md:60,68`);
+   piper-tts 1.8.0 declares `GPL-3.0-or-later` (checked). It runs as a one-off tool
+   (`uv run --with piper-tts==1.8.0`), outside `pyproject.toml` and `uv.lock`.
+3. **No ffmpeg in the image** (`Dockerfile:8-20`), though v01 expects it
+   (`builds/v01/plan.md:61`). 4a adds it.
+4. **One worker runs every job in turn** (`firstcall/pipeline/worker.py:113`;
+   `claim` takes any kind, `jobs.py:64-70`). Whisper "in the worker"
+   (`builds/v01/plan.md:767`) would hold new-lead alerts behind a memo and break the
+   2-second floor (F28). Decision 2.
+5. **faster-whisper 1.2.1 fails with av 19.0.2** (measured: `TypeError … 'metadata_errors'`).
+   av 18.1.0 works. The lock pins `av<19`.
+6. **"Run once" and "pick the smallest size".** v01 runs the voice confirm once
+   (`builds/v01/plan.md:407`) and picks the smallest passing size
+   (`builds/v01/plan.md:685-686`). Here each (size, condition) pair runs exactly once.
+7. **F37 "reads the disk".** Audio waits in Postgres (decision 3), so the test reads the
+   audio table.
+8. **No multipart parser** (`pyproject.toml:8-23`). The browser sends the audio as the raw
+   body; the existing capped reader (`firstcall/intake/limits.py:66-75`) stops at 5 MB.
+9. **`data/LICENSES`** (`builds/v01/plan.md:69`) has no folder; it becomes
+   `evals/gold/voice/LICENSES.md`, beside the audio.
+10. **Notes are written once** (`firstcall/db.py:448`). A voice note is created empty at
+    upload and filled once by the transcriber. Nothing else edits a note.
 
 ## How it works
 
-### 1. Recording in the browser
+### Recording and upload
 
-- **The recorder:** MediaRecorder, the browser's built-in recording API. The page asks for
-  the microphone, mono, with the browser's echo cancelling and noise suppression on.
-- **Format, by what the browser supports**, first match wins:
-  1. `audio/webm;codecs=opus`: Chrome, Edge, Firefox, and Safari from 18.4 (unverified for
-     Safari).
-  2. `audio/mp4`: older Safari, which records AAC in MP4.
-  3. `audio/ogg;codecs=opus`: Firefox fallback.
-- **Size:** recorded at 32 kbps, so 3 minutes is about 720 KB, far under 5 MB.
-- **Length:** a visible timer, and the recorder stops itself at 3:00.
-- **A file picker** beside the record button takes an audio file. Playwright uses it (F40),
-  and it lets someone send a memo recorded elsewhere.
-- **Upload:** `POST /api/leads/{id}/voice`, the audio as the raw body, its type in
-  `Content-Type`, and the CSRF header like every write. `send()` in `web/src/api.ts:169`
-  sends JSON only, so a small raw-body variant is added beside it.
-- **The microphone needs a secure page.** Localhost counts; the beta needs HTTPS (PR6).
-  Whether an iPhone Home Screen app may use the microphone is unverified until PR6.
-- **On the lead page** (`web/src/pages/work.ts:170`, beside the note form, in the On the
-  Rail look from PR #7): Record, Stop, the timer, and Send. A sent memo shows
-  "Transcribing…", then becomes a note with a "Voice" badge, then the reader's lines
-  (`work.ts:129-133`) take over. A failed memo says "Couldn't transcribe this memo. Record
-  it again."
+- **MediaRecorder** (the browser's recording API), mono, echo cancelling and noise
+  suppression on, 32 kbps. First supported format wins: `audio/webm;codecs=opus` (Chrome,
+  Edge, Firefox), `audio/mp4` (Safari, AAC), `audio/ogg;codecs=opus`. Which Safari versions
+  record WebM is unverified.
+- A timer, and the recorder stops itself at 3:00. A file picker sits beside it.
+- The same "This note records" select as the typed note form (`web/src/pages/work.ts:170-188`).
+- `POST /api/leads/{id}/voice?action=…`: the audio as the raw body, its type in
+  `Content-Type`, the CSRF header. `send()` (`web/src/api.ts:169`) sends JSON only, so a
+  raw-body variant is added.
+- The page polls already while a note is being read (`web/src/pages/detail.ts:170-215`);
+  `waiting` (`detail.ts:197`) and `reads` gain the `transcribing` state, so the transcript
+  appears without a reload.
+- The microphone needs HTTPS outside localhost (PR6).
 
-### 2. Limits, checked in the api before anything is stored (F36)
+### Limits, in the api, before anything is stored (F36)
 
-In order, each with its code:
-1. **Size, 413:** `Content-Length` over 5 MB is refused before reading; the capped reader
-   stops at 5 MB for a body that lies about its length.
-2. **Magic bytes, 415:** the first bytes must be one of WebM (`1A 45 DF A3`), MP4 (`ftyp` at
-   byte 4), WAV (`RIFF` … `WAVE`), MP3 (`ID3`, or an MPEG frame sync) or Ogg (`OggS`). The
-   declared content type is not trusted.
-3. **ffprobe, 415 or 422:** the body goes to a file in a memory-only scratch folder (tmpfs),
-   and ffprobe reads it with the demuxer forced to the format the magic bytes named and only
-   the `file` protocol allowed, under a 10-second timeout. Forcing both stops a crafted file
-   from making ffmpeg open other files or URLs (a known ffmpeg trick with playlist formats).
-   - Not exactly one audio stream, any video stream, or a codec outside Opus, AAC, PCM, MP3
-     and Vorbis: 415.
-   - Longer than 3 minutes: 422.
-   - **A trap:** Chrome's WebM recordings carry no duration in their header (unverified for
-     the current Chrome; widely reported). When ffprobe gives no duration, the api reads the
-     last packet's time instead. The 5 MB cap bounds that read.
-4. The scratch file is deleted in a `finally`, and tmpfs means a crash leaves nothing after
-   a restart.
+All of this runs in the threadpool, as intake does (`firstcall/api.py:101,143`), so the
+event loop never waits on ffmpeg.
+1. **413:** `Content-Length` over 5 MB, or a body that passes 5 MB while read.
+2. **415, magic bytes:** WebM (`1A 45 DF A3`), MP4 (`ftyp` at byte 4), WAV (`RIFF`…`WAVE`),
+   MP3 (`ID3` or a frame sync) or Ogg (`OggS`). The declared type is not trusted.
+3. **415, ffprobe:** on a temporary file deleted in a `finally`, with the demuxer forced to
+   the format the magic bytes named and only the `file` protocol allowed (this stops a
+   crafted file making ffmpeg open other files or URLs), 10-second timeout. Exactly one
+   audio stream, no video, codec Opus, AAC, PCM, MP3 or Vorbis.
+4. **422, length by decoding:** ffmpeg decodes at most 181 seconds to nowhere and reports how
+   far it got. Over 180 is refused. This ignores header timestamps a file can fake, and
+   covers Chrome's WebM and Safari's MP4, which may carry no duration in their headers.
+5. **Queue caps:** a user with 3 memos waiting gets 429; when 10 minutes of audio already
+   wait in the org, 503 "busy, try again shortly". These replace a per-minute rate, which
+   would still let one person queue an hour of CPU.
 
-Who may upload: the same people who may write a note (`may_note`,
-`firstcall/core/outcomes.py:41`); anyone else gets 404. A per-user limit of 6 uploads a
-minute reuses `RateLimiter` (`firstcall/intake/limits.py:31`), so one person cannot queue
-an hour of CPU.
+Who may upload: whoever may write a note (`may_note`, `firstcall/core/outcomes.py:41`);
+anyone else gets 404. An action needs `may_log_contact`, as `add_note` checks
+(`firstcall/board/notes.py:77-78`).
 
-### 3. Where audio waits, and when it is deleted (F37)
+### The voice note and the contact
 
-- **Storage:** Postgres, in its own table `voice_audio` (memo id, bytes). The memo's own
-  row, `voice_memos`, holds the lead, author, upload time, format, length, state
-  (`queued`, `transcribing`, `done`, `failed`), the failure reason, and the note it became.
-- **Why Postgres and not a shared folder** (decision 2):
-  - The upload, the memo and its job commit in one transaction, as a message and its job do
-    (`builds/v01/plan.md:121`). There is no moment when a file exists without a row, so no
-    orphan sweep is needed. v01 removed the audio sweep (`builds/v01/plan.md:937`).
-  - Deleting the audio is part of the same transaction that writes the note or marks the
-    memo failed. No crash can leave audio behind after a memo is finished.
-  - The api and the transcriber need no shared volume, which keeps PR6 simple.
-  - 5 MB rows are small for Postgres.
-- **The transcriber never writes audio to disk.** It reads the bytes from the row and pipes
-  them through ffmpeg (forced demuxer, `pipe` protocol only) into 16 kHz mono samples in
-  memory, which faster-whisper takes directly.
-- **Deleted on success:** one transaction writes the note, its `read_note` job and its
-  `note.added` event, marks the memo `done`, and deletes the `voice_audio` row.
-- **Deleted on failure:**
-  - A file that will not decode, has no speech, or runs over 3 minutes fails at once, with
-    no retry, since retrying cannot help.
-  - Any other error retries, like every job, up to 5 attempts. The audio stays until then,
-    because a retry needs it.
-  - Out of attempts, `_fail` (`firstcall/pipeline/jobs.py:41-55`) marks the memo failed and
-    deletes the audio. The reaper reaches the same `_fail` (`jobs.py:180-182`), so a killed
-    transcriber is covered.
-- **Delete lead** removes the lead's memos and audio. The delete test refuses any table it
-  has not classified (`tests/test_delete_lead.py:43-86`), so both new tables must be
-  classified. A memo whose lead is deleted mid-transcription ends quietly, as a note job does
-  (`jobs.py:128-130`).
-- **What "deleted" means:** the row is gone at commit. Postgres frees the space at its next
-  vacuum. The docs say so plainly.
+In one transaction, under the lead's row lock, as `add_note` does (`notes.py:61-95`):
+- a note with `source = voice`, empty text, read state `transcribing`, timed now;
+- the audio row (`voice_audio`: note, bytes, format, seconds);
+- a `transcribe` job on the note (jobs already take a note, `firstcall/db.py:269`);
+- `note.added` with `source` in its payload;
+- the contact, if an action was picked, logged now through `log_contact` (`notes.py:98`).
+  The person's pick stands even if transcription later fails, exactly as a typed action
+  does. No model, no transcript, needed.
 
-### 4. The job and the transcriber process
+### The transcriber
 
-- **Job:** a third subject on `jobs`. Today a job has a message or a note, exactly one
-  (`firstcall/db.py:269`). Migration 0012 adds `voice_memo_id` and makes the check "exactly
-  one of three", unique on (memo, kind). Kind: `transcribe`.
-- **Two worker processes** (decision 1): `claim` gains a kinds filter. The existing worker
-  skips `transcribe`. A new compose service, `transcriber`, runs `firstcall worker --kind
-  transcribe` and takes only those. New leads never wait behind a memo.
-- **The lease:** the existing 60-second lease is renewed every 20 seconds by a thread
-  (`jobs.py:83-108`). Whisper's C++ code releases Python's lock while it works, so renewal
-  keeps running (unverified; phase 2 has a test with a slow fake transcriber).
-- **The voice note:** `notes` gains `source` (`typed` or `voice`). The note's time is the
-  upload time, not the transcription time, so a confirmed contact is dated when the memo was
-  made. `note.added` gains `"source"` in its payload; the event payload allowlist test
-  (`tests/test_note_access.py:171`) changes in its own commit.
-- **Then PR3 takes over.** The `read_note` job reads the transcript exactly like a typed note
-  (`firstcall/notes/reader.py:98-138`). With no key it ends `needs_model` and the page says
-  "Needs a model key" (F39); the scheduler's reread picks it up later (`reader.py:141`). No
-  new no-key code is needed, only the test.
-- **Transcription modes**, like the model modes:
-  - `local`: faster-whisper. The default.
-  - `replay`: the transcript is looked up by the audio's SHA-256 in a committed file. A miss
-    raises. Used by tests and the compose page test, so neither runs Whisper.
-- **Settings** (`firstcall/settings.py`): transcription mode, Whisper size, threads (2),
-  model folder, 5 MB and 180 seconds. All have defaults; none is a secret.
+- **A second worker process** (decision 2): `claim` gains a kinds filter; the existing
+  worker skips `transcribe`; `firstcall worker --kind transcribe` takes only those. Today
+  `run` sends any job with a note to the reader (`firstcall/pipeline/jobs.py:123`), so it
+  dispatches by kind instead.
+- **Three steps, not one transaction** (`run` holds one for the whole job today,
+  `jobs.py:122`):
+  1. Read the audio bytes; commit.
+  2. Decode and transcribe, with no transaction open. ffmpeg decodes from a pipe (forced
+     demuxer, `pipe` protocol only, at most 181 seconds, so memory stays near 12 MB)
+     into samples faster-whisper takes directly.
+  3. Lock the lead, then the note (delete lead's order). Write only if the job is still
+     `running` on this same attempt and the note is still `transcribing`; otherwise drop the
+     result. Then fill the text, set it `pending`, queue `read_note`, delete the audio, mark
+     the job done. PR3's reader takes over (`firstcall/notes/reader.py:98-138`).
+- **Lease and health:** the lease thread (`jobs.py:83-108`) catches and logs its own errors
+  and keeps renewing, and also writes the heartbeat, so a long memo never looks dead
+  (`worker.py:30,110-113` beats only between jobs today).
+- **Failures:**
+  - Won't decode, no speech, over 180 seconds once decoded, or a transcript over
+    5,000 characters (`NOTE_MAX`, `notes.py:33`): fail at once, no retry.
+  - Anything else retries, up to 5 attempts. Out of attempts, `_fail` (`jobs.py:41-55`)
+    marks the note `failed`, reason `not_transcribed`, and deletes the audio. The reaper
+    reaches the same `_fail` (`jobs.py:180-182`).
+  - The page says "Couldn't transcribe this memo. Record it again." A logged contact stays.
+- **Bounded waiting:** the scheduler's reaper (`worker.py:65`) also fails any note still
+  `transcribing` after 30 minutes and deletes its audio. The scheduler, not the
+  transcriber, runs it, so audio cannot sit for days while no transcriber runs.
+- **Delete lead** already deletes a lead's note jobs (`firstcall/board/delete.py:76`); it
+  also deletes `voice_audio`, which the delete test must classify
+  (`tests/test_delete_lead.py:43-86`).
+- **Modes:** `local` (faster-whisper, the default) and `replay` (transcript looked up by the
+  audio's SHA-256 in a committed file; a miss raises). faster-whisper is imported only in
+  `local`.
+- **"Deleted"** means the row is gone at commit. The bytes stay in Postgres's write-ahead
+  log and backups until those turn over. The docs say so.
 
-### 5. Whisper in the transcriber
+### Whisper
 
-- **Candidates, smallest first**, fixed in ADR-005 before any result: `tiny.en`, `base.en`,
-  `small.en`. `medium.en` is not a candidate (decision 5): on 2 shared CPUs it is likely too
-  slow (unverified).
-- **Fixed settings**, written in ADR-005 before any result, so the eval cannot tune them:
-  `int8` weights on CPU, 2 threads, language `en`, beam size 5, the built-in voice detector
-  on (it skips silence, where Whisper tends to invent text), and no conditioning on earlier
-  text (which stops repeat loops).
-- **Measured today** on this Mac (Apple M5, 2 threads, int8, one 17-second clean clip and
-  one 12-second degraded clip, faster-whisper 1.2.1). These are not the beta host's figures:
+- **Candidates,** fixed in ADR-005 before any result: `tiny.en`, `base.en`, `small.en`.
+- **Fixed settings,** also in ADR-005: `int8` on CPU, 2 threads, language `en`, beam 5,
+  the built-in voice detector on (it skips silence, where Whisper invents text), no
+  conditioning on earlier text (it stops repeat loops).
+- **Measured today** on this Mac (M5, 2 threads, int8, two hand-written clips, not seed 11):
 
-  | Size | Compute seconds per audio minute (clean / degraded) | Peak memory, whole process |
+  | Size | Compute s per audio minute, clean / degraded | Peak memory |
   |---|---|---|
   | tiny.en | 2.4 / 1.8 | 393 MB |
   | base.en | 2.8 / 3.6 | 520 MB |
   | small.en | 8.3 / 11.9 | 957 MB |
 
-  What the two clips showed: `small.en` got both budget figures right on clean and degraded
-  audio; `tiny.en` wrote "between 400 and 25 and 400 and $50,000" for a spoken "four hundred
-  and twenty-five … four hundred and fifty thousand"; "Called" came back as "Cold" or "Call"
-  on smaller sizes, which matters because the reader suggests only past-tense actions. Two
-  clips prove nothing; they show what the eval will measure.
-- **On the beta host** (Atlas, 4 CPUs, 15 GB, shared with two live demos): the transcriber
-  gets a compose limit of 2 CPUs and 1.5 GB. The model loads once, on the first memo or at
-  start, and stays in memory. Speed there is unverified; Atlas's CPUs are likely slower than
-  an M5, so `small.en` could land near ADR-005's 60-seconds-per-minute prediction. See
-  decision 4.
-- **Download at first use, not at build time:**
-  - `firstcall voice fetch-model` downloads the chosen size from Hugging Face at a pinned
-    revision, checks its SHA-256, and stores it in a named volume, `whisper-models`.
-  - The transcriber runs it at start if the model is missing, then works offline
-    (`HF_HUB_OFFLINE=1`), so a memo never waits on the network.
-  - Why not bake it into the image: it adds 75 to 480 MB to every image build, CI included.
-    The volume keeps images small and means CI never downloads a model.
-- **ffmpeg and ffprobe:** `apt-get install --no-install-recommends ffmpeg` in the image, for
-  the api's ffprobe check and the transcriber's decode.
-- **faster-whisper as a dependency group:** it goes in a `voice` group, installed only in a
-  `voice` stage of the Dockerfile that the transcriber uses. The api and worker images do not
-  grow by its libraries.
+  Atlas will be slower; by how much is unverified until decision 5's timing.
+- **The model** downloads on first use from Hugging Face at a pinned revision into a named
+  volume, `whisper-models`, and stays loaded. It is never in an image.
+- **Images:** ffmpeg goes in the app image (the api needs it). faster-whisper goes in a
+  `voice` dependency group, installed by a `voice` Dockerfile stage. The group is in uv's
+  default groups, so `uv sync --locked` installs it locally and in CI and pyright resolves
+  the import; the app stage leaves it out.
+- **Compose:** `transcriber` builds the `voice` stage, takes 2 CPUs and 1.5 GB, and has
+  profile `voice`. So `verify.sh`'s `docker compose build` and `up -d --wait`
+  (`verify.sh:32-33`) never build it, start it or download a model.
 
-### 6. The seed-11 audio (gold, committed before any transcription code)
+### The seed-11 audio (gold, before any transcription code)
 
-- **No real person's voice is recorded.** Every clip is made by Piper, an offline
-  text-to-speech engine, from seed 11's 150 note scripts. Piper's voices are trained on
-  public speech datasets; only voices whose model card allows reuse of the output (CC0,
-  CC BY, CC BY-SA, MIT or public domain) are used, and each is listed with its license in
-  `evals/gold/voice/LICENSES.md`.
-- **Voices:** at least 6, including UK English (Piper has `en_GB` voices such as `alba`,
-  downloaded and tried today) and other accents where a voice's license allows. Which
-  accented voices qualify is unverified until each model card is read in phase 1. Each
-  script gets one voice, rotating in a fixed order, and keeps it for both its clean and
-  degraded clip, so the two differ only by the degradation. The voices are listed in the
-  report (F38).
-- **Spoken text:** the scripts are written ("$425k", "450 grand"); a person says them. A
-  fixed rule rewrites each figure into words before Piper reads it ("four hundred
-  twenty-five thousand dollars"), and `spoken.jsonl` stores the result. The gold labels do
-  not change. The rule is fixed and committed before any transcription, because the test
-  clip showed it decides whether small sizes hear the number.
-- **Degraded**, each step seeded so it rebuilds the same:
-  - **Speed:** ±10%, through Piper's own speech-rate setting.
-  - **Noise:** generated background noise (a mix of hum and hiss) at 10 dB
-    signal-to-noise.
-  - **Phone band:** a 300 to 3,400 Hz filter.
-  - **Codec:** an Opus round trip at 12 kbps, like a weak connection.
-  - All four are applied to every degraded clip. Clean clips get none.
-- **Stored** as `evals/gold/voice/seed-11/{clean,degraded}/<script id>.mp3`, 16 kHz mono,
-  24 kbps, with `clips.jsonl` (script, condition, voice, speed, noise seed, spoken text,
-  SHA-256, length) and its own `MANIFEST.json`, as the note gold has its own
-  (`builds/pr3/log.md:5-8`). About 9 MB (estimate). A test keeps the folder under 15 MB.
-  Audio is committed so nothing depends on Piper giving the same bytes twice.
-- **Fixtures for tests:** one tiny clip per accepted format (WebM, MP4, WAV, MP3, Ogg), a
-  3:05 clip, a WebM with video, a renamed text file, all made with ffmpeg from a Piper clip.
-  Under 400 KB in all, in `tests/fixtures/audio/`.
-- **Order:** the audio, the manifest, the spoken text, the voice scorer and ADR-005's
-  candidates and settings are committed before `firstcall/voice/transcribe.py` exists,
-  checked from git history by the same helper the note gold uses
-  (`tests/test_note_corpus.py:185-208`).
+- **No real person is recorded.** Piper renders all 150 seed-11 scripts. Only voices whose
+  model card allows reuse of the output (CC0, CC BY, CC BY-SA, MIT, public domain) are
+  used, listed in `LICENSES.md`.
+- **Voices:** at least 6, including UK English (Piper's `en_GB` voices; `alba` tried today)
+  and other accents where licensed (unverified which). Each script keeps one voice for its
+  clean and degraded clip. The report lists the voices (F38).
+- **Spoken text:** a fixed rule writes each figure out in words before Piper reads it
+  ("four hundred twenty-five thousand dollars"), stored in `spoken.jsonl`. Gold labels do
+  not change.
+- **Degraded:** speed ±10% (Piper's own rate), generated noise at 10 dB signal-to-noise, a
+  300 to 3,400 Hz filter, an Opus round trip at 12 kbps. All seeded.
+- **Stored** as `evals/gold/voice/seed-11/{clean,degraded}/<script>.mp3`, 16 kHz mono,
+  24 kbps, with `clips.jsonl` and its own `MANIFEST.json`, as the note gold has
+  (`builds/pr3/log.md:5-8`). A test keeps it under 15 MB.
+- **Order:** the audio, manifest, spoken text, voice scorer and ADR-005's candidates and
+  settings precede `firstcall/voice/transcribe.py` in git history, checked by the note
+  gold's helper (`tests/test_note_corpus.py:185-208`).
 
-### 7. The voice eval (F38)
+### The voice eval (F38)
 
-- **Frozen in phase 1**, with the gold: `firstcall/evaluation/voice_score.py`, which
-  computes WER (lowercase, punctuation removed, numbers on both sides turned into one form
-  by the note scorer's number reader) and wires transcripts into the frozen note scorer.
-- **The run**, per size and condition, `firstcall eval-voice --size S --condition C`:
-  1. **Transcribe** all 150 clips locally, free, and write
-     `evals/voice/transcripts/<size>-<condition>.jsonl`: clip, audio SHA-256, text, and
-     compute seconds.
-  2. **Read** each transcript through the note reader with the frozen prompt, through the
-     gateway, as `evaluate_notes` does for scripts (`firstcall/evaluation/note_eval.py:126-170`).
-  3. **Score** against the script and its gold labels, not the transcript. A number Whisper
-     misheard and the reader copied is an error the salesperson would see, so it counts as
-     unsupported. The report also shows unsupported facts against the transcript, to tell a
-     hearing error from a reading error.
-- **Report** `evals/reports/<date>-voice-seed-11.{json,md}`: per size and condition, every
-  notes floor with intervals, seen and unseen phrasing, WER (overall, per voice, per number
-  style), action precision and recall (reported, no floor), compute seconds per audio
-  minute (median and total, and where measured), the voices, and the model call log.
-- **Pick rule** (v01): the smallest size whose degraded run meets every notes floor. If none
-  does, `small.en` ships and each miss goes to `docs/failures/` (missed-floor rule; notes
-  floors are quality floors and do not block the merge).
+- `firstcall/evaluation/voice_score.py`, frozen with the gold: WER (lowercase, no
+  punctuation, numbers read both sides by the note scorer's reader), and the hand-off of
+  transcripts to the frozen note scorer.
+- **Names heard, not spelled** (decision 4): 35 of seed 11's 150 scripts name someone whose
+  name has another spelling in the scorer's name list (counted: Stephen and Steven, Brian
+  and Bryan, Meghan and Megan, Theresa and Teresa, Ashlee and Ashley, Philip and Phillip,
+  and more). The scorer flags a listed name not in the script
+  (`firstcall/evaluation/note_score.py:230-232,322-336`), and the floor allows 1 of 150.
+  No transcriber can hear a spelling, so every size would miss. The fix: for voice only, a
+  name counts as supported when it is a spelling of a name in the script, from a fixed
+  table committed with the gold. The strict count is shown on a second, labelled line.
+  Numbers keep the strict rule: a misheard figure is an error the salesperson would see.
+- **A run,** `firstcall eval-voice --size S --condition C`: transcribe 150 clips locally
+  (free) into `evals/voice/transcripts/<size>-<condition>.jsonl` with compute seconds; read
+  each through the reader with the frozen prompt, as `evaluate_notes` does
+  (`firstcall/evaluation/note_eval.py:126-170`); score against the script and its labels.
+- **Report:** per size and condition, every notes floor with intervals, seen and unseen
+  phrasing, WER, action precision and recall (reported, no floor), compute seconds per
+  minute, the voices, the call log.
+- **Pick rule:** the smallest size whose degraded run meets every notes floor and runs
+  within 60 compute seconds per audio minute on Atlas (ADR-005's own bound). If none
+  does, the largest size within the speed bound ships and each miss goes to
+  `docs/failures/`. Point estimates decide, as in every earlier eval
+  (`builds/pr3/plan.md:143-144`).
 - **Synthetic check:** record mode sends only generator output to a model
   (`firstcall/model/synthetic.py:26-36`). It gains the committed transcripts, accepting a
   line only when its audio hash is in the voice manifest.
-- **Replay in verify:** `scripts/check_replay_report.py` learns the `voice` kind
-  (`check_replay_report.py:28-56`). It re-scores from the committed transcripts and the
-  recorded reads, with no Whisper; compute seconds are carried from the transcripts file, as
-  the notes check carries its paid record pass (`check_replay_report.py:48-50`).
+- **Replay:** `scripts/check_replay_report.py` learns a `voice` kind
+  (`check_replay_report.py:28-56`). It re-scores committed transcripts with recorded reads,
+  no Whisper, carrying compute seconds over as it carries the notes record pass
+  (`check_replay_report.py:48-50`).
 
-### 8. CI and test time
+## CI and test time
 
-The rule: **the PR lane never runs Whisper, never downloads a model, and never builds the
-voice image.**
-
-| Check | Lane | How it stays fast |
+| Check | Where | Why it stays fast |
 |---|---|---|
-| Limits, storage, deletion, job, no-key and access tests | PR | A fake transcriber; committed fixtures under 400 KB |
-| Tests that call the real ffprobe | PR if the runner has ffprobe, otherwise slow | Phase 2 checks the runner; installing ffmpeg there costs time (unverified) |
-| Voice scorer and WER | PR | Pure Python |
-| Voice replay report | Slow | Re-scores committed transcripts; no Whisper |
-| F40 page test | Slow | Compose with `replay` transcription |
-| Real Whisper smoke: 3 clips with `tiny.en` | Nightly | The model is cached between runs |
-| The eval itself | Never in CI | Run once by the builder, committed |
+| Limits, storage, deletion, job, no-key, access tests | PR test shards | A fake transcriber; fixtures under 400 KB |
+| Tests calling real ffprobe and ffmpeg | PR test shards | ffmpeg installed in CI's setup step; `verify.sh` fails with a plain message if it is missing, never skips |
+| Voice scorer and WER | PR test shards | Pure Python |
+| Voice replay report | PR eval job | No Whisper; transcripts are committed |
+| F40 page test | Browser job | The transcriber runs from the app image in `replay` mode; no voice image |
+| Real Whisper | Never in CI | One logged run in the built voice image before 4a merges; the eval runs locally once |
 
-**Expected cost:** the PR lane gains about 10 to 20 seconds (unverified; a target the
-builder measures). The slow lane gains the voice image build, F40 and the replay report,
-about 2 to 4 minutes (unverified). This follows Docket, which runs its fault tests on main
-and nightly.
+Expected: under 20 seconds more on a PR run, plus ffmpeg's install (all unverified until
+the CI PR measures them).
 
 ## Phases
 
 Builders commit at each phase end, build folder included. Tests first. The checks for what
-a phase touched run at each phase end; the full `./verify.sh` runs at the close.
+a phase touched run at each phase end; the full `./verify.sh` at the close.
 
 ### PR4a
 
-**Phase 1: voice gold, frozen scorer, ADR-005 settings (before any transcription code).**
+**Phase 1: voice gold and its frozen scorer.**
 
 | Check | Maps to |
 |---|---|
-| 300 clips, one per script and condition; each script keeps one voice for both; at least 6 voices, one or more UK English; every voice's license in `LICENSES.md` | F38 |
-| `spoken.jsonl` covers every script; every gold budget figure reads back from the spoken text to the same value | F38 |
-| The voice manifest matches; existing gold hashes unchanged; the folder is under 15 MB | F38 |
-| WER tests: known pairs, numbers written two ways, empty text | F38 |
-| ADR-005 lists the candidates and the fixed settings, still with no result | F38 |
-| Gold before code: the voice gold and scorer precede `firstcall/voice/transcribe.py` in git history | F38 |
-| `piper-tts` is not in `pyproject.toml` or `uv.lock` (a test reads both) | Decision 3 |
+| 300 clips; each script one voice for both clips; 6 or more voices, one UK English; licenses listed | F38 |
+| Every gold budget figure reads back from `spoken.jsonl` to the same value | F38 |
+| Voice manifest matches; existing gold unchanged; folder under 15 MB | F38 |
+| WER cases; the name-spelling table, applied to voice only, with the strict line beside it | F38 |
+| ADR-005 lists candidates, settings and the speed bound, with no result | F38 |
+| Gold before code, from git history | F38 |
 
-**Phase 2: upload, limits, storage, the job and deletion (backend).**
+**Phase 2: upload, limits, the job and deletion.**
 
-Migration 0012: `voice_memos`, `voice_audio`, `notes.source`, `jobs.voice_memo_id` and the
-three-way check.
+Migration 0012: `voice_audio`, `notes.source`, read state `transcribing`.
 
 | Check | Maps to |
 |---|---|
-| Each format fixture is accepted; a renamed text file, a WebM with video, a wrong declared type, and an unreadable file get 415; 5 MB plus one byte gets 413 before the body is read; a 3:05 clip gets 422; a WebM with no header duration is measured from its packets; nothing is stored for a refused upload | F36 |
-| Success: the note exists with `source = voice`, its read job is queued, and the audio row is gone | F37 |
-| Failure at once (no speech, won't decode), failure after retries, and a reaped job out of attempts: each marks the memo failed and leaves no audio row; the scratch folder is empty after every case | F37 |
-| A killed transcriber (failpoint `during_transcribe`, exit 137 and log line asserted) is retried by the reaper and ends with one note | F37 |
-| With no key: the transcript is saved, the note says "Needs a model key", nothing returns 500 | F39 |
-| The main worker never claims `transcribe`; the transcriber claims only `transcribe` | Decision 1 |
-| A slow fake transcriber holds its lease past 60 seconds (fake clock) | F37 |
-| The new access matrix covers the upload route for every role, own team and other team; refused pairs get 404; the monitor's lead payload has no memos | F36 |
-| The delete test classifies both new tables; a memo in flight when its lead is deleted ends quietly | F37 |
-| The `note.added` payload allowlist allows `source` (own commit, test files only) | F39 |
+| Each format fixture accepted; renamed text, WebM with video, wrong declared type, undecodable file: 415; 5 MB + 1 byte: 413 unread; 3:05 clip: 422; a file whose header claims 10 seconds but decodes past 180: 422; nothing stored for a refusal | F36 |
+| 4th waiting memo for one user: 429; org over 10 waiting minutes: 503 | F36 |
+| Success: text filled, `pending`, `read_note` queued, audio row gone | F37 |
+| Fail-at-once cases, exhausted retries, a reaped job out of attempts, and the 30-minute expiry: note `failed`, no audio row | F37 |
+| A finish from an old attempt, or after a delete, writes nothing; renewal survives a database error; the heartbeat moves during a long fake transcription (fake clock) | F37 |
+| Picked action: the contact is logged at upload and stays when transcription fails | F39 |
+| No key: the transcript is saved and the note says "Needs a model key"; nothing returns 500 | F39 |
+| The main worker never claims `transcribe`; the transcriber claims only `transcribe` | F37 |
+| A new access matrix covers the upload route for every role, own and other team; refusals 404 | F36 |
+| Delete test classifies `voice_audio`; `note.added` allowlist gains `source` (test-only commit, `tests/test_note_access.py:171`) | F37, F39 |
 
 **Phase 3: the page, the image and compose.**
-- Record, Stop, the 3:00 timer, Send, the file picker, the memo states and the "Voice" badge.
-- The Dockerfile's ffmpeg and `voice` stage; the `transcriber` service with its CPU and
-  memory limits and the `whisper-models` volume; tmpfs scratch for api and transcriber;
-  `firstcall voice fetch-model`.
-- **Playwright on compose, replay transcription, no key:** the owner picks the WebM fixture,
-  sees "Transcribing…", then the transcript as a "Voice" note saying "Needs a model key"; a
-  `<script>` in a transcript renders as text. A second check records 2 seconds through
-  Chromium's fake microphone and sees the upload accepted. Covers the first half of F40.
+- Record, Stop, timer, file picker, action select, "Voice" badge, the states.
+- ffmpeg, the `voice` stage, the `transcriber` service and volume.
+- **The fixture is a real browser recording:** Chromium's fake microphone plays a Piper
+  clip of the `unit-page` note (`evals/gold/unit-notes.jsonl:6`), and the WebM it records is
+  committed.
+- **One real transcription before merge:** the built voice image, `small.en`, that fixture.
+  Logged in the build log: transcript, seconds, memory.
+- **Playwright on compose (browser job), replay transcription, no key, no reload:** the
+  owner picks Called and sends the fixture, sees "Transcribing…" turn into the transcript
+  as a Voice note, the contact logged, and "Needs a model key". A `<script>` transcript
+  renders as text. F40's first half.
 
 ### PR4b
 
-**Phase 4: the eval runner (no key, no Whisper choice yet).**
+**Phase 4: the runner** (no key): every metric from fake transcripts and answers; an
+incomplete run writes no report; record mode refuses a transcript whose audio is not in the
+manifest; replay rebuilds the report byte for byte. F38.
+
+**Phase 5: seed-7 dry run.** 30 seed-7 scripts rendered degraded (not committed),
+transcribed by all three sizes, read and scored. It shakes out the pipeline, spoken rule
+and WER before the run-once seed 11. A fix it needs goes through the gold CHANGELOG, before
+any seed-11 transcription. About $0.03.
+
+**Phase 6: Atlas timing (after your go, decision 5).** All three sizes, 20 degraded seed-7
+clips each, the voice image limited to 2 CPUs, about 10 minutes, nothing left running.
+
+**Phase 7: seed 11, once per pair (after your go).** All 300 clips through all three sizes
+(free), all six transcript sets read (900 calls; PR3 measured $0.000278 a call,
+`builds/pr3/log.md:302`, so about $0.25), plus the F40 fixture's read. With phase 5,
+**about $0.28; cap $0.40.**
+
+**Phase 8: close.** Default size from the pick rule; ADR-005 closed (disclosing that the
+spoken rule was shaped by the hand-written test clips); misses in `docs/failures/`; F40
+completed in replay: the suggested call shows, is confirmed, and the contact is logged.
 
 | Check | Maps to |
 |---|---|
-| `eval-voice` writes every metric, interval, split, WER and compute figure from fake transcripts and fake answers | F38 |
-| An incomplete run writes no report; a resumed run spends nothing on recorded reads | F38 |
-| Record mode accepts a transcript only when its audio hash is in the voice manifest | F38 |
-| The replay check rebuilds a voice report byte for byte | F38 |
-
-**Phase 5: free local transcription.** All 300 clips with each candidate on this Mac. Total
-compute is about 10 minutes at the measured rates (estimate). The transcripts are committed.
-WER is known now, before any spend.
-
-**Phase 6: paid reads (only after your go).**
-1. Degraded transcripts, `tiny.en` first, then `base.en`, then `small.en`, stopping at the
-   first that meets every floor.
-2. Clean transcripts for the chosen size.
-3. The F40 fixture's transcript, once.
-
-At most 4 runs of 150 plus 1, about 600 calls. PR3 measured $0.000278 a call
-(`builds/pr3/log.md:302`), so **about $0.17**. **Cap $0.40.** Identical transcripts share one
-recorded answer, so it may cost less. Anything past the cap means the builder stops and asks.
-
-**Phase 7: the beta-host timing (only after your go; decision 4).**
-
-**Phase 8: close.** The default size set from the result; ADR-005 closed with its result;
-misses in `docs/failures/`; F40 completed: the page test confirms the suggested call from
-the replayed read and sees the contact logged.
-
-| Check | Maps to |
-|---|---|
-| The committed report meets the pick rule; a test applies the rule to the report and gets the shipped size | F38 |
-| Exactly one run per (size, condition), each with 150 reads under the frozen prompt hash and no other | F38 |
-| The replay check reproduces the voice report | F38 |
-| Upload the fixture, see the transcript and a suggested action, confirm it, see the contact logged | F40 |
+| A test applies the pick rule to the committed report and gets the shipped size; fake reports cover "smallest passes", "none passes" and "passes but too slow" | F38 |
+| One run per (size, condition), 150 reads each, all under the frozen prompt hash | F38 |
+| Replay reproduces the voice report | F38 |
+| Upload, transcript, suggestion, confirm, contact logged, with no reload | F40 |
 
 ## Acceptance
 
-- **F36** Each bad format, oversize and overlong file is refused with its code before
+- **F36** Bad format, oversize and overlong files are refused with their codes before
   transcription (phase 2).
-- **F37** The audio is gone after transcription, on success and on failure, including a
-  killed transcriber and exhausted retries (phase 2).
-- **F38** The voice eval on seed-11 audio, clean and degraded, reports WER, the note
-  results and compute seconds per minute, and lists the voices. The shipped size is the
-  smallest that meets the notes floors on degraded audio. Misses follow the missed-floor
-  rule (phases 1, 4 to 8).
-- **F39** With no key, a memo is transcribed and saved as a note that says "Needs a model
-  key", with no 500 (phase 2).
+- **F37** The audio is gone after transcription, on success, failure, exhausted retries and
+  the 30-minute expiry (phase 2).
+- **F38** The voice eval on seed-11 audio, clean and degraded, reports WER, note results and
+  compute seconds per minute, and lists the voices; the shipped size follows the pick rule;
+  misses follow the missed-floor rule (phases 1, 4 to 8).
+- **F39** With no key, a memo is transcribed and saved as a note saying "Needs a model
+  key", with no 500; a picked contact is logged regardless (phase 2).
 - **F40** Playwright: upload a fixture memo, see the transcript and a suggested action,
   confirm it, see the contact logged (phases 3 and 8).
 
 ## Other choices (my call, stated so they can be overruled)
 
-- **No action select when recording.** The reader suggests it; one tap confirms. This avoids
-  a typed action waiting on a transcription that may fail.
-- **A failed memo stays on the page** as a line saying it failed, with no audio, until the
-  lead is deleted.
-- **Raw-body upload** instead of a form upload (no new dependency).
-- **6 uploads a minute per user.** Cheap, and it stops one person filling the queue.
-- **Unsupported facts scored against the script,** as above.
+- Piper runs outside the lock, since it is GPL now; only its audio is committed.
+- Raw-body upload; no new dependency.
+- 30-minute expiry, and caps of 3 memos a user and 10 minutes of audio an org.
+- Unsupported facts scored against the script, so a misheard number counts.
 
 ## Decisions for Cristian
 
-1. **A separate transcriber process.** One worker runs every job in turn
-   (`worker.py:113`), so a memo would delay new-lead alerts past the 2-second floor. v01
-   says "Whisper in the worker". *Recommend:* the same worker code in a second process that
-   takes only transcription jobs, limited to 2 CPUs and 1.5 GB on the beta host.
-2. **Audio waits in Postgres, not in a shared folder.** The audio, its memo and its job
-   commit together, and the audio is deleted in the same transaction that finishes the memo,
-   so no crash leaves audio behind and no sweep is needed. F37's "reads the disk" becomes
-   "reads the audio table and the scratch folder". *Recommend:* yes. The other option, a
-   shared folder, needs a volume shared by two containers and an orphan sweep, which v01
-   removed.
-3. **Piper is GPL-3.0 now.** *Recommend:* keep Piper (a v01 choice), run it only as a
-   one-off tool outside the project's lock, and commit its audio. Nothing GPL ships in the
-   image or the lock. The alternative, Kokoro (Apache-2.0 model), means changing a fixed
-   stack choice for no gain in proof.
-4. **Timing Whisper on Atlas.** v01 says the size's speed on Atlas is measured in PR4
-   (`builds/v01/plan.md:890-891`), and the rules say Atlas is used only when you ask.
-   *Recommend:* yes, one bounded run: the voice image, 2 CPUs, the chosen size on 20
-   degraded clips, about 5 minutes, removed afterwards, nothing left running. The figure goes
-   in ADR-005 and the report.
-5. **Candidates and spend.** *Recommend:* `tiny.en`, `base.en` and `small.en` only, and up
-   to $0.40 of the Firstcall key (about $0.17 expected) for the paid reads, after your go in
-   phase 6. If `small.en` misses the floors, it still ships, the misses are published, and
-   `medium.en` becomes a v0.2 item rather than a heavier load on the shared host.
+1. **A CI speed-up PR before PR4.** Firstcall CI is one 13.5-minute job. *Recommend:* yes,
+   in Docket's shape (step-split `verify.sh`, parallel jobs, 4 test shards, the fault tests
+   on main, nightly and manual runs). Voice then adds seconds, not minutes.
+2. **A separate transcriber process.** One worker runs every job in turn, so a memo would
+   hold new-lead alerts past the 2-second floor. *Recommend:* yes, same code, a second
+   process limited to 2 CPUs and 1.5 GB, behind the `voice` compose profile.
+3. **Audio waits in Postgres, at most 30 minutes.** It commits with its note and job and is
+   deleted in the transaction that finishes it; the scheduler fails anything older.
+   *Recommend:* yes. A shared folder needs a volume across two containers and an orphan
+   sweep.
+4. **Voice names scored by sound, not spelling** (a change to the frozen scorer, voice
+   only). Without it, 35 of 150 scripts carry a name Whisper must guess the spelling of,
+   and the 1-in-150 unsupported floor fails at every size for a reason that is not hearing.
+   *Recommend:* yes, with the strict count on a second line. The alternative is to publish
+   it as a known limit and let speed alone pick the size.
+5. **Atlas timing and the spend.** *Recommend:* yes to one 10-minute timing run on Atlas
+   (it is now part of the pick rule, and v01 says PR4 measures it,
+   `builds/v01/plan.md:890-891`), and up to $0.40 of the Firstcall key, about $0.28
+   expected.
+
+## The Bounce, answered
+
+| # | Point | Answer |
+|---|---|---|
+| 1 | CI lanes missing; voice image in every run; skips; pyright | Accepted. CI PR first (decision 1); `voice` compose profile keeps the image and model out of `verify.sh`; ffmpeg installed, missing fails, never skips; voice group in uv's default groups so pyright resolves. "CI and test time", "Images", "Compose" |
+| 2 | Transcriber unhealthy mid-memo | Accepted. The lease thread writes the heartbeat. "The transcriber" |
+| 3 | One long transaction | Accepted. Three steps, no transaction during transcription |
+| 4 | Late finish; renewal dies silently | Accepted. Attempt and state checked on finish; renewal catches errors |
+| 5 | Audio unbounded without a transcriber | Accepted. 30-minute expiry in the scheduler's reaper; decision 3 |
+| 6 | Rate limit lets an hour of CPU queue | Accepted. Per-minute rate replaced by caps of 3 per user and 10 minutes per org |
+| 7 | Forged timestamps | Accepted. Length is measured by decoding, capped at 181 seconds, in the api and the transcriber |
+| 8 | ffprobe on the event loop | Accepted. Threadpool, as intake (`api.py:101,143`) |
+| 9 | No contact without the model | Accepted. Action select kept; the contact logs at upload and survives a failed transcription |
+| 10 | Lead page does not poll | Partly wrong: it polls while a note is read (`detail.ts:170-215`). Accepted for memos: `transcribing` joins its waiting states |
+| 11 | NOTE_MAX, Safari MP4, WAL | Accepted. Over 5,000 characters fails at once; decode-based length covers MP4; WAL and backups stated |
+| 12 | Name spelling sinks the floor | Confirmed by count: 35 of 150 scripts. Decision 4. Numbers stay strict |
+| 13 | Seed 11 peeked at | Rejected: the test clips were hand-written from `unit-page` (`evals/gold/unit-notes.jsonl:6`); its "Dana" appears in no seed-11 script (`grep -c Dana` = 0). ADR-005 still discloses that they shaped the spoken rule |
+| 14 | No dry run | Accepted. Phase 5, seed 7 |
+| 15 | No margin, no speed gate | Speed gate accepted: 60 s per audio minute on Atlas, in the pick rule. Margin rejected: every eval decides on point estimates (`builds/pr3/plan.md:143-144`), and v01 accepted one held-out seed for voice (`builds/v01/plan.md:329-330`) |
+| 16 | No real Whisper in 4a's image | Accepted. One logged `small.en` run in the built image before merge |
+| 17 | Fixtures not from a browser | Accepted for the fixture that matters: F40's WebM is recorded by Chromium. Format-limit fixtures stay ffmpeg-made, since they test the limits, not the recorder |
+| 18 | F40 passes with a reload | Accepted. No reload in F40 |
+| 19 | F37 with audio at rest | Same as 5 |
+| 20 | Circular pick-rule test | Accepted. Fake reports cover each branch, the speed gate included |
+| — | Over-built | All cut: no stop-at-first-pass, no per-voice or per-style WER, no tmpfs, no fetch-model checksum, no nightly smoke, no process tests |
