@@ -103,3 +103,14 @@ any change to a gold file that the manifest does not record.
   supported; the strict count is reported beside it. The note scorer is unchanged. From here
   the voice scorer and table change only with an entry in this file, and never once the
   seed-11 voice runs have started.
+
+## 2026-11-21, second entry
+- The PR4a code review found two ways the voice scorer's word error rate counted a correct
+  transcript as wrong, both fixed before any transcriber ran on seed 11. Punctuation inside a
+  word split it: "H.O.A." was three words to the transcript's "HOA", and "doesn't" two to
+  "doesnt". Full stops between single letters and apostrophes inside a word are now dropped.
+  And two spoken number forms read as words: "one point one million" was not "$1.1 million",
+  nor "seven hundred five grand" "705 grand". A worded number, "point" and digits said one by
+  one, and a worded number before "grand", are now read as their values, for WER only. The
+  note scorer, the name rule and the floors are unchanged, and no gold file changed. Every
+  seed-11 script still scores a WER of 0 against what its voice read.

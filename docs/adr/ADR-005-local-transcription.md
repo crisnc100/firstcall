@@ -53,7 +53,9 @@ after transcription.
   its own line. Numbers stay strict.
 - **Word error rate** is reported with no floor: lower case, no punctuation, and each number
   read by the note scorer's reader, so "$425k" and "four hundred twenty-five thousand" are
-  the same word.
+  the same word. Punctuation inside a word is dropped too ("H.O.A." is "HOA"), and two spoken
+  forms that reader leaves as words are read as values for WER only: "one point one million"
+  and "seven hundred five grand".
 
 ## Disclosure
 Before the candidates and settings were fixed, two hand-written clips of the `unit-page` note

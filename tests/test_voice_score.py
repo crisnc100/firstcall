@@ -39,6 +39,39 @@ def test_words_are_lower_case_without_punctuation_and_numbers_are_values() -> No
     assert words("Has 2 dogs.") == ["has", "2", "dogs"]
 
 
+def test_punctuation_inside_a_word_never_counts_as_an_error() -> None:
+    same = [
+        ("The H.O.A. fee is high.", "the HOA fee is high"),
+        ("Call after 9 a.m.", "call after 9 am"),
+        ("She doesn't want stairs.", "She doesnt want stairs."),
+        ("Dana's offer stands.", "Dana\u2019s offer stands."),
+        ("I'll text Dana.", "Ill text Dana"),
+    ]
+    for script, transcript in same:
+        assert wer([(script, transcript)])["errors"] == 0, (script, transcript)
+    assert words("1.5 million") == ["1500000"]
+    assert words("j.doe@inbox.example") == ["j", "doe", "inbox", "example"]
+    assert wer([("The H.O.A. fee", "the HOA fees")])["errors"] == 1
+    assert wer([("She doesn't", "she does not")])["errors"] == 2
+
+
+def test_spoken_decimals_and_worded_grand_read_as_their_values() -> None:
+    assert words("one point one million") == words("$1.1 million") == ["1100000"]
+    assert words("seven hundred five grand") == words("705 grand") == ["705000"]
+    assert words("two point five baths") == words("2.5 baths") == ["2.5", "baths"]
+    assert words("twenty one point five") == ["21.5"]
+    assert words("between one point one and one point three million") == words(
+        "between 1.1 and 1.3 million"
+    )
+    assert words("one point two million") != words("$1.1 million")
+    assert words("seven hundred six grand") != words("705 grand")
+    assert wer([("$1.1 million", "one point one million")])["errors"] == 0
+    assert wer([("705 grand", "seven hundred six grand")])["errors"] == 1
+    # "point" with no number on both sides is a word.
+    assert words("Price point is four hundred grand") == ["price", "point", "is", "400000"]
+    assert words("At one point she called") == ["at", "1", "point", "she", "called"]
+
+
 def test_edits_count_substitutions_deletions_and_insertions() -> None:
     assert edits(["a", "b", "c"], ["a", "b", "c"]) == 0
     assert edits(["a", "b", "c"], ["a", "x", "c"]) == 1
