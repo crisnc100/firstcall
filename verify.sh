@@ -47,9 +47,13 @@ stack() {
 }
 
 # Arguments go to pytest: a CI shard passes its paths, its group and where coverage goes.
+# With none, it writes the coverage.json that floors reads, as in the full run.
 tests() {
   step "pytest (zero skips, branch coverage)"
   rm -f coverage.json
+  if [[ $# -eq 0 ]]; then
+    set -- --cov-report=json:coverage.json --cov-report=term:skip-covered
+  fi
   uv run pytest --cov=firstcall --cov-branch "$@"
 }
 
@@ -99,7 +103,7 @@ secret_scan
 web
 browser
 stack
-tests --cov-report=json:coverage.json --cov-report=term:skip-covered
+tests
 floors
 replay
 
