@@ -31,6 +31,7 @@ FLOORS: dict[str, float] = {
     "firstcall/core/cadence.py": CORE,
     "firstcall/core/note_read.py": CORE,
     "firstcall/evaluation/note_score.py": CORE,
+    "firstcall/evaluation/voice_score.py": CORE,
     "firstcall/api.py": EDGE,
     "firstcall/intake/auth.py": EDGE,
     "firstcall/intake/limits.py": EDGE,

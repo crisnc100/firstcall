@@ -88,3 +88,18 @@ any change to a gold file that the manifest does not record.
   thirty thousand (three bedrooms)" read as 930003; and "half-a-million" read as one million.
   Brackets and slashes now end a number, and a hyphen between letters reads as a space. Both
   cases are in the regression table. No gold file changed; the gold still meets every floor.
+
+## 2026-11-21
+- Added the voice gold for the voice eval, before any transcription code: `voice/seed-11`,
+  seed 11's 150 note scripts read by Piper in ten licensed voices (`voice/LICENSES.md`), once
+  clean and once degraded, as 300 MP3 clips with `clips.jsonl` (voice, speed, noise seed and
+  length of each) and `spoken.jsonl` (what each voice read: the script with each figure
+  written as its full value in words). Its own manifest, `voice/MANIFEST.json`, holds the
+  hash of every file in the folder. The audio is the gold, because Piper's output can differ
+  between runs. No note file, label or other manifest changed.
+- Added the voice scorer (`firstcall/evaluation/voice_score.py`) and its name table
+  (`voice/name-spellings.json`), approved by Cristian on 2026-11-21. For voice only, a name
+  the script spells another way that sounds the same ("Steven" for "Stephen") counts as
+  supported; the strict count is reported beside it. The note scorer is unchanged. From here
+  the voice scorer and table change only with an entry in this file, and never once the
+  seed-11 voice runs have started.

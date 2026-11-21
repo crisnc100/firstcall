@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
@@ -356,6 +357,23 @@ def corpus_notes(seed: int = typer.Option(..., help="7 or 11")) -> None:
     record_notes_seed(seed, hashes)
     for name, digest in hashes.items():
         typer.echo(f"notes seed {seed} {name} {digest}")
+
+
+@corpus_app.command("voice")
+def corpus_voice(
+    piper: str = typer.Option(
+        "piper", help="How to run Piper, e.g. 'uvx --from piper-tts==1.8.0 piper'"
+    ),
+    models: str = typer.Option(..., help="A folder holding each voice's .onnx and .onnx.json"),
+) -> None:
+    """Render evals/gold/voice/seed-11 and write the voice manifest. Piper is GPL-3.0, so it
+    runs as its own program and is never a project dependency."""
+    import shlex
+
+    from firstcall.corpus.voice import render_voice
+
+    hashes = render_voice(shlex.split(piper), Path(models))
+    typer.echo(f"voice gold: {len(hashes)} files")
 
 
 if __name__ == "__main__":
