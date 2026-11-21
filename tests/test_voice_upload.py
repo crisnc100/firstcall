@@ -3,7 +3,9 @@ before anything is stored, the waiting caps, and a picked contact logged at once
 
 from __future__ import annotations
 
+import os
 import subprocess
+import tempfile
 import uuid
 from collections.abc import MutableMapping
 from datetime import UTC, datetime
@@ -347,3 +349,22 @@ def test_every_refusal_gives_its_checking_slot_back(
         if taken:
             audio.CHECKS.release()
     assert all(held)
+
+
+def test_a_memo_being_checked_has_no_name_on_disk(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A process killed mid-check leaves no recording behind: while ffprobe and ffmpeg read
+    it, the file has no name in the temporary folder."""
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    named: list[list[str]] = []
+    run = subprocess.run
+
+    def watched(*args: Any, **kwargs: Any) -> Any:
+        named.append(sorted(os.listdir(tmp_path)))
+        return run(*args, **kwargs)
+
+    monkeypatch.setattr(audio.subprocess, "run", watched)
+    assert audio.check(fixture("moov-last.m4a"), "audio/mp4").seconds > 29
+    assert audio.seconds(audio.decode(fixture("ok.webm"), "webm")) > 1.9
+    assert named == [[], [], []]

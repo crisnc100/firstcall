@@ -11,6 +11,7 @@ them open another file or a URL.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 import threading
@@ -89,34 +90,48 @@ def sniff(data: bytes) -> str | None:
 
 
 @contextmanager
-def _saved(data: bytes) -> Iterator[str]:
-    """The upload in a temporary file, deleted on exit, as ffprobe and ffmpeg's input. It
-    must be seekable: an MP4 whose index follows its audio, as Safari and ffmpeg write
-    them, cannot be read from a pipe once it outgrows ffmpeg's 32 KB read buffer."""
-    with tempfile.NamedTemporaryFile(suffix=".audio") as handle:
+def _saved(data: bytes) -> Iterator[int]:
+    """The upload in an anonymous temporary file, as ffprobe and ffmpeg's input. It has no
+    name on disk, so a process killed mid-check leaves no recording behind. It must be
+    seekable: an MP4 whose index follows its audio, as Safari and ffmpeg write them, cannot
+    be read from a pipe once it outgrows ffmpeg's 32 KB read buffer."""
+    with tempfile.TemporaryFile() as handle:
         handle.write(data)
         handle.flush()
-        yield f"file:{handle.name}"
+        yield handle.fileno()
 
 
-def _streams(path: str, demuxer: str) -> list[dict[str, str]]:
-    found = subprocess.run(
+def _run(command: list[str], saved: int, timeout: float) -> subprocess.CompletedProcess[bytes]:
+    """ffprobe or ffmpeg reading the saved file as /dev/fd/N. On macOS that path shares this
+    descriptor's position, so each run starts from the beginning."""
+    os.lseek(saved, 0, os.SEEK_SET)
+    return subprocess.run(
+        command, capture_output=True, timeout=timeout, check=False, pass_fds=(saved,)
+    )
+
+
+def _input(saved: int) -> str:
+    return f"file:/dev/fd/{saved}"
+
+
+def _streams(saved: int, demuxer: str) -> list[dict[str, str]]:
+    found = _run(
         ["ffprobe", "-v", "error", "-protocol_whitelist", "file", "-f", demuxer,
-         "-show_entries", "stream=codec_type,codec_name", "-of", "json", path],
-        capture_output=True, timeout=PROBE_TIMEOUT, check=False,
+         "-show_entries", "stream=codec_type,codec_name", "-of", "json", _input(saved)],
+        saved, PROBE_TIMEOUT,
     )  # fmt: skip
     if found.returncode != 0:
         raise UndecodableError(found.stderr.decode(errors="replace")[-500:])
     return json.loads(found.stdout).get("streams", [])
 
 
-def _decode(path: str, demuxer: str) -> bytes:
+def _decode(saved: int, demuxer: str) -> bytes:
     try:
-        found = subprocess.run(
+        found = _run(
             ["ffmpeg", "-hide_banner", "-loglevel", "error", "-protocol_whitelist", "file",
-             "-f", demuxer, "-i", path, "-map", "0:a:0", "-t", str(DECODE_SECONDS),
+             "-f", demuxer, "-i", _input(saved), "-map", "0:a:0", "-t", str(DECODE_SECONDS),
              "-ac", "1", "-ar", str(SAMPLE_RATE), "-f", "s16le", "pipe:1"],
-            capture_output=True, timeout=DECODE_TIMEOUT, check=False,
+            saved, DECODE_TIMEOUT,
         )  # fmt: skip
     except subprocess.TimeoutExpired as error:
         raise UndecodableError("decoding took too long") from error
@@ -127,8 +142,8 @@ def _decode(path: str, demuxer: str) -> bytes:
 
 def decode(data: bytes, fmt: str) -> bytes:
     """16 kHz mono 16-bit samples of the first audio stream, at most DECODE_SECONDS."""
-    with _saved(data) as path:
-        return _decode(path, FORMATS[fmt].demuxer)
+    with _saved(data) as saved:
+        return _decode(saved, FORMATS[fmt].demuxer)
 
 
 def seconds(samples: bytes) -> float:
@@ -146,9 +161,9 @@ def check(data: bytes, content_type: str) -> Memo:
     if declared not in FORMATS[fmt].types:
         raise RefusedError(415, f"the file is {fmt}, but it was sent as {declared or 'nothing'}")
     demuxer = FORMATS[fmt].demuxer
-    with _saved(data) as path:
+    with _saved(data) as saved:
         try:
-            streams = _streams(path, demuxer)
+            streams = _streams(saved, demuxer)
         except (UndecodableError, subprocess.TimeoutExpired, ValueError) as error:
             raise RefusedError(415, "the audio could not be read") from error
         if len(streams) != 1 or streams[0].get("codec_type") != "audio":
@@ -157,7 +172,7 @@ def check(data: bytes, content_type: str) -> Memo:
         if not (codec in CODECS or codec.startswith("pcm_")):
             raise RefusedError(415, "the audio is not Opus, AAC, PCM, MP3 or Vorbis")
         try:
-            length = seconds(_decode(path, demuxer))
+            length = seconds(_decode(saved, demuxer))
         except UndecodableError as error:
             raise RefusedError(415, "the audio could not be decoded") from error
     if length > MAX_SECONDS:
