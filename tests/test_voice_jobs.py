@@ -523,6 +523,40 @@ def test_a_transcriber_whose_voice_filter_fails_exits_before_claiming_a_memo(
     assert "ImportError: onnxruntime is not installed" in said
 
 
+def test_a_starting_process_never_counts_the_beat_its_predecessor_left(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A restarted container keeps its hostname, so the old process's beat is this host's
+    too. While the new process starts, the health check must say not ready."""
+    monkeypatch.setenv("FIRSTCALL_DATABASE_URL", database_url)
+    monkeypatch.setenv("FIRSTCALL_TRANSCRIBE_MODE", "local")
+    seen: dict[str, bool] = {}
+
+    class Loading(_SilentModel):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            seen[TRANSCRIBER] = healthy(board.sessions, TRANSCRIBER)
+            raise OSError("stop here")
+
+    def stop_after_checking(kind: str) -> Any:
+        def reader(*args: Any) -> Any:
+            seen[kind] = healthy(board.sessions, kind)
+            raise RuntimeError("stop here")
+
+        return reader
+
+    _whisper_module(monkeypatch, Loading)
+    for kind in (TRANSCRIBER, "worker", "scheduler"):
+        worker.beat(board.sessions, kind)
+        assert healthy(board.sessions, kind)
+    runner = CliRunner()
+    assert runner.invoke(app, ["worker", "--kind", "transcribe"]).exit_code == 1
+    monkeypatch.setattr(worker, "model_reader", stop_after_checking("worker"))
+    assert runner.invoke(app, ["worker"]).exit_code == 1
+    monkeypatch.setattr(worker, "model_reader", stop_after_checking("scheduler"))
+    assert runner.invoke(app, ["scheduler"]).exit_code == 1
+    assert seen == {TRANSCRIBER: False, "worker": False, "scheduler": False}
+
+
 def test_the_worker_command_runs_the_transcriber_in_replay_mode(
     board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
 ) -> None:

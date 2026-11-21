@@ -10,7 +10,7 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import sessionmaker
 
@@ -47,6 +47,14 @@ def beat(sessions: sessionmaker[Any], kind: str) -> None:
                 index_elements=[Heartbeat.process], set_={"beat_at": func.now()}
             )
         )
+
+
+def forget(sessions: sessionmaker[Any], kind: str) -> None:
+    """Drop this host's heartbeat for the kind. A process calls it as it starts, before
+    anything that can take a while, so a beat left by the process it replaces (a restarted
+    container keeps its hostname) never counts as this one being ready."""
+    with sessions.begin() as session:
+        session.execute(delete(Heartbeat).where(Heartbeat.process == process_name(kind)))
 
 
 def healthy(sessions: sessionmaker[Any], kind: str) -> bool:

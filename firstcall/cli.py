@@ -70,7 +70,7 @@ def worker(
     """Process stored messages and read notes, or with --kind transcribe, transcribe voice
     memos."""
     from firstcall.outbound.dispatch import Outbound
-    from firstcall.pipeline.worker import model_reader, transcribe_work, work
+    from firstcall.pipeline.worker import TRANSCRIBER, forget, model_reader, transcribe_work, work
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
@@ -78,6 +78,7 @@ def worker(
     if kind == "transcribe":
         from firstcall.voice.transcribe import CannotTranscribeError, from_settings
 
+        forget(sessions, TRANSCRIBER)
         try:
             transcriber = from_settings(settings)
         except CannotTranscribeError as error:
@@ -87,6 +88,7 @@ def worker(
         return
     if kind:
         raise typer.BadParameter("--kind is transcribe, or left out for the main worker")
+    forget(sessions, "worker")
     reader = model_reader(sessions, clock, settings)
     outbound = Outbound.from_settings(sessions, clock, settings)
     work(sessions, clock, settings, until_idle=until_idle, reader=reader, outbound=outbound)
@@ -96,11 +98,12 @@ def worker(
 def scheduler() -> None:
     """Run `tick` every 30 seconds."""
     from firstcall.outbound.dispatch import Outbound
-    from firstcall.pipeline.worker import model_reader, schedule
+    from firstcall.pipeline.worker import forget, model_reader, schedule
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    forget(sessions, "scheduler")
     outbound = Outbound.from_settings(sessions, clock, settings)
     schedule(sessions, clock, settings, model_reader(sessions, clock, settings), outbound)
 
