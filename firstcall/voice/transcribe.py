@@ -11,6 +11,7 @@ Two modes:
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
@@ -41,6 +42,17 @@ class UnusableAudioError(Exception):
 
 class ReplayMissError(Exception):
     """No recorded transcript for this audio."""
+
+
+class WhisperMissingError(Exception):
+    """faster-whisper cannot be imported here, so local mode cannot run."""
+
+
+WHISPER_MISSING = (
+    "faster-whisper is not installed, so the transcriber cannot run in local mode. "
+    "Install it with `uv sync --group voice`, or run the transcriber from the voice image "
+    "(`docker compose --profile voice up transcriber`)."
+)
 
 
 class Transcriber(Protocol):
@@ -125,6 +137,13 @@ class ReplayTranscripts:
 
 
 def from_settings(settings: Settings) -> Transcriber:
+    """The transcriber the settings ask for. Local mode imports faster-whisper here, before
+    any job is claimed: a transcriber without it would fail every attempt, and the last
+    attempt deletes the memo's audio."""
     if settings.transcribe_mode == "replay":
         return ReplayTranscripts(Path(settings.voice_transcripts))
+    try:
+        importlib.import_module("faster_whisper")
+    except ImportError as error:
+        raise WhisperMissingError(WHISPER_MISSING) from error
     return LocalWhisper(settings.whisper_size, settings.whisper_models)

@@ -76,9 +76,14 @@ def worker(
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
     if kind == "transcribe":
-        from firstcall.voice.transcribe import from_settings
+        from firstcall.voice.transcribe import WhisperMissingError, from_settings
 
-        transcribe_work(sessions, clock, settings, from_settings(settings), until_idle)
+        try:
+            transcriber = from_settings(settings)
+        except WhisperMissingError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
+        transcribe_work(sessions, clock, settings, transcriber, until_idle)
         return
     if kind:
         raise typer.BadParameter("--kind is transcribe, or left out for the main worker")

@@ -5,6 +5,7 @@ during a long memo, and the main worker never takes a transcription."""
 
 from __future__ import annotations
 
+import sys
 import time
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -406,6 +407,23 @@ def test_the_transcriber_takes_only_transcriptions(board: Board) -> None:
         typed = session.scalars(select(Note).where(Note.source == "typed")).one()
         job = session.scalars(select(Job).where(Job.note_id == typed.id)).one()
         assert (job.kind, job.state) == ("read_note", "queued")
+
+
+def test_a_transcriber_without_faster_whisper_exits_before_claiming_a_memo(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, note_id = _memo(board)
+    monkeypatch.setenv("FIRSTCALL_DATABASE_URL", database_url)
+    monkeypatch.setenv("FIRSTCALL_TRANSCRIBE_MODE", "local")
+    # As in an environment synced without the voice group: the import fails.
+    monkeypatch.setitem(sys.modules, "faster_whisper", None)
+    done = CliRunner().invoke(app, ["worker", "--kind", "transcribe", "--until-idle"])
+    assert done.exit_code == 1
+    assert "uv sync --group voice" in done.output
+    assert "docker compose --profile voice up transcriber" in done.output
+    assert _jobs(board, note_id)[TRANSCRIBE] == ("queued", 0)
+    assert _audio(board, note_id) == 1
+    assert _waiting(board, note_id).read_state == "transcribing"
 
 
 def test_the_worker_command_runs_the_transcriber_in_replay_mode(
