@@ -32,9 +32,12 @@ a spam trap. A form source's URL ends in a form key. The key is public, since an
 read it in the page, so a form source is protected by its honeypot, its rate limits and the
 spam check, not by the key. Sources that must refuse strangers use basic auth or a signature.
 
-The transcriber runs in its own image. To run it outside Docker, install the voice group,
-which plain `uv sync` leaves out, then start it: `uv sync --group voice`, then
-`uv run firstcall worker --kind transcribe`. [docs/board.md](docs/board.md) has the rest.
+The transcriber runs in its own image: `docker compose --profile voice up -d --build --wait`.
+Outside Docker it needs Linux, or macOS 14 or later on Apple Silicon, since faster-whisper's
+onnxruntime has no wheel for Intel Macs or older macOS. There, install the voice group, which
+plain `uv sync` leaves out, then start it: `uv sync --group voice`, then
+`uv run firstcall worker --kind transcribe`. Anywhere else, use the image.
+[docs/board.md](docs/board.md) has the rest.
 
 To use the board, add yourself as a user, then open <http://localhost:8020/signin>. The front page at
 <http://localhost:8020> is public and needs no sign-in:

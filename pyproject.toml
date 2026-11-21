@@ -37,8 +37,9 @@ dev = [
     # numpy in its own image.
     "numpy",
 ]
-# Installed only by the transcriber's image (the Dockerfile's voice stage): onnxruntime, which
-# faster-whisper needs, has no wheel for Intel Macs or macOS before 14. Pyright reads
+# Left out of a plain `uv sync`: onnxruntime, which faster-whisper needs, has no wheel for
+# Intel Macs or macOS before 14. The transcriber's image installs it (the Dockerfile's voice
+# stage), as can `uv sync --group voice` on Linux or macOS 14+ on Apple Silicon. Pyright reads
 # typings/faster_whisper instead.
 voice = [
     # faster-whisper 1.2.1 fails on every clip with av 19.

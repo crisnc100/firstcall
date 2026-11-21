@@ -80,8 +80,10 @@ background. The lead page shows one of these under the note:
 - The **tidied note** and its **suggestions** when the read worked.
 
 The lead page checks again every 15 seconds while a note is waiting for its transcript (see
-[Voice memos](#voice-memos)) or its read. It does not redraw while a form on the page is
-being edited, or a memo is being recorded or sent, so unsaved typing is never lost.
+[Voice memos](#voice-memos)) or its read. That check does not redraw while a form on the
+page is being edited, or a memo is being recorded or sent, so it never loses unsaved typing.
+Saving something does redraw the page: a memo the server accepts reloads it, which replaces
+anything typed but not saved in its other forms.
 
 A read can update the buyer's profile (budget, authority, need, timeline). It never changes
 a field a person set, and the profile form sends only the fields the person changed. The
@@ -105,8 +107,9 @@ microphone, drops the memo unsent. A recording that fails is never sent. The pag
 the first of WebM, MP4 or Ogg the browser can make.
 The microphone needs HTTPS outside localhost; without it the page offers only the file.
 
-The memo shows at once as a **Voice** note saying **Transcribing…**, until the transcript
-appears and is read. One that cannot be transcribed says
+The memo shows at once as a **Voice** note saying **Transcribing…**. Once the transcript is
+saved it becomes the note's text, read like a typed note's: **Reading this note…**, or
+**Needs a model key** when there is none. One that cannot be transcribed says
 **Couldn't transcribe this memo. Record it again.**
 
 The page posts the memo as the raw body to `POST /api/leads/{id}/voice?action=…`, with its
