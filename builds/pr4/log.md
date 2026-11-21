@@ -373,3 +373,53 @@ without speech.
   note date 2026-06-17): small.en heard "called Susan this morning, …" and the recorded read
   suggests a call quoting "called Susan this morning". Its transcript and read are already
   committed, so F40 needs no call of its own.
+
+## Phase 8: close
+
+- **Pick and default.** `tests/test_voice_report.py` applies `pick` to the committed report:
+  `small.en`, equal to `Settings.whisper_size`'s default and compose's
+  `FIRSTCALL_WHISPER_SIZE` default, so no default changed. The same file checks six pairs,
+  150 reads each under the frozen prompt hash, one record pass each, transcripts that match
+  the voice gold's clips and manifest, and that each miss of the shipped size is in
+  `docs/failures/0002`. The fake reports for each branch of the rule are in
+  `tests/test_voice_eval.py` (phase 4).
+- **ADR-005** closed with its result: `small.en` ships by the rule's no-pass branch;
+  prediction 1 did not hold (no size meets the floors on degraded audio), 2 and 3 held.
+  The disclosure now records the seed-7 dry run and that seed 11 was first transcribed in
+  the eval.
+- **docs/failures/0002** publishes `small.en`'s three degraded misses with intervals, the
+  unsupported count split into hearing and spelling (clean 8 by sound, 16 by spelling;
+  degraded 23 and 30), what was misheard (17 of 23 degraded notes carry a figure the
+  transcript itself got wrong; 13 of 20 authority misses are one sentence, "Buying for his
+  (or her) parents, who make the final call"), the two known effects and three v0.2 items.
+- **F40, second half** (`tests/fault/test_pages_voice_suggestion.py`, 30 s here). A change
+  from plan rev 2, approved by the orchestrator: the memo is the seed-11 clip
+  `clean/note-11-141.mp3`, not PR4a's Chromium recording, whose small.en transcript ("Call
+  Dana …") might draw no suggestion and whose audio is not in the voice manifest. The owner
+  sends the clip with no contact picked; the transcriber replays `small.en-clean.jsonl`; a
+  worker in replay mode reads the note from the eval's recorded answer, the memo dated to the
+  script's note date first. The page shows "Transcribing…", the transcript, then "Suggested:
+  Called — “called Susan this morning”"; Confirm logs a suggestion-sourced call; no reload.
+  The buyer's message is processed by a no-key worker first, which then stops, since replay
+  has no answer for the message read. PR4a's Chromium fixture still covers the first half.
+
+Sibling check, for every check, guard, rule or output PR4b added or changed:
+
+| Added or changed | Other paths to the same data or state, and what consumes it | Status |
+|---|---|---|
+| Record mode takes a transcript whose audio is an MP3 in the voice manifest (`SyntheticIndex.from_gold`) | `Gateway.from_settings` (product record mode), `model_eval` and `note_eval` record mode build `from_gold()` with the committed transcripts; the voice runner builds its own from the folders it reads; consumer: `Gateway.call` | Applied: the same rule on every path |
+| | PR4a's page-test transcripts (`tests/fixtures/voice/page-transcripts.jsonl`) | Not needed: F40 uses a seed-11 clip, whose transcript is already accepted |
+| A pair is transcribed once (`TranscribedError`, on the transcripts or the run file) | The CLI checks for the transcripts before building Whisper; `--out` folders (dry run, Atlas) go through the same function | Applied |
+| `evals/voice` takes only the voice gold's runs | Only the CLI writes there; `transcribe_pair` called directly takes any folder | Not needed: tests pass temporary folders; the library has no default write path |
+| `local_transcriber` names local mode | `firstcall worker --kind transcribe` builds from the process settings | Not needed: the product must honour replay mode for the page tests |
+| No report while a pair is missing, unanswered, or the Atlas timing is absent (`write_voice`) | `eval-voice-report`; `check_replay_report` (CI eval job) | Applied: both go through `write_voice`; a replay miss raises before it |
+| Pick rule (`pick`) | The report; `Settings.whisper_size` and compose's default; ADR-005's text | Applied: the committed-report test ties all three to the rule's answer |
+| Rule names no size when none is within the bound | `write_voice` still writes the report, saying none ships | Applied; `tests/test_voice_report.py` fails if the committed pick has no size |
+| Record passes join the run file before the replay | Notes eval does the same with its record-pass file | Applied |
+| Secret scan skips `evals/voice/` transcripts, run files and Atlas timing | `verify.sh --step secrets` in CI runs the same function | Applied; any other file under `evals/voice/` is scanned (probed) |
+| Replay check learns the `voice` kind | CI's eval job; `committed()` in `tests/test_eval_cli.py` and `tests/test_note_replay.py` | Applied; their file lists hold no voice report, so they are unchanged |
+| Coverage floor for `voice_eval.py` (85%) | `verify.sh --step floors` and CI's merged floors | Applied |
+| `SQUASHED` gains `d3fe098` | `_history_of` checks the tag's tree equals the squash's; CI needs the tag fetched, as for `pr1a-history` | Applied; the tag is on origin |
+| `note_eval._gateway` takes an optional index | `evaluate_notes`, `read_unit_notes`, `tests/test_note_replay.py` | Not needed: they pass none and behave as before |
+| `WhisperSize` type in settings | `LocalWhisper` checks sizes against `WHISPER_REVISIONS` | Applied: a test pins `SIZES == tuple(WHISPER_REVISIONS)` |
+| F40 clip, transcript and quote agree | Only the page test; recording the voice eval again | Applied: a fast test checks them, and `docs/rerecord.md` says a new recording must keep both |

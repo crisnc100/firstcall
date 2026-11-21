@@ -11,6 +11,6 @@ shows the prediction came first.
 | [ADR-002: model candidates and the pick](ADR-002-model-candidates.md) | Candidate list amended; result recorded |
 | [ADR-003: matching rules and hard negatives](ADR-003-matching.md) | Result recorded; rule amended |
 | [ADR-004: lead events as the outbox](ADR-004-lead-events-outbox.md) | Prediction only |
-| [ADR-005: local transcription and the Whisper size](ADR-005-local-transcription.md) | Prediction; candidates, settings and pick rule fixed |
+| [ADR-005: local transcription and the Whisper size](ADR-005-local-transcription.md) | Result recorded; small.en ships |
 | [ADR-006: the no-model fallback](ADR-006-no-model-fallback.md) | Rules-only result recorded |
 | [ADR-007: the note reader](ADR-007-note-reader.md) | Result recorded |

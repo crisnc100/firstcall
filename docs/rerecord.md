@@ -115,6 +115,10 @@ a transcript to the model only when its audio is a clip in `evals/gold/voice/MAN
 voice image times each size on the beta host. Clips rendered anywhere else take `--clips`
 and `--out` (and `--seed` when it is not 11), and never write into `evals/voice`.
 
+The voice page test (`tests/fault/test_pages_voice_suggestion.py`) replays the shipped size's
+clean transcript of `note-11-141` and its recorded read, so a new recording of the voice eval
+must keep both.
+
 Once all six pairs and `evals/voice/atlas-timing.json` are in, write the report and its pick:
 
 ```bash
