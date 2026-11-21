@@ -1,0 +1,42 @@
+{
+  "f1": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f2": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f3": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f4": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f5": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "x1": {
+    "status": "deferred",
+    "reason": "The browser test's MIME fallback case is masked by Playwright filling audio/mp4; the fallback has no other test.",
+    "fix": "Drive the fallback with a file whose extension Playwright does not map."
+  },
+  "x2": {
+    "status": "deferred",
+    "reason": "The wrapped-error log test builds the chain by hand outside a handler, so it cannot catch traceback logging.",
+    "fix": "Raise a real chained exception inside an except block in the test."
+  },
+  "x3": {
+    "status": "deferred",
+    "reason": "make.sh can leave ok.webm overwritten with a stale hash if a later encode fails.",
+    "fix": "Encode into a temp dir and swap with the hash refresh at the end."
+  },
+  "x4": {
+    "status": "deferred",
+    "reason": "The permission-pending browser case can pass with the post-permission connection check removed.",
+    "fix": "Hold permission until after the redraw with a promise the test resolves."
+  }
+}

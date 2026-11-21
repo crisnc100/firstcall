@@ -1,0 +1,28 @@
+{
+  "f1": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f2": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f3": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f4": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "x1": {
+    "status": "deferred",
+    "reason": "A microphone disconnect uploads what was recorded so far; the person can still delete or redo the note.",
+    "fix": "Treat a track ended before Stop as a failed memo."
+  },
+  "x2": {
+    "status": "deferred",
+    "reason": "A successful memo upload reloads the lead and can drop an unsaved typed draft; same reload rule as other actions.",
+    "fix": "Apply the poll's edit check to the post-upload reload."
+  }
+}
