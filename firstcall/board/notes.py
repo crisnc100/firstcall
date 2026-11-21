@@ -135,6 +135,24 @@ def voice_lead(
     return lead
 
 
+def check_waiting(session: Session, viewer: Viewer) -> None:
+    """TooManyError when the person already has USER_WAITING memos waiting, BusyError when
+    the org's waiting memos hold ORG_WAITING_SECONDS of audio. The api asks first, without
+    a lock, so a memo over a cap is refused before its audio is read; saving asks again
+    under the org's lock."""
+    waiting = select(func.count()).select_from(VoiceAudio).join(Note, Note.id == VoiceAudio.note_id)
+    mine = session.scalar(waiting.where(Note.author_id == uuid.UUID(viewer.user_id))) or 0
+    if mine >= USER_WAITING:
+        raise TooManyError
+    queued = session.scalar(
+        select(func.coalesce(func.sum(VoiceAudio.seconds), 0)).where(
+            VoiceAudio.org_id == uuid.UUID(viewer.org_id)
+        )
+    )
+    if float(queued or 0) >= ORG_WAITING_SECONDS:
+        raise BusyError
+
+
 def add_voice_note(
     session: Session,
     viewer: Viewer,
@@ -150,17 +168,8 @@ def add_voice_note(
     lead = voice_lead(session, viewer, lead_id, action, lock=True)
     # One org's uploads count their waiting memos one at a time, after the lead's lock.
     lock_all(session, [("voice", str(lead.org_id))])
+    check_waiting(session, viewer)
     user_id = uuid.UUID(viewer.user_id)
-    waiting = select(func.count()).select_from(VoiceAudio).join(Note, Note.id == VoiceAudio.note_id)
-    if (session.scalar(waiting.where(Note.author_id == user_id)) or 0) >= USER_WAITING:
-        raise TooManyError
-    queued = session.scalar(
-        select(func.coalesce(func.sum(VoiceAudio.seconds), 0)).where(
-            VoiceAudio.org_id == lead.org_id
-        )
-    )
-    if float(queued or 0) >= ORG_WAITING_SECONDS:
-        raise BusyError
     now = clock.now()
     note = Note(
         id=uuid.uuid4(), org_id=lead.org_id, lead_id=lead.id, author_id=user_id, text="",

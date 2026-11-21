@@ -557,14 +557,25 @@ def board_router(
         except InvalidError as invalid:
             raise HTTPException(422, str(invalid)) from invalid
 
+    def memo_refused(
+        error: InvalidError | notes.TooManyError | notes.BusyError,
+    ) -> HTTPException:
+        if isinstance(error, notes.TooManyError):
+            detail = f"{notes.USER_WAITING} of your memos are still being transcribed"
+            return HTTPException(429, detail)
+        if isinstance(error, notes.BusyError):
+            return HTTPException(503, "busy transcribing; try again shortly")
+        return HTTPException(422, str(error))
+
     def may_record(request: Request, lead_id: uuid.UUID, action: str | None) -> None:
         try:
             with caller(request, writes=True) as (db, who):
                 notes.voice_lead(db, who.viewer, lead_id, action, lock=False)
+                notes.check_waiting(db, who.viewer)
         except NotFoundError:
             _not_found()
-        except InvalidError as invalid:
-            raise HTTPException(422, str(invalid)) from invalid
+        except (InvalidError, notes.TooManyError, notes.BusyError) as refused:
+            raise memo_refused(refused) from refused
 
     def store_memo(
         request: Request, lead_id: uuid.UUID, memo: audio.Memo, action: str | None
@@ -582,36 +593,38 @@ def board_router(
                 }
         except NotFoundError:
             _not_found()
-        except InvalidError as invalid:
-            raise HTTPException(422, str(invalid)) from invalid
-        except notes.TooManyError as too_many:
-            detail = f"{notes.USER_WAITING} of your memos are still being transcribed"
-            raise HTTPException(429, detail) from too_many
-        except notes.BusyError as busy:
-            raise HTTPException(503, "busy transcribing; try again shortly") from busy
+        except (InvalidError, notes.TooManyError, notes.BusyError) as refused:
+            raise memo_refused(refused) from refused
 
     @router.post("/leads/{lead_id}/voice", status_code=201)
     async def add_voice_note(
         request: Request, lead_id: uuid.UUID, action: str | None = None
     ) -> dict[str, Any]:
-        """A voice memo, sent as the raw body with its type in Content-Type. Who may record,
-        the size, the format and the length are all checked before anything is stored; the
-        checks that run ffmpeg run off the event loop."""
+        """A voice memo, sent as the raw body with its type in Content-Type. Who may record
+        and the waiting caps are checked before the body is read; the size, format and
+        length before anything is stored. The checks that run ffmpeg run off the event loop,
+        a few at a time."""
         action = action or None
         await run_in_threadpool(may_record, request, lead_id, action)
-        declared = request.headers.get("content-length")
-        if declared and declared.isdigit() and int(declared) > audio.MAX_BYTES:
-            raise HTTPException(413, f"a memo is at most {audio.MAX_BYTES} bytes")
+        if not audio.CHECKS.acquire(blocking=False):
+            raise HTTPException(503, "busy checking memos; try again shortly")
         try:
-            body = await read_limited(request.stream(), audio.MAX_BYTES)
-        except BodyTooLargeError as too_large:
-            raise HTTPException(413, f"a memo is at most {audio.MAX_BYTES} bytes") from too_large
-        try:
-            memo = await run_in_threadpool(
-                audio.check, body, request.headers.get("content-type", "")
-            )
-        except audio.RefusedError as refused:
-            raise HTTPException(refused.status, refused.detail) from refused
+            declared = request.headers.get("content-length")
+            if declared and declared.isdigit() and int(declared) > audio.MAX_BYTES:
+                raise HTTPException(413, f"a memo is at most {audio.MAX_BYTES} bytes")
+            try:
+                body = await read_limited(request.stream(), audio.MAX_BYTES)
+            except BodyTooLargeError as too_large:
+                detail = f"a memo is at most {audio.MAX_BYTES} bytes"
+                raise HTTPException(413, detail) from too_large
+            try:
+                memo = await run_in_threadpool(
+                    audio.check, body, request.headers.get("content-type", "")
+                )
+            except audio.RefusedError as refused:
+                raise HTTPException(refused.status, refused.detail) from refused
+        finally:
+            audio.CHECKS.release()
         return await run_in_threadpool(store_memo, request, lead_id, memo, action)
 
     @router.put("/leads/{lead_id}/profile")

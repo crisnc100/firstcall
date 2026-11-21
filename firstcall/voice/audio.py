@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import subprocess
 import tempfile
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -26,6 +27,10 @@ SAMPLE_RATE = 16_000
 BYTES_PER_SECOND = SAMPLE_RATE * 2
 PROBE_TIMEOUT = 10
 DECODE_TIMEOUT = 60
+# At most this many uploads are read and checked at once in one api process, so memos never
+# take the thread pool or memory the board's other requests need. A full set answers 503.
+MAX_CHECKS = 2
+CHECKS = threading.BoundedSemaphore(MAX_CHECKS)
 CODECS = frozenset({"opus", "aac", "mp3", "vorbis"})
 
 

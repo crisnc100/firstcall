@@ -13,15 +13,15 @@ from typing import Any
 
 import anyio
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.board.notes import ORG_WAITING_SECONDS, USER_WAITING
-from firstcall.db import Contact, Job, LeadEvent, Note, VoiceAudio
+from firstcall.db import Contact, Job, LeadEvent, Note, User, VoiceAudio
 from firstcall.voice import audio
 from tests.board_helpers import Board
 from tests.conftest import FakeClock
-from tests.voice_helpers import FIXTURES, counts, fixture, upload
+from tests.voice_helpers import FIXTURES, asgi_upload, counts, fixture, upload
 
 MONDAY_10AM = datetime(2026, 3, 2, 15, 0, tzinfo=UTC)
 SELLER = "seller@larkspur.example"
@@ -290,3 +290,60 @@ def test_check_refuses_an_oversize_body_it_is_handed() -> None:
     with pytest.raises(audio.RefusedError) as refused:
         audio.check(b"OggS" + bytes(audio.MAX_BYTES), "audio/ogg")
     assert refused.value.status == 413
+
+
+def _owned_lead(board: Board) -> uuid.UUID:
+    with board.sessions() as session:
+        seller = session.scalars(select(User).where(User.email == SELLER)).one()
+    lead = board.lead("north")
+    board.own(lead, seller, MONDAY_10AM)
+    return lead
+
+
+def test_a_memo_over_a_waiting_cap_is_refused_before_its_body_is_read(
+    board: Board, owned: tuple[Any, uuid.UUID]
+) -> None:
+    client, lead = owned
+    for _ in range(3):
+        assert upload(client, _owned_lead(board)).status_code == 201
+    status, asked = asgi_upload(board, client, lead, [fixture("ok.webm")], "audio/webm")
+    assert (status, asked) == (429, 0)
+    other = board.user("north3@larkspur.example", teams={"north": "salesperson"})
+    second = board.lead("north")
+    board.own(second, other, MONDAY_10AM)
+    with board.sessions.begin() as session:
+        session.execute(update(VoiceAudio).values(seconds=Decimal(200)))
+    status, asked = asgi_upload(
+        board, board.signed_in(other.email), second, [fixture("ok.webm")], "audio/webm"
+    )
+    assert (status, asked) == (503, 0)
+
+
+def test_uploads_past_the_checking_slots_are_refused_unread(
+    board: Board, owned: tuple[Any, uuid.UUID]
+) -> None:
+    client, lead = owned
+    held = [audio.CHECKS.acquire(blocking=False) for _ in range(audio.MAX_CHECKS)]
+    assert all(held)
+    try:
+        status, asked = asgi_upload(board, client, lead, [fixture("ok.webm")], "audio/webm")
+        assert (status, asked) == (503, 0)
+    finally:
+        for _ in held:
+            audio.CHECKS.release()
+    assert upload(client, lead).status_code == 201
+
+
+def test_every_refusal_gives_its_checking_slot_back(
+    board: Board, owned: tuple[Any, uuid.UUID]
+) -> None:
+    client, lead = owned
+    assert upload(client, lead, "video.webm").status_code == 415
+    assert upload(client, lead, "lying.webm").status_code == 422
+    over = asgi_upload(board, client, lead, [b"OggS"], length=5_000_001)
+    assert over == (413, 0)
+    held = [audio.CHECKS.acquire(blocking=False) for _ in range(audio.MAX_CHECKS)]
+    for taken in held:
+        if taken:
+            audio.CHECKS.release()
+    assert all(held)
