@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from firstcall.db import Job
 from firstcall.errors import log_failure, safe_error
-from firstcall.pipeline import jobs
+from firstcall.pipeline import jobs, worker
 from firstcall.pipeline.jobs import TRANSCRIBE, claim
+from firstcall.settings import Settings
 from firstcall.voice.job import run_transcription
 from tests.board_helpers import Board
 from tests.conftest import FakeClock
@@ -106,4 +107,31 @@ def test_a_message_jobs_database_error_keeps_the_message_out_of_logs(
     with sessions() as session:
         job = session.scalars(select(Job).where(Job.message_id == message)).one()
     assert job.last_error == "DataError (SQLSTATE 22P02)"
+    assert SENTINEL not in caplog.text
+
+
+def test_the_schedulers_expiry_and_tick_log_a_database_error_without_its_row(
+    engine: Engine, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    error = _failed_insert(engine)
+
+    def fail(*args: Any, **kwargs: Any) -> Any:
+        raise error
+
+    def stop(*args: Any, **kwargs: Any) -> dict[str, int]:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(worker, "expire_waiting", fail)
+    monkeypatch.setattr(worker, "tick", fail)
+    monkeypatch.setattr(worker, "followup_tick", stop)
+    monkeypatch.setattr(worker, "beat", lambda *args: None)
+    caplog.set_level(logging.DEBUG)
+    clock = FakeClock()
+    # Every database call is replaced above, so no sessions are needed.
+    no_sessions: Any = None
+    assert worker.expire_tick(no_sessions, clock) == {"expired_memos": 0}
+    with pytest.raises(KeyboardInterrupt):
+        worker.schedule(no_sessions, clock, Settings(env="test"))
+    assert "expiring waiting memos failed: IntegrityError (SQLSTATE 23514)" in caplog.text
+    assert "the scheduler's tick failed: IntegrityError (SQLSTATE 23514)" in caplog.text
     assert SENTINEL not in caplog.text

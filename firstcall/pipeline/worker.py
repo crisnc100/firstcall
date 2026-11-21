@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 
 from firstcall.core.clock import Clock
 from firstcall.db import Heartbeat
+from firstcall.errors import log_failure
 from firstcall.notes.reader import NoteReader, reread_notes
 from firstcall.pipeline.jobs import TRANSCRIBE, claim, reap, run_one
 from firstcall.pipeline.model_read import ModelReader
@@ -171,8 +172,8 @@ def expire_tick(sessions: sessionmaker[Any], clock: Clock) -> dict[str, int]:
     scheduler keeps ticking."""
     try:
         return {"expired_memos": expire_waiting(sessions, clock)}
-    except Exception:
-        log.exception("expiring waiting memos failed")
+    except Exception as error:
+        log_failure(log, error, "expiring waiting memos failed")
         return {"expired_memos": 0}
 
 
@@ -200,10 +201,10 @@ def schedule(
         beat(sessions, "scheduler")
         try:
             tick(sessions, clock, settings, reader)
-        except Exception:
+        except Exception as error:
             # The reaper or a reread failed this pass; follow-ups and alerts still run, and
             # the next pass tries again.
-            log.exception("the scheduler's tick failed")
+            log_failure(log, error, "the scheduler's tick failed")
         expire_tick(sessions, clock)
         followup_tick(sessions, clock)
         if outbound is not None:
