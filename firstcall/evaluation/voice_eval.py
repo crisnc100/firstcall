@@ -383,13 +383,17 @@ def pick(report: Mapping[str, Any]) -> dict[str, Any]:
     within = [size for size in SIZES if per_minute[size] <= report["speed_bound"]]
     for size in within:
         if all(row["met"] for row in degraded_floors(report, size)):
-            return {"size": size, "rule": "the smallest size meeting every floor", "misses": []}
+            return {
+                "size": size,
+                "rule": "the smallest size that meets every floor within the speed bound",
+                "misses": [],
+            }
     if not within:
-        return {"size": None, "rule": "no size within the speed bound", "misses": []}
+        return {"size": None, "rule": "no size runs within the speed bound", "misses": []}
     size = within[-1]
     misses = [row for row in degraded_floors(report, size) if not row["met"]]
-    return {"size": size, "rule": "none meets every floor: the largest within the speed bound",
-            "misses": misses}  # fmt: skip
+    rule = "no size meets every floor, so the largest within the speed bound ships"
+    return {"size": size, "rule": rule, "misses": misses}
 
 
 def _cell(value: Any) -> str:
@@ -476,7 +480,7 @@ def _markdown(report: Mapping[str, Any]) -> str:
     chosen, atlas = report["pick"], report["atlas"]
     shipped = f"`{chosen['size']}`" if chosen["size"] else "none"
     lines += [
-        f"**Shipped size: {shipped}**, by ADR-005's rule: {chosen['rule']}.",
+        f"**Shipped size: {shipped}.** ADR-005's rule: {chosen['rule']}.",
         "",
         f"| Size | Degraded run meets every floor | Atlas compute s per audio minute | "
         f"Within {report['speed_bound']} |",
@@ -502,7 +506,7 @@ def _markdown(report: Mapping[str, Any]) -> str:
         "## Every run",
         "",
         "| Size | Condition | Floors met | WER | Not transcribed | Unreadable answers | "
-        "Compute s per audio minute |",
+        "Compute s per audio minute where transcribed |",
         "|---|---|---|---|---|---|---|",
     ]
     for pair in report["pairs"].values():

@@ -54,6 +54,7 @@ IDS = [f"note-11-{n:03d}" for n in range(1, 7)]
 SPOKEN = {row["id"]: row["text"] for row in spoken_rows(SEED)}
 MISHEARD = "note-11-002"
 SILENT = "note-11-003"
+SMALLEST = "the smallest size that meets every floor within the speed bound"
 
 
 @pytest.fixture(autouse=True)
@@ -336,8 +337,7 @@ def test_replay_rebuilds_the_report_byte_for_byte_and_it_picks(
     assert set(report["pairs"]) == {f"{s}-{c}" for s in SIZES for c in ("clean", "degraded")}
     assert report["voices"] == Clips(clips.root, SEED).voices()
     assert sum(report["voices"].values()) == len(IDS)
-    assert report["pick"] == {"size": "tiny.en", "rule": "the smallest size meeting every floor",
-                              "misses": []}  # fmt: skip
+    assert report["pick"] == {"size": "tiny.en", "rule": SMALLEST, "misses": []}
     first = write_voice(report, "2026-01-01", tmp_path / "first")
     again = write_voice(evaluate_voice(database_url, MODEL, clips, out, recordings), "2026-01-01",
                         tmp_path / "again")  # fmt: skip
@@ -345,7 +345,7 @@ def test_replay_rebuilds_the_report_byte_for_byte_and_it_picks(
                                        "2026-01-01-voice-seed-11.md"]  # fmt: skip
     assert [p.read_bytes() for p in first] == [p.read_bytes() for p in again]
     text = first[1].read_text()
-    assert "**Shipped size: `tiny.en`**" in text
+    assert "**Shipped size: `tiny.en`.**" in text
     assert "| tiny.en | degraded |" in text
     assert "names by spelling | reported |" in text
     assert "| budget F1 | >= 0.85 |" in text
@@ -391,8 +391,7 @@ def test_the_pick_rule_ships_the_smallest_size_that_passes_within_the_speed_boun
     smallest = _fake({"tiny.en": True, "base.en": True, "small.en": True}, fast)
     assert pick(smallest)["size"] == "tiny.en"
     middle = _fake({"tiny.en": False, "base.en": True, "small.en": True}, fast)
-    assert pick(middle) == {"size": "base.en", "rule": "the smallest size meeting every floor",
-                            "misses": []}  # fmt: skip
+    assert pick(middle) == {"size": "base.en", "rule": SMALLEST, "misses": []}
     # Within the bound means at most 60 seconds a minute.
     edge = _fake({"tiny.en": False, "base.en": False, "small.en": True},
                  {**fast, "small.en": 60.0})  # fmt: skip
@@ -404,7 +403,9 @@ def test_when_none_passes_the_largest_size_within_the_speed_bound_ships_with_its
                                                   "small.en": 20.0})  # fmt: skip
     chosen = pick(report)
     assert chosen["size"] == "small.en"
-    assert chosen["rule"] == "none meets every floor: the largest within the speed bound"
+    assert (
+        chosen["rule"] == "no size meets every floor, so the largest within the speed bound ships"
+    )
     assert [m["measure"] for m in chosen["misses"]] == ["key-term recall"]
 
 
@@ -418,7 +419,7 @@ def test_a_size_that_passes_but_is_too_slow_never_ships() -> None:
                       {"tiny.en": 61.0, "base.en": 6.0, "small.en": 20.0})  # fmt: skip
     assert pick(slow_tiny)["size"] == "base.en"
     none_fast = _fake(dict.fromkeys(SIZES, True), dict.fromkeys(SIZES, 90.0))
-    assert pick(none_fast) == {"size": None, "rule": "no size within the speed bound",
+    assert pick(none_fast) == {"size": None, "rule": "no size runs within the speed bound",
                                "misses": []}  # fmt: skip
 
 
