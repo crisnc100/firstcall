@@ -16,7 +16,8 @@ You need [uv](https://docs.astral.sh/uv/), Docker and Node with npm. No API key 
 model is off by default (`FIRSTCALL_MODEL_MODE=offline`), so every message takes the rules path.
 
 ```sh
-./verify.sh                       # every check, the same script CI runs
+./verify.sh                       # every check, in order; CI runs its steps as parallel jobs
+./verify.sh --step lint           # one check: lint, secrets, web, playwright, stack, eval, tests, floors
 docker compose up -d --wait       # Postgres, api, worker, scheduler and a mail catcher
 uv run firstcall seed             # the made-up demo company from config/demo.yaml
 uv run firstcall rotate-secret inbox   # prints a password for the email source, once

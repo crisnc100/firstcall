@@ -2,41 +2,144 @@ name: verify
 
 on:
   push:
+    branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+# A newer push to a pull request cancels its older run. Every other run gets a group of its
+# own, because GitHub replaces a run waiting in a group: a queued main, nightly or manual run,
+# and its slow lane, would be dropped.
+concurrency:
+  group: verify-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
+  lint:
     runs-on: ubuntu-latest
-    services:
-      db:
-        image: postgres:16
-        env:
-          POSTGRES_DB: firstcall
-          POSTGRES_USER: firstcall
-          POSTGRES_PASSWORD: firstcall  # pragma: allowlist secret (CI-only database)
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U firstcall -d firstcall"
-          --health-interval 2s --health-timeout 5s --health-retries 30
-    env:
-      # Tests use the service database; compose runs its own stack for the fault suite.
-      FIRSTCALL_DATABASE_URL: postgresql+psycopg://firstcall:firstcall@localhost:5432/firstcall  # pragma: allowlist secret (CI-only database)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: ./verify.sh --step lint
+      - run: ./verify.sh --step secrets
+
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: docker compose up -d --wait postgres
+      - run: ./verify.sh --step eval
+
+  # Everything outside tests/fault, which needs only Postgres and the mail catcher.
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
         with:
           # The gold-before-code test reads the full history.
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
-        with:
-          version: "0.9.11"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+      - uses: ./.github/actions/setup
+      - run: docker compose up -d --wait postgres mailpit
+      - run: ./verify.sh --step web
       # verify.sh installs the browser; the runner also needs its system libraries.
-      - name: playwright system libraries
-        run: uv run --locked playwright install-deps chromium
-      - name: verify.sh
-        run: ./verify.sh
+      - run: uv run playwright install-deps chromium
+      - run: ./verify.sh --step playwright
+      # pytest-split balances the groups by .test_durations, which a full pytest run with
+      # --store-durations rewrites. A test missing from it still runs, counted at the average.
+      - run: >-
+          ./verify.sh --step tests tests --ignore=tests/fault
+          --splits ${{ strategy.job-total }} --group ${{ matrix.group }}
+          --splitting-algorithm least_duration
+          --cov-report=
+        env:
+          COVERAGE_FILE: .cache/ci/coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-tests-${{ matrix.group }}
+          path: .cache/ci/
+          include-hidden-files: true
+          if-no-files-found: error
+
+  # tests/fault runs app containers on the compose stack: the pages in a browser, killed
+  # workers and alert latency. One page test takes over a minute alone, so six groups keep
+  # each near that floor.
+  compose:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: uv run playwright install-deps chromium
+      - run: ./verify.sh --step playwright
+      - run: ./verify.sh --step stack
+      - run: >-
+          ./verify.sh --step tests tests/fault
+          --splits ${{ strategy.job-total }} --group ${{ matrix.group }}
+          --splitting-algorithm least_duration
+          --cov-report=
+        env:
+          COVERAGE_FILE: .cache/ci/coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-compose-${{ matrix.group }}
+          path: .cache/ci/
+          include-hidden-files: true
+          if-no-files-found: error
+
+  # The whole verify.sh in one process, as the review gate's close runs it, on every push to
+  # main, nightly and by hand. Pull requests skip it. Checks too slow for a pull request
+  # belong here.
+  slow:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - run: uv run playwright install-deps chromium
+      - run: ./verify.sh
+
+  # One row for the whole run: it fails if any job failed or was cancelled, then checks the
+  # coverage floors once, on the merged coverage of every shard.
+  verify:
+    needs: [lint, eval, tests, compose, slow]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job passed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo '${{ toJSON(needs.*.result) }}'
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          path: .cache/ci
+      - name: Coverage floors
+        run: |
+          # Floors on part of the shards could pass, so every shard of the matrices above must
+          # have sent its coverage.
+          tests=$(find .cache/ci -path '.cache/ci/coverage-tests-*/coverage' | wc -l)
+          compose=$(find .cache/ci -path '.cache/ci/coverage-compose-*/coverage' | wc -l)
+          if [[ $tests -ne 4 || $compose -ne 6 ]]; then
+            echo "expected coverage from 4 test and 6 compose groups, found $tests and $compose" >&2
+            exit 1
+          fi
+          # combine only warns about a data file it cannot read; as an error it fails the job.
+          uv run python -W error::Warning -m coverage combine --keep \
+            --data-file=.cache/ci.coverage .cache/ci/coverage-*/coverage
+          uv run coverage report --skip-covered --data-file=.cache/ci.coverage
+          uv run coverage json --data-file=.cache/ci.coverage -o .cache/ci.json
+          ./verify.sh --step floors .cache/ci.json

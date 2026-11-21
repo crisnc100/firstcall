@@ -1,0 +1,13 @@
+{
+  "mode": "pr",
+  "purpose": "Cristian approved a Firstcall CI speed-up (2026-11-21) before PR4 voice: a PR's CI in about 3 minutes instead of one 13.5-minute job, with every check still run on every PR, and local ./verify.sh unchanged.",
+  "mechanism": "verify.sh --step lint|secrets|web|playwright|stack|eval|tests|floors runs one check; with no argument it runs every step in the original order, and --step tests with no arguments writes coverage.json as the full run does. .github/workflows/verify.yml: push on main, pull_request, nightly 07:00 UTC and workflow_dispatch; concurrency is per PR ref for pull requests (older run cancelled) and per run otherwise. Jobs: lint (ruff, pyright, secret scan); eval (replay reports); tests in 4 pytest-split shards outside tests/fault with only postgres and mailpit up; compose in 6 shards of tests/fault against the full stack; both use --splits from strategy.job-total. The verify job needs all of them, fails if any failed or was cancelled, requires exactly 4 test and 6 compose coverage files, combines them with warnings as errors, and checks the per-module floors once. A slow lane runs the whole ./verify.sh on push to main, nightly and manual runs only. .github/actions/setup installs uv 0.9.11 and Node 22 from their caches and runs uv sync --locked. CI uses the compose Postgres, not a service container. .test_durations comes from a full local run of 909 tests.",
+  "decisions": "The fault tests stay on PRs because they fit inside the compose shards at no wall-time cost. Docker layers, Playwright browsers and service images are not cached: restoring them costs about what downloading does. The slow lane is where PR4 adds checks too slow for PRs.",
+  "readers": "README.md and docs: people running Firstcall's checks. Comments in verify.sh, .github/workflows/verify.yml and .github/actions/setup/action.yml: the next maintainer.",
+  "base": "origin/main",
+  "docMap": [
+    {"behavior": "verify.sh --step and CI layout", "docs": ["README.md"]},
+    {"behavior": "pytest-split and .test_durations", "docs": []}
+  ],
+  "untouchable": ["tests/**", "builds/**", ".test_durations", "uv.lock", "evals/**", "PRODUCT.md", "DESIGN.md", ".impeccable/**"]
+}

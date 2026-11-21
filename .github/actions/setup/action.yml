@@ -1,0 +1,17 @@
+name: setup
+description: Install uv, Node and the locked Python dependencies, from their caches.
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+      with:
+        version: "0.9.11"
+        enable-cache: true
+        cache-dependency-glob: uv.lock
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: web/package-lock.json
+    - shell: bash
+      run: uv sync --locked
