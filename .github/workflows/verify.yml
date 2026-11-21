@@ -8,8 +8,11 @@ on:
     - cron: "0 7 * * *"
   workflow_dispatch:
 
+# A newer push to a pull request cancels its older run. Every other run gets a group of its
+# own, because GitHub replaces a run waiting in a group: a queued main, nightly or manual run,
+# and its slow lane, would be dropped.
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
