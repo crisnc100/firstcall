@@ -28,7 +28,7 @@ secret_scan() {
   # transcripts (the page test's and the voice eval's) by the SHA-256 of their audio, beside
   # the Whisper model's pinned revision.
   git ls-files -z --cached --others --exclude-standard \
-    | grep -zv -E '^(evals/gold/|evals/reports/|evals/recordings/|evals/voice/|tests/fixtures/voice/page-transcripts\.jsonl$|uv\.lock$|web/package-lock\.json$)' \
+    | grep -zv -E '^(evals/gold/|evals/reports/|evals/recordings/|evals/voice/(transcripts/[^/]+\.jsonl|runs/[^/]+\.json|atlas-timing\.json)$|tests/fixtures/voice/page-transcripts\.jsonl$|uv\.lock$|web/package-lock\.json$)' \
     | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
 }
 
