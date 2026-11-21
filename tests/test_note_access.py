@@ -178,7 +178,7 @@ ALLOWED_KEYS: dict[str, set[str]] = {
     "lead.returned": {"by", "owner_id", "reason"},
     "lead.reassigned": {"by", "from", "to"},
     "lead.moved_team": {"by", "from_team", "to_team"},
-    "note.added": {"note_id", "by"},
+    "note.added": {"note_id", "by", "source"},
     "contact.logged": {"contact_id", "note_id", "kind", "by", "logged_by", "source"},
     "lead.outcome": {"by", "outcome", "reason"},
     "lead.reopened": {"by", "reason", "to", "message_id"},
