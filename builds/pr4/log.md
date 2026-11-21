@@ -258,3 +258,50 @@ fails since PR4a's squash merge (d3fe098 adds the voice gold and `transcribe.py`
 main's CI run after the merge is red on it). PR4a's branch tip e6d49b1 has d3fe098's tree, so
 a `pr4a-history` tag there and a `SQUASHED` entry in `tests/test_corpus.py` fix it, as
 `pr1a-history` did for PR1a; checked locally with the tag, not yet committed or pushed.
+
+## Main's gold-order test (test-only commit 08bb7c8)
+
+`SQUASHED` in `tests/test_corpus.py` gains `"d3fe098": "pr4a-history"`; the tag, pushed by
+the orchestrator, points at e6d49b1. No assertion changed.
+
+## Phase 5: seed-7 dry run (2026-11-21)
+
+- **Clips.** 30 degraded seed-7 clips, the first three scripts of each of the ten voices in
+  `plan_clips(7)`, rendered into a scratch folder with the gold's own `render_clip` and given
+  their own `MANIFEST.json` by `write_voice_manifest`. Piper 1.8.0 ran from a throwaway venv
+  with the ten voices at the gold's revision; the venv and models were deleted after. Seed 7's
+  audio, transcripts and recorded answers stayed in scratch; nothing of seed 7 is committed.
+- **Runs.** `eval-voice --seed 7 --condition degraded --clips … --out … --recordings …`, each
+  size transcribed with `--transcribe-only` first, then `--mode record --budget 0.05`. Record
+  mode accepted every transcript against the scratch manifest. A replay of small.en printed
+  the same floors.
+
+| Size | WER | Floors met | Unsupported, by sound (by spelling) | Compute s per audio minute, this Mac | Ledger $ |
+|---|---|---|---|---|---|
+| tiny.en | 0.2775 (227 of 818) | 1 of 8 | 5 (6) | 2.44 | 0.008078 |
+| base.en | 0.2103 (172 of 818) | 4 of 8 | 8 (9) | 4.30 | 0.008067 |
+| small.en | 0.1479 (121 of 818) | 6 of 8 | 4 (4) | 12.83 | 0.007895 |
+| **Total** | | | | | **0.024040** |
+
+90 reads, 0 failed, all on structured output; one small.en transcript matched an earlier
+one and was answered from its recording.
+
+What it shook out:
+- **The pipeline** works end to end: from_settings' startup check, timing, the manifest
+  check, reads, scoring, replay.
+- **WER** errors are mishearings on degraded audio ("Wants" heard as "Once" in most voices,
+  place names, "Lease" as "Lisa"). One spelling difference counts as hearing: Whisper's
+  "e-mail" for "email" is two errors (once each for base.en and small.en, 2 of 818 words).
+  WER has no floor, so the frozen scorer is unchanged.
+- **The spoken rule.** "five hundred five thousand" (505,000) was heard as $500,000
+  (small.en) and as "500,000, 5,000" (base.en): spoken without "and", the figure is
+  ambiguous. Five seed-11 scripts say "… hundred five thousand". Unchanged: a salesperson
+  can say it the same way, and changing it means rendering the seed-11 gold again.
+- **Names by sound** did their job: "Sean" for "Shawn" counted only on the strict line.
+- **Every unsupported finding is a real mishearing**: a misheard figure (840k as 340k or
+  140k), a word heard as a name ("Lease" as "Lisa"), or a name heard as another
+  ("Catherine" for "Kathleen"). No size reached the unsupported floor (at most 1) on 30
+  scripts.
+
+No gold, scorer or pipeline fix came out of the dry run, so `evals/gold/CHANGELOG.md` is
+unchanged.
