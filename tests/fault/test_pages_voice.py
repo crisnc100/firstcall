@@ -41,7 +41,9 @@ POLL_WAIT_MS = 25_000
 # The page records a tone in place of a microphone: Chromium's fake device hangs on macOS,
 # and the recording is what is under test, not the device.
 FAKE_MICROPHONE = """
+window.__micDelay = 0;
 navigator.mediaDevices.getUserMedia = async () => {
+  await new Promise((resolve) => setTimeout(resolve, window.__micDelay));
   const context = new AudioContext();
   const tone = context.createOscillator();
   const out = context.createMediaStreamDestination();
@@ -52,6 +54,8 @@ navigator.mediaDevices.getUserMedia = async () => {
 };
 """
 TYPED = "Typed while recording."
+TYPED_WHILE_ASKED = "Typed while the browser asked for the microphone."
+MIC_ENDED = "() => window.__microphone?.getTracks().every((t) => t.readyState === 'ended')"
 
 
 def _notes(page: Page) -> list[str]:
@@ -159,11 +163,71 @@ def test_a_voice_memo_becomes_a_note_in_a_browser(
             page.get_by_label("Add a note").fill(TYPED)
             page.get_by_role("button", name="Save note").click()
             expect(page.get_by_text("Note saved.").first).to_be_visible()
-            page.wait_for_function(
-                "() => window.__microphone.getTracks().every((t) => t.readyState === 'ended')"
-            )
+            page.wait_for_function(MIC_ENDED)
             page.wait_for_timeout(1500)
             expect(page.get_by_role("heading", name="Notes (4)")).to_be_visible()
+
+            # A redraw while the browser asks for the microphone: nothing records once it
+            # answers, and the microphone is let go.
+            page.evaluate("() => { window.__micDelay = 1500; window.__microphone = null; }")
+            page.get_by_role("button", name="Record a memo").click()
+            page.get_by_label("Add a note").fill(TYPED_WHILE_ASKED)
+            page.get_by_role("button", name="Save note").click()
+            expect(page.get_by_text("Note saved.").first).to_be_visible()
+            page.wait_for_function(MIC_ENDED)
+            expect(page.get_by_role("button", name="Stop and send")).to_have_count(0)
+            page.wait_for_timeout(1000)
+            expect(page.get_by_role("heading", name="Notes (5)")).to_be_visible()
+            page.evaluate("() => { window.__micDelay = 0; }")
+
+            # A recorder that cannot start lets go of the microphone and resets the form.
+            page.evaluate(
+                "() => { window.__start = MediaRecorder.prototype.start;"
+                " window.__microphone = null;"
+                " MediaRecorder.prototype.start = () => { throw new Error('no recorder'); }; }"
+            )
+            page.get_by_role("button", name="Record a memo").click()
+            expect(
+                page.locator(".danger-text").get_by_text(
+                    "This browser couldn't record. You can still send a recording."
+                )
+            ).to_be_visible()
+            page.wait_for_function(MIC_ENDED)
+            expect(page.get_by_role("button", name="Record a memo")).to_be_enabled()
+            expect(page.get_by_role("button", name="Stop and send")).to_have_count(0)
+
+            # A recorder that fails mid-memo sends nothing.
+            page.evaluate(
+                "() => { window.__microphone = null;"
+                " MediaRecorder.prototype.start = function (...args) {"
+                "   window.__start.apply(this, args);"
+                "   setTimeout(() => {"
+                "     this.dispatchEvent(new Event('error'));"
+                "     this.stop();"
+                "   }, 800);"
+                " }; }"
+            )
+            page.get_by_role("button", name="Record a memo").click()
+            expect(
+                page.locator(".danger-text").get_by_text(
+                    "The recording failed. Record it again, or send a recording."
+                )
+            ).to_be_visible()
+            page.wait_for_function(MIC_ENDED)
+            page.evaluate("() => { MediaRecorder.prototype.start = window.__start; }")
+            page.wait_for_timeout(1000)
+            expect(page.get_by_role("heading", name="Notes (5)")).to_be_visible()
+
+            # A picked file the browser gives no type is sent with its extension's.
+            page.get_by_label("Send a recording").set_input_files(
+                {
+                    "name": "memo.m4a",
+                    "mimeType": "",
+                    "buffer": (FIXTURES / "moov-last.m4a").read_bytes(),
+                }
+            )
+            expect(page.get_by_text("Memo sent. Transcribing…").first).to_be_visible()
+            expect(page.get_by_role("heading", name="Notes (6)")).to_be_visible()
             assert page.evaluate("() => window.__stayed") is True
             browser.close()
 
@@ -174,14 +238,16 @@ def test_a_voice_memo_becomes_a_note_in_a_browser(
 
         _wait_for(settled, "the typed note's read")
         with sessions() as session:
-            found = {n.text: (n.source, n.read_state, n.read_reason)
-                     for n in session.scalars(select(Note))}  # fmt: skip
-        assert found == {
-            TRANSCRIPT: ("voice", "needs_model", "no_key"),
-            SCRIPT_TRANSCRIPT: ("voice", "needs_model", "no_key"),
-            "": ("voice", "failed", "not_transcribed"),
-            TYPED: ("typed", "needs_model", "no_key"),
-        }
+            found = sorted((n.text, n.source, n.read_state, n.read_reason or "")
+                           for n in session.scalars(select(Note)))  # fmt: skip
+        assert found == sorted([
+            (TRANSCRIPT, "voice", "needs_model", "no_key"),
+            (SCRIPT_TRANSCRIPT, "voice", "needs_model", "no_key"),
+            ("", "voice", "failed", "not_transcribed"),
+            ("", "voice", "failed", "not_transcribed"),
+            (TYPED, "typed", "needs_model", "no_key"),
+            (TYPED_WHILE_ASKED, "typed", "needs_model", "no_key"),
+        ])  # fmt: skip
     finally:
         for name in names:
             subprocess.run(["docker", "stop", name], capture_output=True, timeout=60)
