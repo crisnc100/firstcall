@@ -185,7 +185,7 @@ export function detailPage(main: HTMLElement, params: Record<string, string>): C
     return found;
   };
   const editing = (): boolean => {
-    if (main.querySelector(".panel, [data-recording]")) return true;
+    if (main.querySelector(".panel, [data-busy]")) return true;
     const active = document.activeElement;
     if (active && main.contains(active) && active.matches("input, textarea, select")) return true;
     const now = controls();
