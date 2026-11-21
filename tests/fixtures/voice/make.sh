@@ -14,6 +14,9 @@ ff -f lavfi -i "$(tone 1)" -ac 1 -ar 8000 -c:a pcm_s16le ok.wav
 ff -f lavfi -i "$(tone 2)" -ac 1 -c:a libmp3lame -b:a 16k ok.mp3
 ff -f lavfi -i "$(tone 2)" -ac 1 -c:a libopus -b:a 12k ok.ogg
 ff -f lavfi -i "$(tone 1)" -ac 1 -ar 8000 -c:a adpcm_ms adpcm.wav
+# An MP4 with its index (moov) after the audio, as Safari and ffmpeg write them, and well
+# past ffmpeg's 32 KB read buffer, so it decodes only from a seekable input.
+ff -f lavfi -i "$(tone 30)" -ac 1 -c:a aac -b:a 16k moov-last.m4a
 ff -f lavfi -i "$(tone 1)" -f lavfi -i "color=size=16x16:rate=2:duration=1" -ac 1 \
   -c:a libopus -b:a 12k -c:v libvpx -b:v 10k video.webm
 # 3:05 of near silence, in long Opus frames to keep the file small.

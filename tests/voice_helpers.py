@@ -17,6 +17,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "voice"
 TYPES = {
     "ok.webm": "audio/webm;codecs=opus",
     "ok.m4a": "audio/mp4",
+    "moov-last.m4a": "audio/mp4",
     "ok.wav": "audio/wav",
     "ok.mp3": "audio/mpeg",
     "ok.ogg": "audio/ogg;codecs=opus",

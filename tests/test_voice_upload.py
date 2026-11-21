@@ -8,6 +8,7 @@ import uuid
 from collections.abc import MutableMapping
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import anyio
@@ -100,6 +101,33 @@ def test_a_bad_format_is_refused_with_415_and_nothing_stored(
 ) -> None:
     answer = _refused(board, owned, **kwargs)
     assert answer.status_code == 415, (case, answer.text)
+
+
+def test_an_mp4_with_its_index_last_is_accepted_up_to_three_minutes(
+    board: Board, owned: tuple[Any, uuid.UUID], tmp_path: Path
+) -> None:
+    """Safari and ffmpeg write an MP4's index (moov) after its audio; past ffmpeg's 32 KB
+    read buffer, such a file decodes only from a seekable input."""
+    memo = fixture("moov-last.m4a")
+    assert memo.find(b"moov") > memo.find(b"mdat") > 0
+    assert len(memo) > 32 * 1024
+    client, lead = owned
+    answer = upload(client, lead, "moov-last.m4a")
+    assert answer.status_code == 201, answer.text
+    with board.sessions() as session:
+        stored = session.scalars(select(VoiceAudio)).one()
+        assert 29.9 < float(stored.seconds) < 30.2
+    # Six copies of it cut to 2:58, the index still last, remuxed with no encoder.
+    longest = tmp_path / "longest.m4a"
+    subprocess.run(
+        ["ffmpeg", "-nostdin", "-loglevel", "error", "-stream_loop", "5",
+         "-i", str(FIXTURES / "moov-last.m4a"), "-c", "copy", "-t", "178", str(longest)],
+        check=True,
+    )  # fmt: skip
+    data = longest.read_bytes()
+    assert data.find(b"moov") > data.find(b"mdat") > 0
+    assert 177 < audio.check(data, "audio/mp4").seconds < 178.2
+    assert 177 < audio.seconds(audio.decode(data, "mp4")) < 178.2
 
 
 def test_an_overlong_memo_is_refused_with_422_by_its_decoded_length(

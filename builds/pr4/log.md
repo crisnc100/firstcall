@@ -59,8 +59,8 @@
   `Content-Length` over 5 MB (413, unread), the capped read (413), then
   `firstcall/voice/audio.py`'s `check` in the threadpool: magic bytes and the declared type
   (415), ffprobe on a temporary file with the demuxer forced and only `file` allowed (415),
-  one audio stream and an allowed codec (415), then decoding at most 181 seconds from a pipe
-  (422 over 180). Then the store, in the threadpool, under the lead's lock and an org lock
+  one audio stream and an allowed codec (415), then ffmpeg decoding at most 181 seconds from
+  the same file (422 over 180). Then the store, in the threadpool, under the lead's lock and an org lock
   for the caps (429, 503).
 - **Migration 0012.** `notes.source` (typed or voice), read state `transcribing`, and
   `voice_audio` (org, lead, note, format, seconds, bytes). Downgrade fails waiting memos as
@@ -78,6 +78,12 @@
   near silence, and the same with its header's duration patched to 10 seconds.
 
 Differences from the plan, and choices it left open:
+- ffmpeg decodes from the temporary file ffprobe reads, not from a pipe as the plan said.
+  An MP4 with its index (moov) after the audio, as Safari and ffmpeg write them, failed from
+  a pipe once past ffmpeg's 32 KB read buffer: a 60-second one was refused 415, the same
+  audio with its index first accepted (checkpoint review f1, reproduced). The transcriber
+  decodes the same way. `moov-last.m4a` (30 s, 63 KB) and a 2:58 copy remuxed in the test
+  hold it.
 - The who-may check runs before the 413, so a refusal never depends on the body.
 - The org cap refuses once 600 seconds or more already wait ("already wait"); the person cap
   refuses the fourth memo.
