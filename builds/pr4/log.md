@@ -161,3 +161,35 @@ Differences from the plan, and choices it left open:
   recordings: both are keyed by SHA-256.
 - CI time: the compose shards now build an image with ffmpeg (14 s for the apt step here)
   and the page test adds about a minute to one shard. Unmeasured on CI.
+
+## Fix round: the voice group leaves uv's default groups
+
+A change from plan rev 2 ("Images", and Bounce item 1's answer). The plan put the `voice`
+group in uv's default groups so that pyright resolves faster-whisper. That broke
+`uv sync --locked` on Intel Macs and on macOS 13: onnxruntime, which faster-whisper needs,
+has wheels only for `macosx_14_0_arm64` on macOS (1.32.0), and no source. The goal Bounce
+item 1 approved was that pyright resolves faster-whisper and PR CI never downloads a model,
+and the new setup keeps both:
+- `voice` is no longer a default group. Only the Dockerfile's voice stage installs it, as
+  before; locally and in CI, `uv sync --locked` installs `dev` alone, which gains `numpy`
+  for the transcriber's tests.
+- Pyright reads `typings/faster_whisper/__init__.pyi`, a stub of only what
+  `firstcall/voice/transcribe.py` calls, written for faster-whisper 1.2.1.
+  `firstcall/voice` does not report the missing package source; a missing import still
+  fails there.
+
+Checks:
+- `MACOSX_DEPLOYMENT_TARGET=13.0 uv sync --locked --dry-run --python-platform …` into an
+  empty environment: before, `aarch64-apple-darwin` and `x86_64-apple-darwin` both stop
+  on onnxruntime ("only has wheels for … `macosx_14_0_arm64`"). After, both would install
+  71 packages, with none of onnxruntime, ctranslate2, faster-whisper or av.
+- Pyright: 0 errors, 0 warnings, with the stub in use and nothing of the voice group
+  installed. Run locally, `uv sync --locked` removes the voice packages from an
+  environment that had them.
+- The app image has none of ctranslate2, onnxruntime, faster-whisper, av or numpy; the
+  voice image has all of them, faster-whisper 1.2.1.
+- In the voice image, every parameter and field the stub names exists in faster-whisper
+  1.2.1. A real `small.en` run there, on `unit-page.webm`, gave the same transcript as
+  phase 3: 11.0 s with the download and load, 1.9 s for a second run. The model volume
+  was deleted after. Such a real run in the voice image is the check against the stub
+  drifting from the library.

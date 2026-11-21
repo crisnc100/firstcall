@@ -33,7 +33,13 @@ dev = [
     "faker",
     "playwright>=1.65.1",
     "pytest-split>=0.11.0",
+    # The transcriber's tests turn samples into an array as it does; the voice group brings
+    # numpy in its own image.
+    "numpy",
 ]
+# Installed only by the transcriber's image (the Dockerfile's voice stage): onnxruntime, which
+# faster-whisper needs, has no wheel for Intel Macs or macOS before 14. Pyright reads
+# typings/faster_whisper instead.
 voice = [
     # faster-whisper 1.2.1 fails on every clip with av 19.
     "av<19",
@@ -42,11 +48,6 @@ voice = [
     # httpx, changing the client every API test uses.
     "huggingface-hub<2",
 ]
-
-[tool.uv]
-# The voice group is installed by default, so tests and pyright see faster-whisper. The app
-# image leaves it out; only the transcriber's image installs it.
-default-groups = ["dev", "voice"]
 
 [project.scripts]
 firstcall = "firstcall.cli:app"
@@ -87,6 +88,12 @@ exclude = [".venv", "web"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
 strict = ["firstcall/core"]
+# firstcall/voice imports faster-whisper, which pyright reads from typings/faster_whisper
+# without the package installed. A missing import still fails there.
+executionEnvironments = [
+    { root = "firstcall/voice", reportMissingModuleSource = "none" },
+    { root = "." },
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

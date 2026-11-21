@@ -13,12 +13,14 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from firstcall.board.notes import NOTE_MAX
 from firstcall.voice.audio import MAX_SECONDS, UndecodableError, decode, seconds
 
 if TYPE_CHECKING:
+    from faster_whisper import WhisperModel
+
     from firstcall.settings import Settings
 
 # Systran's CTranslate2 builds of the candidates, each at the revision the eval measured.
@@ -66,9 +68,9 @@ class LocalWhisper:
         self.size = size
         # Empty: Hugging Face's own cache folder.
         self.models = models
-        self.model: Any = None
+        self.model: WhisperModel | None = None
 
-    def _model(self) -> Any:
+    def _model(self) -> WhisperModel:
         if self.model is None:
             from faster_whisper import WhisperModel
 
