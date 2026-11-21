@@ -83,6 +83,11 @@ class TranscribedError(Exception):
     """This pair already has transcripts or a run file, and a pair is transcribed once."""
 
 
+class ClipFailedError(Exception):
+    """A clip failed before Whisper heard it: it did not decode, or decoding took too long.
+    That says nothing about the size, so the pair is left untranscribed, to run again."""
+
+
 @dataclass(frozen=True)
 class Clips:
     """Rendered memos: <root>/seed-<N>/clips.jsonl, the audio it lists, and <root>/MANIFEST.json
@@ -142,25 +147,45 @@ def machine(cpuinfo: Path = Path("/proc/cpuinfo")) -> str:
     return f"{name or 'unknown CPU'}, {platform.system()} {platform.machine()}"
 
 
-def local_transcriber(size: WhisperSize, models: str) -> Transcriber:
+def local_transcriber(size: WhisperSize, models: str | None = None) -> Transcriber:
     """faster-whisper at `size`, built as the transcriber process builds it: ffmpeg found,
     the model loaded and a generated clip transcribed, or CannotTranscribeError. Local mode
-    is named here, so a FIRSTCALL_TRANSCRIBE_MODE of replay never stands in for Whisper."""
-    return from_settings(
-        Settings(transcribe_mode="local", whisper_size=size, whisper_models=models)
-    )
+    is named here, so a FIRSTCALL_TRANSCRIBE_MODE of replay never stands in for Whisper.
+    The models folder is FIRSTCALL_WHISPER_MODELS unless `models` is given."""
+    settings = Settings(transcribe_mode="local", whisper_size=size)
+    if models is not None:
+        settings = settings.model_copy(update={"whisper_models": models})
+    return from_settings(settings)
 
 
 def _lines(rows: Iterable[Mapping[str, Any]]) -> str:
     return "".join(json.dumps(row, sort_keys=True, ensure_ascii=False) + "\n" for row in rows)
 
 
+def _partial(path: Path) -> Path:
+    return path.with_name(f".{path.name}.partial")
+
+
 def _write_new(path: Path, text: str) -> None:
     """Written whole or not at all, so a run killed midway leaves no half file to score."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    partial = path.with_name(f".{path.name}.partial")
-    partial.write_text(text)
-    os.replace(partial, path)
+    _partial(path).write_text(text)
+    os.replace(_partial(path), path)
+
+
+def transcribed(out: Path, size: str, condition: str) -> bool:
+    """Whether the pair is transcribed: its transcripts and run file both in place. A stop
+    between the two moves of `transcribe_pair` left the run file beside its target, and it
+    is moved in here, so the pair is never transcribed again."""
+    transcripts, run = transcripts_path(out, size, condition), run_path(out, size, condition)
+    if transcripts.exists() and not run.exists() and _partial(run).exists():
+        os.replace(_partial(run), run)
+    if transcripts.exists() != run.exists():
+        raise TranscribedError(
+            f"only one of {transcripts} and {run} exists, so the pair cannot be read or "
+            "transcribed again"
+        )
+    return transcripts.exists()
 
 
 def transcribe_pair(
@@ -172,9 +197,10 @@ def transcribe_pair(
     timer: Callable[[], float] = time.perf_counter,
 ) -> list[dict[str, Any]]:
     """Every clip of one condition through one size, timed. Writes the transcripts and the
-    pair's run file, and refuses if either exists. Audio the product would refuse to make a
-    note of (no speech) is kept as an empty transcript with the reason, scored as an answer
-    that fills nothing."""
+    pair's run file, and refuses if either exists. What Whisper heard that the product would
+    refuse to make a note of (no speech, or too long) is kept as an empty transcript with the
+    reason, scored as an answer that fills nothing. A clip that fails before Whisper hears it
+    raises ClipFailedError and writes nothing."""
     transcripts, run = transcripts_path(out, size, condition), run_path(out, size, condition)
     for path in (transcripts, run):
         if path.exists():
@@ -185,7 +211,13 @@ def transcribe_pair(
         fmt = Path(clip["file"]).suffix[1:]
         started = timer()
         try:
-            text, error = note_text(transcriber.transcribe(audio, fmt)), None
+            heard = transcriber.transcribe(audio, fmt)
+        except UnusableAudioError as failed:
+            raise ClipFailedError(
+                f"{clip['id']}: {failed}; nothing is written, so the pair can run again"
+            ) from failed
+        try:
+            text, error = note_text(heard), None
         except UnusableAudioError as found:
             text, error = "", str(found)
         rows.append(
@@ -197,7 +229,6 @@ def transcribe_pair(
                 "compute_seconds": round(timer() - started, 3),
             }
         )
-    _write_new(transcripts, _lines(rows))
     meta = {
         "seed": clips.seed,
         "size": size,
@@ -206,7 +237,13 @@ def transcribe_pair(
         "machine": machine(),
         "record_passes": [],
     }
-    _write_new(run, json.dumps(meta, indent=2, sort_keys=True) + "\n")
+    for path, text in ((run, json.dumps(meta, indent=2, sort_keys=True) + "\n"),
+                       (transcripts, _lines(rows))):  # fmt: skip
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _partial(path).write_text(text)
+    # The transcripts go in first; `transcribed` moves in a run file a stop left behind.
+    os.replace(_partial(transcripts), transcripts)
+    os.replace(_partial(run), run)
     return rows
 
 

@@ -25,6 +25,7 @@ from firstcall.evaluation.note_score import baselines
 from firstcall.evaluation.voice_eval import (
     ATLAS_TIMING,
     SIZES,
+    ClipFailedError,
     Clips,
     TranscribedError,
     evaluate_pair,
@@ -35,6 +36,7 @@ from firstcall.evaluation.voice_eval import (
     record_pair,
     run_path,
     transcribe_pair,
+    transcribed,
     transcripts_path,
     whisper_size,
     write_voice,
@@ -43,7 +45,12 @@ from firstcall.evaluation.voice_score import wer
 from firstcall.model.gateway import NotSyntheticError, ReplayMissError
 from firstcall.model.synthetic import SyntheticIndex
 from firstcall.model.transport import TransportRequest
-from firstcall.voice.transcribe import WHISPER_REVISIONS, LocalWhisper, audio_key
+from firstcall.voice.transcribe import (
+    WHISPER_REVISIONS,
+    LocalWhisper,
+    UnusableAudioError,
+    audio_key,
+)
 from scripts.check_replay_report import committed
 from tests.model_fakes import MODEL, PRICES, FakeTransport
 from tests.test_voice_transcribe import FakeModel
@@ -184,6 +191,97 @@ def test_whisper_is_built_through_the_transcribers_own_startup_check(
     # from_settings loaded the model and transcribed its generated clip before returning.
     assert [made["name"] for made in fake_whisper.made] == ["Systran/faster-whisper-base.en"]
     assert len(fake_whisper.calls) == 1
+
+
+def test_the_models_folder_is_the_setting_unless_the_flag_names_one(
+    fake_whisper: type[FakeModel], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FIRSTCALL_WHISPER_MODELS", "/from-settings")
+    from_settings = local_transcriber("base.en")
+    assert isinstance(from_settings, LocalWhisper)
+    assert from_settings.models == "/from-settings"
+    flagged = local_transcriber("base.en", "/from-flag")
+    assert isinstance(flagged, LocalWhisper)
+    assert flagged.models == "/from-flag"
+
+
+class Undecodable(Heard):
+    """Hears every clip but one, which fails before Whisper hears it, as a decoder timeout
+    does."""
+
+    def transcribe(self, audio: bytes, fmt: str) -> str:
+        if len(self.heard) == 2:
+            raise UnusableAudioError("the audio does not decode")
+        return super().transcribe(audio, fmt)
+
+
+def test_a_clip_that_fails_before_whisper_hears_it_leaves_the_pair_untranscribed(
+    clips: Clips, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    with pytest.raises(ClipFailedError, match=f"{IDS[2]}: the audio does not decode"):
+        transcribe_pair(clips, "tiny.en", "clean", out, Undecodable(clips), _ticks())
+    assert not out.exists()
+
+    from firstcall.evaluation import voice_eval
+
+    monkeypatch.setattr(voice_eval, "local_transcriber", lambda size, models: Undecodable(clips))
+    result = CliRunner().invoke(app, [
+        "eval-voice", "--size", "tiny.en", "--condition", "clean", "--transcribe-only",
+        "--clips", str(clips.root), "--out", str(out),
+    ])  # fmt: skip
+    assert result.exit_code == 1
+    assert f"{IDS[2]}: the audio does not decode" in result.output
+    assert transcribed(out, "tiny.en", "clean") is False
+
+
+def test_a_stop_between_the_transcripts_and_the_run_file_is_finished_on_the_next_run(
+    clips: Clips, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = tmp_path / "out"
+    real = os.replace
+    moves: list[Path] = []
+
+    def stop_before_the_run_file(source: Path, target: Path) -> None:
+        moves.append(Path(target))
+        if len(moves) == 2:
+            raise KeyboardInterrupt
+        real(source, target)
+
+    monkeypatch.setattr(os, "replace", stop_before_the_run_file)
+    with pytest.raises(KeyboardInterrupt):
+        transcribe_pair(clips, "tiny.en", "clean", out, Heard(clips), _ticks())
+    monkeypatch.setattr(os, "replace", real)
+    transcripts, run = transcripts_path(out, "tiny.en", "clean"), run_path(out, "tiny.en", "clean")
+    assert moves == [transcripts, run]
+    assert transcripts.exists()
+    assert not run.exists()
+
+    from firstcall.evaluation import voice_eval
+
+    def never(size: str, models: str | None) -> None:
+        raise AssertionError("the pair was transcribed again")
+
+    monkeypatch.setattr(voice_eval, "local_transcriber", never)
+    result = CliRunner().invoke(app, [
+        "eval-voice", "--size", "tiny.en", "--condition", "clean", "--transcribe-only",
+        "--clips", str(clips.root), "--out", str(out),
+    ])  # fmt: skip
+    assert result.exit_code == 0, result.output
+    assert "each pair is transcribed once" in result.output
+    meta = json.loads(run.read_text())
+    assert (meta["size"], meta["condition"], meta["record_passes"]) == ("tiny.en", "clean", [])
+    assert transcribed(out, "tiny.en", "clean") is True
+
+    run.unlink()
+    with pytest.raises(TranscribedError, match="only one of"):
+        transcribed(out, "tiny.en", "clean")
+    result = CliRunner().invoke(app, [
+        "eval-voice", "--size", "tiny.en", "--condition", "clean", "--transcribe-only",
+        "--clips", str(clips.root), "--out", str(out),
+    ])  # fmt: skip
+    assert result.exit_code == 1
+    assert "only one of" in result.output
 
 
 def test_a_broken_setup_stops_the_run_before_any_clip(

@@ -299,7 +299,9 @@ def eval_voice_command(
     clips: str = typer.Option("", help="Rendered clips: seed-N/ and MANIFEST.json (gold if empty)"),
     out: str = typer.Option("", help="Where transcripts and run files go (evals/voice if empty)"),
     recordings: str = typer.Option("", help="Recorded answers (evals/recordings if empty)"),
-    models: str = typer.Option("", help="Where the Whisper model downloads to"),
+    models: str | None = typer.Option(
+        None, help="Where the Whisper model downloads to (FIRSTCALL_WHISPER_MODELS if not given)"
+    ),
     transcribe_only: bool = typer.Option(False, help="Transcribe, then stop: no reads, no key"),
 ) -> None:
     """One pair of the voice eval: transcribe every clip of a condition with one Whisper size,
@@ -313,13 +315,16 @@ def eval_voice_command(
     from firstcall.evaluation.note_eval import RECORDINGS, IncompleteRecordingError, NoteRun
     from firstcall.evaluation.voice_eval import (
         VOICE_RUNS,
+        ClipFailedError,
         Clips,
+        TranscribedError,
         compute,
         evaluate_pair,
         local_transcriber,
         machine,
         record_pair,
         transcribe_pair,
+        transcribed,
         transcripts_path,
         whisper_size,
     )
@@ -344,15 +349,20 @@ def eval_voice_command(
     key = _paid_key(mode) if mode == "record" and not transcribe_only else ""
 
     path = transcripts_path(folder, chosen, condition)
-    if path.exists():
+    try:
+        done = transcribed(folder, chosen, condition)
+    except TranscribedError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1) from error
+    if done:
         typer.echo(f"using {path}: each pair is transcribed once")
     else:
         try:
             transcriber = local_transcriber(chosen, models)
-        except CannotTranscribeError as error:
+            rows = transcribe_pair(source, chosen, condition, folder, transcriber)
+        except (CannotTranscribeError, ClipFailedError) as error:
             typer.echo(str(error), err=True)
             raise typer.Exit(1) from error
-        rows = transcribe_pair(source, chosen, condition, folder, transcriber)
         timing = compute(source.rows(condition), rows)
         typer.echo(
             f"transcribed {timing['clips']} clips, {timing['audio_seconds']} s of audio, in "
