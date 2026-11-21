@@ -220,8 +220,11 @@ def test_event_payloads_carry_only_ids_and_codes(board: Board) -> None:
     client.post(f"/api/leads/{lead}/claim")
     board.clock.current = datetime(2026, 3, 3, 15, 0, tzinfo=UTC)
     run_nightly(board.sessions, board.clock)
-    client.post(f"/api/leads/{lead}/notes", json={"text": "Called Zed, 400k.", "action": "call"})
-    assert upload(client, lead).status_code == 201
+    typed = client.post(
+        f"/api/leads/{lead}/notes", json={"text": "Called Zed, 400k.", "action": "call"}
+    )
+    memo = upload(client, lead)
+    assert (typed.status_code, memo.status_code) == (201, 201)
     client.post(f"/api/leads/{lead}/nurture")
     client.post(f"/api/leads/{lead}/resume")
     board.clock.current = datetime(2026, 3, 5, 15, 0, tzinfo=UTC)
@@ -252,5 +255,5 @@ def test_event_payloads_carry_only_ids_and_codes(board: Board) -> None:
         for key, value in event.payload.items():
             if (event.type, key) != ("note.added", "source"):
                 assert _plain(value), (event.type, key, value)
-    sources = sorted(e.payload["source"] for e in events if e.type == "note.added")
-    assert sources == ["typed", "voice"]
+    sources = {e.payload["note_id"]: e.payload["source"] for e in events if e.type == "note.added"}
+    assert sources == {typed.json()["note_id"]: "typed", memo.json()["note_id"]: "voice"}
