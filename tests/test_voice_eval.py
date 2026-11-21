@@ -33,6 +33,7 @@ from firstcall.evaluation.voice_eval import (
     local_transcriber,
     machine,
     pick,
+    read_transcripts,
     record_pair,
     run_path,
     transcribe_pair,
@@ -360,6 +361,56 @@ def test_record_mode_refuses_a_transcript_whose_audio_is_not_in_the_manifest(
             evaluate_pair(clips, "tiny.en", "clean", database_url,
                           _run("record", tmp_path / "recordings", transport), out)  # fmt: skip
         assert transport.requests == []
+
+
+def _refused_before_any_read(
+    clips: Clips, condition: str, out: Path, recordings: Path, url: str
+) -> None:
+    for mode in ("replay", "record"):
+        transport = FakeTransport(default="{}")
+        with pytest.raises(ValueError, match="is not of its clip's audio"):
+            evaluate_pair(clips, "base.en", condition, url, _run(mode, recordings, transport),
+                          out)  # fmt: skip
+        assert transport.requests == []
+
+
+def test_a_transcript_must_be_of_its_own_clips_audio_before_any_read(
+    clips: Clips, tmp_path: Path, database_url: str
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    transcribe_pair(clips, "base.en", "clean", out, Heard(clips), _ticks())
+    clean = transcripts_path(out, "base.en", "clean")
+    original = clean.read_text()
+    rows = read_transcripts(clean)
+
+    # The clean transcripts filed as the degraded ones: the same scripts, in the same order.
+    transcripts_path(out, "base.en", "degraded").write_text(original)
+    _refused_before_any_read(clips, "degraded", out, recordings, database_url)
+
+    # One clip's transcript carrying the next clip's audio hash.
+    swapped = [{**rows[0], "sha256": rows[1]["sha256"]}, *rows[1:]]
+    clean.write_text("".join(json.dumps(row) + "\n" for row in swapped))
+    _refused_before_any_read(clips, "clean", out, recordings, database_url)
+
+
+def test_the_gold_index_takes_a_transcript_only_of_its_own_clip(
+    clips: Clips, tmp_path: Path
+) -> None:
+    out = tmp_path / "out"
+    transcribe_pair(clips, "tiny.en", "clean", out, Heard(clips, _misheard()), _ticks())
+    rows = read_transcripts(transcripts_path(out, "tiny.en", "clean"))
+    misheard = next(row for row in rows if row["id"] == MISHEARD)
+    text = misheard["text"].encode()
+    index = SyntheticIndex.from_gold(transcripts=out / "transcripts", voice_manifest=clips.manifest)
+    assert text in index
+    # Its own text and hash, filed as the degraded clip's; then another clip's hash.
+    other = {**misheard, "sha256": rows[0]["sha256"]}
+    for name, row in (("tiny.en-degraded.jsonl", misheard), ("tiny.en-clean.jsonl", other)):
+        folder = tmp_path / name / "transcripts"
+        folder.mkdir(parents=True)
+        (folder / name).write_text(json.dumps(row) + "\n")
+        assert text not in SyntheticIndex.from_gold(transcripts=folder,
+                                                    voice_manifest=clips.manifest)  # fmt: skip
 
 
 def test_the_synthetic_index_takes_a_transcript_only_for_a_listed_clip(

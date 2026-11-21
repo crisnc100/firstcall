@@ -60,7 +60,7 @@ def _gateway(
     sessions: sessionmaker[Session], run: NoteRun, synthetic: SyntheticIndex | None = None
 ) -> Gateway:
     """In record mode, `synthetic` replaces the committed corpus's index: the voice eval
-    passes one built from the transcripts and clips it is reading."""
+    passes one holding only the transcripts of the pair it is reading."""
     transport = run.transport
     if transport is None and run.mode in ("live", "record"):
         from firstcall.model.anthropic import AnthropicTransport

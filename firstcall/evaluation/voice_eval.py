@@ -9,8 +9,8 @@ A run is one size on one condition, clean or degraded, in two steps:
    seconds each took go to transcripts/<size>-<condition>.jsonl, which is never written over:
    a pair is transcribed once.
 2. Read each transcript through the gateway as the note eval reads a script; record mode pays
-   for each answer not yet recorded. Record mode sends a transcript only when its audio is a
-   clip the voice manifest lists.
+   for each answer not yet recorded. Before any read, each transcript must be of its own
+   clip's audio, as the voice manifest hashes it, and record mode sends only those.
 
 The report is built in replay mode from the transcripts, the recorded answers, each pair's
 record passes and the Atlas timing, so CI writes it again byte for byte with no Whisper and
@@ -31,6 +31,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, get_args
 
+from firstcall.core.delivery import sha256
 from firstcall.corpus.notes import LABELS, SCRIPTS, read_jsonl
 from firstcall.corpus.voice import CLIPS, CONDITIONS, VOICE_DIR, VOICE_MANIFEST, VOICE_SEED
 from firstcall.evaluation import voice_score
@@ -48,7 +49,7 @@ from firstcall.evaluation.note_score import BANT_FIELDS
 from firstcall.evaluation.report import REPORTS
 from firstcall.evaluation.run import REPO_ROOT, throwaway_database
 from firstcall.model.gateway import ReplayMissError
-from firstcall.model.synthetic import VOICE_TRANSCRIPTS, SyntheticIndex
+from firstcall.model.synthetic import VOICE_TRANSCRIPTS, SyntheticIndex, clip_audio
 from firstcall.notes.reader import UNREADABLE, NoteReader
 from firstcall.settings import Settings, WhisperSize
 from firstcall.voice.transcribe import (
@@ -266,26 +267,39 @@ def compute(
     }
 
 
+def _own_clips(
+    clips: Clips, size: str, condition: str, transcripts: Sequence[Mapping[str, Any]]
+) -> None:
+    """Each transcript is of its own clip: one per clip, in the clip list's order, hashing
+    the audio the manifest names for that clip. A clean and a degraded clip share a script,
+    so only the hash tells one condition's transcripts from the other's."""
+    if [row["id"] for row in transcripts] != [clip["id"] for clip in clips.rows(condition)]:
+        raise ValueError(f"the {size} {condition} transcripts do not match the clips one for one")
+    audio = clip_audio(clips.manifest)
+    for row in transcripts:
+        if audio.get((condition, row["id"])) != row["sha256"]:
+            raise ValueError(
+                f"the {size} {condition} transcript of {row['id']} is not of its clip's audio"
+            )
+
+
 def evaluate_pair(
     clips: Clips, size: str, condition: str, server_url: str, run: NoteRun, out: Path = VOICE_RUNS
 ) -> dict[str, Any]:
-    """Read one pair's transcripts and score them. A transcript set that does not cover every
-    clip raises, as a replay miss does."""
+    """Read one pair's transcripts and score them. Transcripts that are not one for each of
+    the pair's clips, of that clip's audio, raise before any read."""
     from firstcall.seed import seed as seed_world
 
     clip_rows = clips.rows(condition)
     transcripts = read_transcripts(transcripts_path(out, size, condition))
+    _own_clips(clips, size, condition, transcripts)
     ids = [row["id"] for row in clip_rows]
-    if [row["id"] for row in transcripts] != ids:
-        raise ValueError(f"the {size} {condition} transcripts do not match the clips one for one")
     scripts = {script["id"]: script for script in read_jsonl(clips.seed, SCRIPTS)}
     wanted = set(ids)
     labels = [label for label in read_jsonl(clips.seed, LABELS) if label["id"] in wanted]
-    synthetic = (
-        SyntheticIndex.from_gold(transcripts=out / TRANSCRIPTS, voice_manifest=clips.manifest)
-        if run.mode == "record"
-        else None
-    )
+    # Record mode sends this pair's transcripts and nothing else.
+    texts = frozenset(sha256(row["text"].encode()) for row in transcripts if row["text"])
+    synthetic = SyntheticIndex(texts) if run.mode == "record" else None
     answers: dict[str, dict[str, Any] | None] = {}
     unanswered: list[str] = []
     read: list[dict[str, Any]] = []
