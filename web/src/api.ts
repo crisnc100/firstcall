@@ -72,7 +72,8 @@ export interface Note {
   text: string;
   author: string | null;
   created_at: string;
-  read_state: "pending" | "read" | "needs_model" | "failed";
+  source: "typed" | "voice";
+  read_state: "transcribing" | "pending" | "read" | "needs_model" | "failed";
   read_reason: string | null;
   clean_note: string | null;
   suggestions: Suggestion[];
@@ -166,15 +167,18 @@ function readClock(response: Response): void {
   if (!Number.isNaN(at)) skewMs = at - Date.now();
 }
 
+/** A Blob (a voice memo) goes as the raw body, and fetch sends its own type as the
+ * Content-Type; anything else goes as JSON. */
 async function send(method: string, path: string, body?: unknown): Promise<Response> {
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const raw = body instanceof Blob;
+  if (body !== undefined && !raw) headers["Content-Type"] = "application/json";
   if (method !== "GET") headers["X-CSRF-Token"] = csrf;
   const response = await fetch(`/api${path}`, {
     method,
     headers,
     credentials: "same-origin",
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : raw ? body : JSON.stringify(body),
   });
   readClock(response);
   return response;

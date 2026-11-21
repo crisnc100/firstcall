@@ -95,9 +95,19 @@ already logged. Deleting a lead deletes its suggestions and read jobs.
 
 ### Voice memos
 
-Whoever may add a note may record a memo instead, and pick the contact it records, as on a
-typed note. The memo is posted as the raw body to `POST /api/leads/{id}/voice?action=…`
-with its type in `Content-Type`. Before anything is stored the api refuses:
+Whoever may add a note may record a memo instead, under the note form: **Record a memo**,
+then **Stop and send**, with a timer that stops the recording itself just short of 3:00. Or
+**Send a recording** picks a file. The memo takes the form's "This note records" pick, as a
+typed note does. Saving a typed note or any other action while recording drops the memo
+unsent. The page records in the first of WebM, MP4 or Ogg the browser can make.
+The microphone needs HTTPS outside localhost; without it the page offers only the file.
+
+The memo shows at once as a **Voice** note saying **Transcribing…**, and the page checks
+again every 15 seconds until the transcript appears and is read. One that cannot be
+transcribed says **Couldn't transcribe this memo. Record it again.**
+
+The page posts the memo as the raw body to `POST /api/leads/{id}/voice?action=…`, with its
+type in `Content-Type`. Before anything is stored the api refuses:
 - over 5 MB (413), read no further than that;
 - anything but WebM, MP4, WAV, MP3 or Ogg audio, judged by the file's first bytes, sent under
   a type that does not fit them, or holding anything but one Opus, AAC, PCM, MP3 or Vorbis
@@ -195,3 +205,8 @@ salesperson from the command line instead, give a team from `config/demo.yaml`:
 
 Compose leaves the email backend at `inbox`, so digests show up on the Inbox page. Push is
 off: compose sets no VAPID key.
+
+Voice memos need the transcriber, which a plain `up` leaves out:
+`docker compose --profile voice up -d --build --wait`. It runs on 2 CPUs and 1.5 GB. The
+first memo downloads the model (`FIRSTCALL_WHISPER_SIZE`, default `small.en`, about 460 MB)
+into the `whisper-models` volume, and the transcriber keeps it loaded.

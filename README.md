@@ -12,13 +12,15 @@ message, name and number in this repo is made up.
 
 ## Try it
 
-You need [uv](https://docs.astral.sh/uv/), Docker and Node with npm. No API key is needed: the
-model is off by default (`FIRSTCALL_MODEL_MODE=offline`), so every message takes the rules path.
+You need [uv](https://docs.astral.sh/uv/), Docker, Node with npm, and ffmpeg for the voice
+tests. No API key is needed: the model is off by default (`FIRSTCALL_MODEL_MODE=offline`), so
+every message takes the rules path.
 
 ```sh
 ./verify.sh                       # every check, in order; CI runs its steps as parallel jobs
 ./verify.sh --step lint           # one check: lint, secrets, web, playwright, stack, eval, tests, floors
 docker compose up -d --wait       # Postgres, api, worker, scheduler and a mail catcher
+docker compose --profile voice up -d --wait   # the same, plus the transcriber for voice memos
 uv run firstcall seed             # the made-up demo company from config/demo.yaml
 uv run firstcall rotate-secret inbox   # prints a password for the email source, once
 ```

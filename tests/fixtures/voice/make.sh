@@ -2,6 +2,11 @@
 # Writes the audio fixtures for the voice upload tests. They are committed, so the tests need
 # ffmpeg's decoders but none of its encoders. A tone stands in for speech: these test the
 # limits, not the transcriber.
+#
+# Two files are not made here. unit-page.webm is a real browser recording of a Piper reading
+# of the unit-page note, made through the lead page by scripts/record_memo.py.
+# page-transcripts.jsonl holds the transcripts the page test replays, keyed by each file's
+# SHA-256; the unit-page one is small.en's, from one run in the voice image.
 set -euo pipefail
 cd "$(dirname "$0")"
 

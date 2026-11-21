@@ -5,9 +5,13 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM ghcr.io/astral-sh/uv:0.9.11-python3.12-bookworm-slim
+FROM ghcr.io/astral-sh/uv:0.9.11-python3.12-bookworm-slim AS base
 WORKDIR /app
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv UV_LINK_MODE=copy PATH="/opt/venv/bin:$PATH"
+# The api checks every voice memo with ffprobe and ffmpeg, and the transcriber decodes it.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 COPY pyproject.toml uv.lock .python-version README.md ./
 RUN uv sync --locked --no-dev --no-group voice --no-install-project
 COPY firstcall ./firstcall
@@ -15,5 +19,14 @@ COPY migrations ./migrations
 COPY alembic.ini ./
 COPY config ./config
 RUN uv sync --locked --no-dev --no-group voice
+
+# The transcriber adds faster-whisper. Its model is never in the image: it downloads on
+# first use into the whisper-models volume.
+FROM base AS voice
+RUN uv sync --locked --no-dev --group voice
+CMD ["firstcall", "worker", "--kind", "transcribe"]
+
+# Last, so a plain build makes the app image.
+FROM base AS app
 COPY --from=web /web/dist /app/web/dist
 CMD ["firstcall", "api", "--host", "0.0.0.0", "--port", "8000"]

@@ -100,3 +100,64 @@ Differences from the plan, and choices it left open:
 - CI installs ffmpeg with apt in the tests, compose and slow jobs (a `setup` input). Its cost
   is unmeasured until CI runs; `verify.sh --step tests` stops with a plain message without
   it.
+
+## Phase 3: the page, the image and compose
+
+- **The page** (`web/src/pages/work.ts`). Under the note form: Record a memo, Stop and send,
+  a timer, and Send a recording (a file picker), all using the form's "This note records"
+  pick. The recorder takes the first of WebM, MP4 or Ogg the browser can make, mono, echo
+  cancelling and noise suppression on, 32 kbps, and stops itself at 2:59.5, since the
+  server refuses anything that decodes past 3:00. A memo note carries a Voice badge and
+  "Transcribing…"; a failed one says "Couldn't transcribe this memo. Record it again."
+  `api.ts` sends a Blob as the raw body. The lead page polls while a note is transcribing,
+  and does not redraw while a memo records (`detail.ts`, `editing`). Another action's
+  redraw mid-memo (saving a typed note, say) drops the memo unsent and lets go of the
+  microphone.
+- **Images.** ffmpeg is in the app image (Debian's 5.1, 398 MB of the image's 1.16 GB;
+  the apt step took 14 s here). A `voice` stage adds faster-whisper (2.02 GB). The app
+  stage stays last, so a plain build makes the app image.
+- **Compose.** `transcriber` builds the voice stage, has profile `voice`, 2 CPUs, 1.5 GB and
+  the `whisper-models` volume. `docker compose config --services` without the profile does
+  not list it.
+- **The fixture** (`tests/fixtures/voice/unit-page.webm`, 37 KB, 10.5 s, Opus, encoder
+  Chrome). Piper's `joe` read the unit-page note's spoken text; Chromium's fake microphone
+  played that WAV into the lead page's Record button; `scripts/record_memo.py` kept the
+  WebM the page sent. Chromium's fake microphone never answers on macOS, so it ran in the
+  app image on the compose network:
+
+  ```sh
+  docker run --rm --network container:firstcall-voice-api-1 \
+    -v "$PWD/scripts:/app/scripts:ro" -v "$SCRATCH:/rec" -e FIRSTCALL_RECORD_PASSWORD \
+    firstcall-v01-app sh -c 'apt-get update && apt-get install -y libatomic1 \
+      && uv sync --locked --no-group voice && playwright install --with-deps chromium \
+      && python -m scripts.record_memo --base http://localhost:8000 --email … --lead … \
+           --wav /rec/unit-page-48k.wav --out /rec/unit-page.webm'
+  ```
+- **One real transcription** in the built voice image (`docker compose --profile voice
+  run transcriber`, so 2 CPUs and 1.5 GB), `small.en`, that fixture:
+  - Transcript: "Call Dana this morning, budget is around $450,000, once three bedrooms and a
+    garage, hoping to move by June." (The script: "Called Dana … Wants three bedrooms …")
+  - Download and load: 9.8 s (464 MB). Load from the volume: 1.3 s.
+  - Transcription: 1.7 s and 1.8 s for 10.5 s of audio, about 10 s per audio minute.
+  - Memory: peak RSS 908 MB; the container's peak 1,289 MB, of which 433 MB is file cache.
+  The model volume was deleted after.
+- **Page test** (`tests/fault/test_pages_voice.py`, 59 s here). The transcriber runs from
+  the app image in replay mode on `tests/fixtures/voice/page-transcripts.jsonl`: small.en's
+  transcript for the recording and a script-tag transcript for `ok.webm`. The memo is sent
+  before the transcriber starts, so "Transcribing…" is seen, then the transcript, then
+  "Needs a model key", with no reload. With "transcribing" left out of the page's polling,
+  the test fails. Record and Stop run against a tone from the page's own AudioContext in
+  place of the microphone; that memo has no recorded transcript, so with one attempt it
+  fails and the page says to record it again. Last, a typed note saved mid-memo drops the
+  memo and ends the microphone's tracks.
+
+Differences from the plan, and choices it left open:
+- The real recording ran in a Linux container, not on this Mac (above).
+- The page test fakes the microphone in the page (an oscillator), not with Chromium's flags,
+  so it runs on macOS too. The committed fixture is the real Chromium recording.
+- The page test's transcriber gets `FIRSTCALL_MAX_ATTEMPTS=1`, so the unrecorded memo fails
+  at once instead of after 30 seconds of backoff.
+- `verify.sh`'s secret scan skips `page-transcripts.jsonl`, as it skips the model
+  recordings: both are keyed by SHA-256.
+- CI time: the compose shards now build an image with ffmpeg (14 s for the apt step here)
+  and the page test adds about a minute to one shard. Unmeasured on CI.
