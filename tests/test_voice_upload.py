@@ -3,10 +3,12 @@ before anything is stored, the waiting caps, and a picked contact logged at once
 
 from __future__ import annotations
 
+import io
 import os
 import subprocess
 import tempfile
 import uuid
+import wave
 from collections.abc import MutableMapping
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -18,7 +20,6 @@ import pytest
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from firstcall.board.notes import ORG_WAITING_SECONDS, USER_WAITING
 from firstcall.db import Contact, Job, LeadEvent, Note, User, VoiceAudio
 from firstcall.voice import audio
 from tests.board_helpers import Board
@@ -27,6 +28,22 @@ from tests.voice_helpers import FIXTURES, asgi_upload, counts, fixture, upload
 
 MONDAY_10AM = datetime(2026, 3, 2, 15, 0, tzinfo=UTC)
 SELLER = "seller@larkspur.example"
+# The approved limits, written here rather than read from the code under test.
+MAX_BYTES = 5_000_000
+USER_WAITING = 3
+ORG_WAITING_SECONDS = 600
+
+
+def silence(seconds: int) -> bytes:
+    """A WAV of exactly this many seconds: 16 kHz mono 8-bit, so it decodes with no
+    resampling and is 16 kB a second."""
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(1)
+        out.setframerate(16_000)
+        out.writeframes(b"\x80" * 16_000 * seconds)
+    return buffer.getvalue()
 
 
 @pytest.fixture
@@ -145,19 +162,18 @@ def test_an_overlong_memo_is_refused_with_422_by_its_decoded_length(
 def test_a_memo_over_5_mb_is_refused_with_413(board: Board, owned: tuple[Any, uuid.UUID]) -> None:
     client, lead = owned
     before = counts(board)
-    over = b"OggS" + bytes(audio.MAX_BYTES - 3)
+    over = b"OggS" + bytes(MAX_BYTES - 3)
     answer = upload(client, lead, body=over, content_type="audio/ogg")
     assert answer.status_code == 413
-
-    def chunks() -> Any:
-        yield over[: audio.MAX_BYTES // 2]
-        yield over[audio.MAX_BYTES // 2 :]
-
-    # No Content-Length: the read stops once the body passes the limit.
-    headers = {"Content-Type": "audio/ogg"}
-    streamed = client.post(f"/api/leads/{lead}/voice", content=chunks(), headers=headers)
-    assert streamed.status_code == 413
+    # No Content-Length, sent in pieces: the route stops asking at the piece that passes
+    # the limit, though the client says more follows.
+    half = MAX_BYTES // 2
+    pieces = [b"OggS" + bytes(half - 4), bytes(half + 1), b"never read"]
+    assert asgi_upload(board, client, lead, pieces) == (413, 2)
     assert counts(board) == before
+    # Exactly 5 MB in pieces is read to the end and judged as audio, not refused for size.
+    whole = [b"OggS" + bytes(half - 4), bytes(half)]
+    assert asgi_upload(board, client, lead, whole) == (415, 3)
 
 
 def test_a_declared_size_over_5_mb_is_refused_before_the_body_is_read(
@@ -182,7 +198,7 @@ def test_a_declared_size_over_5_mb_is_refused_before_the_body_is_read(
         "root_path": "", "query_string": b"",
         "headers": [
             (b"host", b"testserver"), (b"content-type", b"audio/ogg"),
-            (b"content-length", str(audio.MAX_BYTES + 1).encode()),
+            (b"content-length", str(MAX_BYTES + 1).encode()),
             (b"cookie", cookie.encode()),
             (b"x-csrf-token", client.headers["X-CSRF-Token"].encode()),
         ],
@@ -230,10 +246,13 @@ def test_a_fourth_waiting_memo_from_one_person_is_refused_with_429(
     board: Board, owned: tuple[Any, uuid.UUID]
 ) -> None:
     client, lead = owned
-    for _ in range(USER_WAITING):
-        assert upload(client, lead).status_code == 201
+    assert upload(client, lead).status_code == 201
+    for _ in range(USER_WAITING - 1):
+        assert upload(client, _owned_lead(board)).status_code == 201
+    fresh = _owned_lead(board)
     before = counts(board)
-    answer = upload(client, lead)
+    # The cap is the person's, not the lead's: a fourth memo on a fresh lead is refused.
+    answer = upload(client, fresh)
     assert answer.status_code == 429
     assert counts(board) == before
     # Someone else on the team may still record.
@@ -246,19 +265,35 @@ def test_a_fourth_waiting_memo_from_one_person_is_refused_with_429(
 def test_an_org_with_10_minutes_waiting_answers_503(
     board: Board, owned: tuple[Any, uuid.UUID]
 ) -> None:
+    """The cap is the org's total waiting audio, from real memos by several people on
+    several leads."""
     client, lead = owned
-    assert upload(client, lead).status_code == 201
-    with board.sessions.begin() as session:
-        waiting = session.scalars(select(VoiceAudio)).one()
-        waiting.seconds = Decimal(ORG_WAITING_SECONDS)
+
+    def wav(sender: tuple[Any, uuid.UUID], seconds: int) -> int:
+        who, on = sender
+        return upload(who, on, body=silence(seconds), content_type="audio/wav").status_code
+
+    people: dict[int, tuple[Any, uuid.UUID]] = {}
+    for number in (3, 4, 5):
+        person = board.user(f"north{number}@larkspur.example", teams={"north": "salesperson"})
+        their_lead = board.lead("north")
+        board.own(their_lead, person, MONDAY_10AM)
+        people[number] = (board.signed_in(person.email), their_lead)
+    assert wav((client, lead), 150) == 201
+    assert wav((client, _owned_lead(board)), 150) == 201
+    assert wav(people[3], 150) == 201
+    assert wav(people[4], 149) == 201
+    # 599 seconds wait: one more memo is taken, which brings the org to 600.
+    assert wav(people[5], 1) == 201
+    with board.sessions() as session:
+        waiting = sorted(session.scalars(select(VoiceAudio.seconds)))
+    assert waiting == [1, 149, 150, 150, 150]
+    assert sum(waiting) == ORG_WAITING_SECONDS
     before = counts(board)
-    answer = upload(client, lead)
+    answer = upload(people[5][0], people[5][1])
     assert answer.status_code == 503
     assert answer.json() == {"detail": "busy transcribing; try again shortly"}
     assert counts(board) == before
-    with board.sessions.begin() as session:
-        session.scalars(select(VoiceAudio)).one().seconds = Decimal(ORG_WAITING_SECONDS - 1)
-    assert upload(client, lead).status_code == 201
 
 
 def test_the_fixtures_stay_small() -> None:
@@ -290,7 +325,7 @@ def test_check_refuses_what_ffmpeg_cannot_finish_in_time(monkeypatch: pytest.Mon
 
 def test_check_refuses_an_oversize_body_it_is_handed() -> None:
     with pytest.raises(audio.RefusedError) as refused:
-        audio.check(b"OggS" + bytes(audio.MAX_BYTES), "audio/ogg")
+        audio.check(b"OggS" + bytes(MAX_BYTES), "audio/ogg")
     assert refused.value.status == 413
 
 
