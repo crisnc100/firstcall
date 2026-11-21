@@ -84,6 +84,7 @@ services:
     command: ["firstcall", "worker", "--kind", "transcribe"]
     environment:
       <<: *app-environment
+      FIRSTCALL_WHISPER_SIZE: ${FIRSTCALL_WHISPER_SIZE:-small.en}
       FIRSTCALL_WHISPER_MODELS: /models
     # The model downloads here on the first memo and stays.
     volumes: ["whisper-models:/models"]
