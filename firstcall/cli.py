@@ -110,8 +110,9 @@ def scheduler() -> None:
 
 @app.command()
 def tick() -> None:
-    """One scheduler pass: reap expired jobs, reread rules-path messages and waiting notes,
-    expire memos waiting too long, run the follow-up job, escalate and send due alerts."""
+    """One scheduler pass: expire memos waiting too long, reap expired jobs, reread
+    rules-path messages and waiting notes, run the follow-up job, escalate and send due
+    alerts. Expiry comes first, so a failing or slow reread never keeps stale audio."""
     from firstcall.outbound.dispatch import Outbound
     from firstcall.pipeline.worker import alert_tick, expire_tick, followup_tick, model_reader
     from firstcall.pipeline.worker import tick as run_tick
@@ -119,11 +120,12 @@ def tick() -> None:
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    expired = expire_tick(sessions, clock)
     outbound = Outbound.from_settings(sessions, clock, settings)
     reader = model_reader(sessions, clock, settings)
     typer.echo(
-        run_tick(sessions, clock, settings, reader)
-        | expire_tick(sessions, clock)
+        expired
+        | run_tick(sessions, clock, settings, reader)
         | followup_tick(sessions, clock)
         | alert_tick(sessions, clock, outbound)
     )

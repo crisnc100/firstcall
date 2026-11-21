@@ -207,13 +207,15 @@ def schedule(
 ) -> None:
     while True:
         beat(sessions, "scheduler")
+        # First, so a slow or failing reread never keeps a stale memo's audio; it logs its
+        # own failure.
+        expire_tick(sessions, clock)
         try:
             tick(sessions, clock, settings, reader)
         except Exception as error:
             # The reaper or a reread failed this pass; follow-ups and alerts still run, and
             # the next pass tries again.
             log_failure(log, error, "the scheduler's tick failed")
-        expire_tick(sessions, clock)
         followup_tick(sessions, clock)
         if outbound is not None:
             alert_tick(sessions, clock, outbound)

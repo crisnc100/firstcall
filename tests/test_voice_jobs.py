@@ -250,6 +250,48 @@ def test_firstcall_tick_expires_a_stale_memo(
     assert _audio(board, younger) == 1
 
 
+def test_a_scheduler_pass_expires_memos_before_the_rereads_run(
+    board: Board, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stale, younger = _stale_and_younger(board)
+    expired_before: list[bool] = []
+
+    def failing_reread(*args: Any, **kwargs: Any) -> dict[str, int]:
+        note = _note(board, stale)
+        assert note is not None
+        expired_before.append(note.read_state == "failed")
+        raise RuntimeError("the reread pass failed")
+
+    def stop(seconds: float) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(worker, "tick", failing_reread)
+    monkeypatch.setattr(worker.time, "sleep", stop)
+    with pytest.raises(KeyboardInterrupt):
+        worker.schedule(board.sessions, board.clock, Settings(env="test"))
+    assert expired_before == [True]
+    _failed(board, stale)
+    assert _audio(board, younger) == 1
+
+
+def test_firstcall_tick_expires_memos_even_when_the_rereads_fail(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # `firstcall tick` reads the real clock, so the memos are dated from it.
+    board.clock.current = datetime.now(UTC) - timedelta(minutes=31)
+    stale, younger = _stale_and_younger(board)
+
+    def failing_reread(*args: Any, **kwargs: Any) -> dict[str, int]:
+        raise RuntimeError("the reread pass failed")
+
+    monkeypatch.setattr(worker, "tick", failing_reread)
+    monkeypatch.setenv("FIRSTCALL_DATABASE_URL", database_url)
+    done = CliRunner().invoke(app, ["tick"])
+    assert isinstance(done.exception, RuntimeError)
+    _failed(board, stale)
+    assert _audio(board, younger) == 1
+
+
 def _memo_on_new_lead(board: Board) -> tuple[uuid.UUID, uuid.UUID]:
     with board.sessions() as session:
         seller = session.scalars(select(Note.author_id)).first()
