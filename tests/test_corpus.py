@@ -135,10 +135,11 @@ def _git(*args: str) -> str:
     ).stdout.strip()
 
 
-# PR1a reached main as one squash commit, so gold and code first appear together there. Its
-# branch history, where the gold landed first, is kept under this tag. Only this exact commit
-# is checked on the tag; any other commit that adds gold and code together still fails.
-SQUASHED = {"ce83ec7": "pr1a-history"}
+# PR1a and PR4a each reached main as one squash commit, so gold and code first appear together
+# there. Each branch's history, where the gold landed first, is kept under its tag. Only these
+# exact commits are checked on their tags; any other commit that adds gold and code together
+# still fails.
+SQUASHED = {"ce83ec7": "pr1a-history", "d3fe098": "pr4a-history"}
 
 
 def _first_commit_adding(path: str, ref: str = "HEAD") -> str | None:
