@@ -1,0 +1,29 @@
+{
+  "s1": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "s2": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "s3": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "x1": {
+    "status": "deferred",
+    "reason": "Fixed after the fix check in its own commit, and its files reviewed as a slice at the tip.",
+    "fix": "Transcriber imports faster-whisper at startup and exits before claiming any job."
+  },
+  "x2": {
+    "status": "deferred",
+    "reason": "A stalled request holds one of two check slots until it disconnects; availability only, behind sign-in and the record permission.",
+    "fix": "Read the body under a deadline before taking a slot."
+  },
+  "x3": {
+    "status": "deferred",
+    "reason": "Pre-existing pattern for every compose service: no restart policy and loops that exit on a database error; outside the voice brief.",
+    "fix": "Add restart: unless-stopped and catch database errors around claim and heartbeat."
+  }
+}

@@ -25,6 +25,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field, StrictInt
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.concurrency import run_in_threadpool
 
 from firstcall.board import accounts, delete, leads, notes, suggestions, tray
 from firstcall.board.leads import ConflictError, InvalidError, NotFoundError
@@ -51,10 +52,11 @@ from firstcall.db import (
     User,
     UserSession,
 )
-from firstcall.intake.limits import RateLimiter
+from firstcall.intake.limits import BodyTooLargeError, RateLimiter, read_limited
 from firstcall.outbound.push import endpoint_allowed
 from firstcall.pipeline.process import source_rules
 from firstcall.settings import Settings
+from firstcall.voice import audio
 
 SESSION_COOKIE = "fc_session"
 CSRF_COOKIE = "fc_csrf"
@@ -291,6 +293,7 @@ def board_router(
                     "text": n.text,
                     "author": names.get(n.author_id),
                     "created_at": n.created_at.isoformat(),
+                    "source": n.source,
                     "read_state": n.read_state,
                     "read_reason": n.read_reason,
                     "clean_note": n.clean_note,
@@ -553,6 +556,76 @@ def board_router(
             _not_found()
         except InvalidError as invalid:
             raise HTTPException(422, str(invalid)) from invalid
+
+    def memo_refused(
+        error: InvalidError | notes.TooManyError | notes.BusyError,
+    ) -> HTTPException:
+        if isinstance(error, notes.TooManyError):
+            detail = f"{notes.USER_WAITING} of your memos are still being transcribed"
+            return HTTPException(429, detail)
+        if isinstance(error, notes.BusyError):
+            return HTTPException(503, "busy transcribing; try again shortly")
+        return HTTPException(422, str(error))
+
+    def may_record(request: Request, lead_id: uuid.UUID, action: str | None) -> None:
+        try:
+            with caller(request, writes=True) as (db, who):
+                notes.voice_lead(db, who.viewer, lead_id, action, lock=False)
+                notes.check_waiting(db, who.viewer)
+        except NotFoundError:
+            _not_found()
+        except (InvalidError, notes.TooManyError, notes.BusyError) as refused:
+            raise memo_refused(refused) from refused
+
+    def store_memo(
+        request: Request, lead_id: uuid.UUID, memo: audio.Memo, action: str | None
+    ) -> dict[str, Any]:
+        try:
+            with caller(request, writes=True) as (db, who):
+                added = notes.add_voice_note(
+                    db, who.viewer, lead_id, memo.data, memo.format, memo.seconds, action, clock
+                )
+                lead = db.get_one(Lead, lead_id)
+                return {
+                    "note_id": str(added.note_id),
+                    "contact_id": str(added.contact_id) if added.contact_id else None,
+                    "lead": lead_json(db, lead, who.viewer),
+                }
+        except NotFoundError:
+            _not_found()
+        except (InvalidError, notes.TooManyError, notes.BusyError) as refused:
+            raise memo_refused(refused) from refused
+
+    @router.post("/leads/{lead_id}/voice", status_code=201)
+    async def add_voice_note(
+        request: Request, lead_id: uuid.UUID, action: str | None = None
+    ) -> dict[str, Any]:
+        """A voice memo, sent as the raw body with its type in Content-Type. Who may record
+        and the waiting caps are checked before the body is read; the size, format and
+        length before anything is stored. The checks that run ffmpeg run off the event loop,
+        a few at a time."""
+        action = action or None
+        await run_in_threadpool(may_record, request, lead_id, action)
+        if not audio.CHECKS.acquire(blocking=False):
+            raise HTTPException(503, "busy checking memos; try again shortly")
+        try:
+            declared = request.headers.get("content-length")
+            if declared and declared.isdigit() and int(declared) > audio.MAX_BYTES:
+                raise HTTPException(413, f"a memo is at most {audio.MAX_BYTES} bytes")
+            try:
+                body = await read_limited(request.stream(), audio.MAX_BYTES)
+            except BodyTooLargeError as too_large:
+                detail = f"a memo is at most {audio.MAX_BYTES} bytes"
+                raise HTTPException(413, detail) from too_large
+            try:
+                memo = await run_in_threadpool(
+                    audio.check, body, request.headers.get("content-type", "")
+                )
+            except audio.RefusedError as refused:
+                raise HTTPException(refused.status, refused.detail) from refused
+        finally:
+            audio.CHECKS.release()
+        return await run_in_threadpool(store_memo, request, lead_id, memo, action)
 
     @router.put("/leads/{lead_id}/profile")
     def edit_profile(request: Request, lead_id: uuid.UUID, body: ProfileChange) -> dict[str, Any]:

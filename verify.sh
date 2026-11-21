@@ -24,9 +24,10 @@ lint() {
 secret_scan() {
   step "detect-secrets (against .secrets.baseline)"
   # Generated synthetic data and its hashes are excluded: they hold random ids, not secrets.
-  # Recorded model answers are keyed by the SHA-256 of their request.
+  # Recorded model answers are keyed by the SHA-256 of their request, and recorded
+  # transcripts by the SHA-256 of their audio.
   git ls-files -z --cached --others --exclude-standard \
-    | grep -zv -E '^(evals/gold/|evals/reports/|evals/recordings/|uv\.lock$|web/package-lock\.json$)' \
+    | grep -zv -E '^(evals/gold/|evals/reports/|evals/recordings/|tests/fixtures/voice/page-transcripts\.jsonl$|uv\.lock$|web/package-lock\.json$)' \
     | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
 }
 
@@ -50,6 +51,12 @@ stack() {
 # With none, it writes the coverage.json that floors reads, as in the full run.
 tests() {
   step "pytest (zero skips, branch coverage)"
+  # The voice tests run the real ffprobe and ffmpeg; without them they would fail one by one.
+  if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+    echo "verify.sh: the voice tests need ffmpeg and ffprobe on PATH" \
+      "(brew install ffmpeg, or apt-get install ffmpeg)" >&2
+    exit 1
+  fi
   rm -f coverage.json
   if [[ $# -eq 0 ]]; then
     set -- --cov-report=json:coverage.json --cov-report=term:skip-covered

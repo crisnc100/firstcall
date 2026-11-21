@@ -14,7 +14,9 @@ services:
       retries: 40
 
   migrate:
-    build: .
+    build:
+      context: .
+      target: app
     image: firstcall-v01-app
     command: ["alembic", "upgrade", "head"]
     environment: &app-environment
@@ -71,6 +73,35 @@ services:
       timeout: 5s
       retries: 20
 
+  # Turns voice memos into text with faster-whisper, on the CPU, with no key. Only with
+  # `--profile voice`, so a plain build or up never builds it or downloads a model.
+  transcriber:
+    build:
+      context: .
+      target: voice
+    image: firstcall-v01-voice
+    profiles: ["voice"]
+    command: ["firstcall", "worker", "--kind", "transcribe"]
+    environment:
+      <<: *app-environment
+      FIRSTCALL_WHISPER_SIZE: ${FIRSTCALL_WHISPER_SIZE:-small.en}
+      FIRSTCALL_WHISPER_MODELS: /models
+    # The model downloads here when the transcriber first starts, and stays.
+    volumes: ["whisper-models:/models"]
+    cpus: 2
+    mem_limit: 1536m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # The first beat comes once the model is loaded, which on a first start includes its
+    # download (about 480 MB for small.en).
+    healthcheck:
+      test: ["CMD", "firstcall", "health", "transcriber"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10m
+
   # Catches local email, so nothing sent in development leaves the machine.
   mailpit:
     image: axllent/mailpit:v1.27
@@ -84,3 +115,4 @@ services:
 
 volumes:
   postgres-data:
+  whisper-models:

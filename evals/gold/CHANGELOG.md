@@ -88,3 +88,29 @@ any change to a gold file that the manifest does not record.
   thirty thousand (three bedrooms)" read as 930003; and "half-a-million" read as one million.
   Brackets and slashes now end a number, and a hyphen between letters reads as a space. Both
   cases are in the regression table. No gold file changed; the gold still meets every floor.
+
+## 2026-11-21
+- Added the voice gold for the voice eval, before any transcription code: `voice/seed-11`,
+  seed 11's 150 note scripts read by Piper in ten licensed voices (`voice/LICENSES.md`), once
+  clean and once degraded, as 300 MP3 clips with `clips.jsonl` (voice, speed, noise seed and
+  length of each) and `spoken.jsonl` (what each voice read: the script with each figure
+  written as its full value in words). Its own manifest, `voice/MANIFEST.json`, holds the
+  hash of every file in the folder. The audio is the gold, because Piper's output can differ
+  between runs. No note file, label or other manifest changed.
+- Added the voice scorer (`firstcall/evaluation/voice_score.py`) and its name table
+  (`voice/name-spellings.json`), approved by Cristian on 2026-11-21. For voice only, a name
+  the script spells another way that sounds the same ("Steven" for "Stephen") counts as
+  supported; the strict count is reported beside it. The note scorer is unchanged. From here
+  the voice scorer and table change only with an entry in this file, and never once the
+  seed-11 voice runs have started.
+
+## 2026-11-21, second entry
+- The PR4a code review found two ways the voice scorer's word error rate counted a correct
+  transcript as wrong, both fixed before any transcriber ran on seed 11. Punctuation inside a
+  word split it: "H.O.A." was three words to the transcript's "HOA", and "doesn't" two to
+  "doesnt". Full stops between single letters and apostrophes inside a word are now dropped.
+  And two spoken number forms read as words: "one point one million" was not "$1.1 million",
+  nor "seven hundred five grand" "705 grand". A worded number, "point" and digits said one by
+  one, and a worded number before "grand", are now read as their values, for WER only. The
+  note scorer, the name rule and the floors are unchanged, and no gold file changed. Every
+  seed-11 script still scores a WER of 0 against what its voice read.

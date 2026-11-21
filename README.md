@@ -12,13 +12,15 @@ message, name and number in this repo is made up.
 
 ## Try it
 
-You need [uv](https://docs.astral.sh/uv/), Docker and Node with npm. No API key is needed: the
-model is off by default (`FIRSTCALL_MODEL_MODE=offline`), so every message takes the rules path.
+You need [uv](https://docs.astral.sh/uv/), Docker, Node with npm, and ffmpeg for the voice
+tests and for an api that runs outside Docker. No API key is needed: the model is off by
+default (`FIRSTCALL_MODEL_MODE=offline`), so every message takes the rules path.
 
 ```sh
 ./verify.sh                       # every check, in order; CI runs its steps as parallel jobs
 ./verify.sh --step lint           # one check: lint, secrets, web, playwright, stack, eval, tests, floors
 docker compose up -d --wait       # Postgres, api, worker, scheduler and a mail catcher
+docker compose --profile voice up -d --wait   # the same, plus the transcriber for voice memos
 uv run firstcall seed             # the made-up demo company from config/demo.yaml
 uv run firstcall rotate-secret inbox   # prints a password for the email source, once
 ```
@@ -29,6 +31,13 @@ a second. Form sources take JSON; [examples/form.html](examples/form.html) is a 
 a spam trap. A form source's URL ends in a form key. The key is public, since any visitor can
 read it in the page, so a form source is protected by its honeypot, its rate limits and the
 spam check, not by the key. Sources that must refuse strangers use basic auth or a signature.
+
+The transcriber runs in its own image: `docker compose --profile voice up -d --build --wait`.
+Outside Docker it needs Linux, or macOS 14 or later on Apple Silicon, since faster-whisper's
+onnxruntime has no wheel for Intel Macs or older macOS. There, install the voice group, which
+plain `uv sync` leaves out, then start it: `uv sync --group voice`, then
+`uv run firstcall worker --kind transcribe`. Anywhere else, use the image.
+[docs/board.md](docs/board.md) has the rest.
 
 To use the board, add yourself as a user, then open <http://localhost:8020/signin>. The front page at
 <http://localhost:8020> is public and needs no sign-in:

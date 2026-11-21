@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
@@ -62,14 +63,32 @@ def rotate_secret(slug: str) -> None:
 
 
 @app.command()
-def worker(until_idle: bool = typer.Option(False, help="Stop when the queue is empty.")) -> None:
-    """Process stored messages."""
+def worker(
+    until_idle: bool = typer.Option(False, help="Stop when the queue is empty."),
+    kind: str = typer.Option("", help="transcribe: run only voice memo transcription"),
+) -> None:
+    """Process stored messages and read notes, or with --kind transcribe, transcribe voice
+    memos."""
     from firstcall.outbound.dispatch import Outbound
-    from firstcall.pipeline.worker import model_reader, work
+    from firstcall.pipeline.worker import TRANSCRIBER, forget, model_reader, transcribe_work, work
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    if kind == "transcribe":
+        from firstcall.voice.transcribe import CannotTranscribeError, from_settings
+
+        forget(sessions, TRANSCRIBER)
+        try:
+            transcriber = from_settings(settings)
+        except CannotTranscribeError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
+        transcribe_work(sessions, clock, settings, transcriber, until_idle)
+        return
+    if kind:
+        raise typer.BadParameter("--kind is transcribe, or left out for the main worker")
+    forget(sessions, "worker")
     reader = model_reader(sessions, clock, settings)
     outbound = Outbound.from_settings(sessions, clock, settings)
     work(sessions, clock, settings, until_idle=until_idle, reader=reader, outbound=outbound)
@@ -79,37 +98,41 @@ def worker(until_idle: bool = typer.Option(False, help="Stop when the queue is e
 def scheduler() -> None:
     """Run `tick` every 30 seconds."""
     from firstcall.outbound.dispatch import Outbound
-    from firstcall.pipeline.worker import model_reader, schedule
+    from firstcall.pipeline.worker import forget, model_reader, schedule
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    forget(sessions, "scheduler")
     outbound = Outbound.from_settings(sessions, clock, settings)
     schedule(sessions, clock, settings, model_reader(sessions, clock, settings), outbound)
 
 
 @app.command()
 def tick() -> None:
-    """One scheduler pass: reap expired jobs, escalate, send due alerts, then reread
-    rules-path messages."""
+    """One scheduler pass: expire memos waiting too long, reap expired jobs, reread
+    rules-path messages and waiting notes, run the follow-up job, escalate and send due
+    alerts. Expiry comes first, so a failing or slow reread never keeps stale audio."""
     from firstcall.outbound.dispatch import Outbound
-    from firstcall.pipeline.worker import alert_tick, followup_tick, model_reader
+    from firstcall.pipeline.worker import alert_tick, expire_tick, followup_tick, model_reader
     from firstcall.pipeline.worker import tick as run_tick
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    expired = expire_tick(sessions, clock)
     outbound = Outbound.from_settings(sessions, clock, settings)
     reader = model_reader(sessions, clock, settings)
     typer.echo(
-        run_tick(sessions, clock, settings, reader)
+        expired
+        | run_tick(sessions, clock, settings, reader)
         | followup_tick(sessions, clock)
         | alert_tick(sessions, clock, outbound)
     )
 
 
 @app.command()
-def health(kind: str = typer.Argument(..., help="worker or scheduler")) -> None:
+def health(kind: str = typer.Argument(..., help="worker, transcriber or scheduler")) -> None:
     """Exit 0 when this host's process beat in the last 60 seconds."""
     from firstcall.pipeline.worker import healthy
 
@@ -356,6 +379,23 @@ def corpus_notes(seed: int = typer.Option(..., help="7 or 11")) -> None:
     record_notes_seed(seed, hashes)
     for name, digest in hashes.items():
         typer.echo(f"notes seed {seed} {name} {digest}")
+
+
+@corpus_app.command("voice")
+def corpus_voice(
+    piper: str = typer.Option(
+        "piper", help="How to run Piper, e.g. 'uvx --from piper-tts==1.8.0 piper'"
+    ),
+    models: str = typer.Option(..., help="A folder holding each voice's .onnx and .onnx.json"),
+) -> None:
+    """Render evals/gold/voice/seed-11 and write the voice manifest. Piper is GPL-3.0, so it
+    runs as its own program and is never a project dependency."""
+    import shlex
+
+    from firstcall.corpus.voice import render_voice
+
+    hashes = render_voice(shlex.split(piper), Path(models))
+    typer.echo(f"voice gold: {len(hashes)} files")
 
 
 if __name__ == "__main__":

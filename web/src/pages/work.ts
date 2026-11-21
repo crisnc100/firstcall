@@ -112,9 +112,11 @@ function notesSection(lead: LeadDetail, reload: () => Promise<void>): HTMLElemen
           "div",
           { class: "line muted sm" },
           `${note.author ?? "Someone"} · ${shortTime(note.created_at)}`,
+          note.source === "voice" ? h("span", { class: "badge", text: "Voice" }) : null,
           ...(logged.get(note.id) ?? []).map((word) => h("span", { class: "badge", text: `${word} · contact logged` })),
         ),
-        h("div", { class: "msg", text: note.text }),
+        // A memo has no text until it is transcribed, and none if that fails.
+        note.text ? h("div", { class: "msg", text: note.text }) : null,
         ...readParts(lead, note, reload),
       ),
     ),
@@ -127,10 +129,14 @@ function notesSection(lead: LeadDetail, reload: () => Promise<void>): HTMLElemen
 }
 
 const READ_LINE: Record<string, string> = {
+  transcribing: "Transcribing…",
   pending: "Reading this note…",
   needs_model: "Needs a model key",
   failed: "Couldn't read this note",
 };
+// A memo that never became text. One that did, and whose read then failed, reads as any
+// note's failed read.
+const NOT_TRANSCRIBED = "Couldn't transcribe this memo. Record it again.";
 const CLOSED_WORD: Record<string, string> = {
   confirmed: "confirmed",
   dismissed: "dismissed",
@@ -141,7 +147,7 @@ const CLOSED_WORD: Record<string, string> = {
  * contact with Confirm and Dismiss while it is open. */
 function readParts(lead: LeadDetail, note: Note, reload: () => Promise<void>): HTMLElement[] {
   const parts: HTMLElement[] = [];
-  const line = READ_LINE[note.read_state];
+  const line = note.read_reason === "not_transcribed" ? NOT_TRANSCRIBED : READ_LINE[note.read_state];
   if (line) parts.push(h("p", { class: "muted sm read-state", text: line }));
   if (note.clean_note) parts.push(h("p", { class: "sm tidied" }, h("strong", { text: "Tidied: " }), note.clean_note));
   for (const suggestion of note.suggestions) {
@@ -177,7 +183,7 @@ function noteForm(lead: LeadDetail, reload: () => Promise<void>): HTMLElement {
   }
   const status = h("div", { attrs: { role: "status" } });
   const save = h("button", { class: "btn primary", text: "Save note", attrs: { type: "submit" } });
-  const form = h("form", { class: "note-form" }, ...fields, h("div", { class: "row-buttons" }, save), status);
+  const form = h("form", { class: "note-form" }, ...fields, h("div", { class: "row-buttons" }, save), memo(lead, action, status, reload), status);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const body = { text: text.value, action: action.value || null };
@@ -185,6 +191,210 @@ function noteForm(lead: LeadDetail, reload: () => Promise<void>): HTMLElement {
     void attempt(save, "Saving…", "Save note", status, () => api("POST", `/leads/${lead.id}/notes`, body), done, "save the note", reload);
   });
   return form;
+}
+
+// The first format this browser records wins: Chrome, Edge and Firefox take WebM, Safari
+// MP4. The server checks the file whatever its type says.
+const MEMO_TYPES = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"];
+// The server refuses a memo that decodes past 3:00, so the recorder stops a little short.
+const MEMO_STOP_MS = 179_500;
+
+function minutes(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function memoFailure(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 413) return "That memo is over 5 MB.";
+    if (error.status === 415) return "That file isn't a recording we can use. Send WebM, MP4, WAV, MP3 or Ogg audio.";
+    if (error.status === 429) return "Three of your memos are still being transcribed. Try again when one is done.";
+    if (error.status === 503) return "Transcription is busy. Try again shortly.";
+  }
+  return failure(error, "send the memo");
+}
+
+// The server judges a file by its first bytes and refuses a declared type that does not fit
+// them. Browsers name a picked file's type unevenly (empty, or video/mp4 for an audio-only
+// MP4), so a known extension sets the type sent.
+const PICKED_TYPES: Record<string, string> = {
+  webm: "audio/webm",
+  weba: "audio/webm",
+  mp4: "audio/mp4",
+  m4a: "audio/mp4",
+  wav: "audio/wav",
+  mp3: "audio/mpeg",
+  ogg: "audio/ogg",
+  oga: "audio/ogg",
+  opus: "audio/ogg",
+};
+const PICKABLE = ["audio/*", ...Object.keys(PICKED_TYPES).map((extension) => `.${extension}`)].join(",");
+
+function pickedMemo(file: File): Blob {
+  const type = PICKED_TYPES[file.name.split(".").pop()?.toLowerCase() ?? ""];
+  return type ? new Blob([file], { type }) : file;
+}
+
+/** Record a memo, or send a recording, as a voice note. It takes the note form's contact
+ * pick, which is logged as soon as the memo is accepted. */
+function memo(lead: LeadDetail, action: HTMLSelectElement, status: HTMLElement, reload: () => Promise<void>): HTMLElement {
+  const record = h("button", { class: "btn secondary", text: "Record a memo", attrs: { type: "button" } });
+  const stop = h("button", { class: "btn primary", text: "Stop and send", attrs: { type: "button", hidden: true } });
+  const timer = h("span", { class: "num memo-timer", text: "0:00 / 3:00", attrs: { hidden: true } });
+  const file = h("input", { attrs: { id: "memo-file", type: "file", accept: PICKABLE } });
+  const wrap = h(
+    "div",
+    { class: "memo" },
+    h("div", { class: "row-buttons" }, record, stop, timer),
+    h("label", { text: "Send a recording", attrs: { for: "memo-file" } }),
+    file,
+  );
+  const canRecord = typeof MediaRecorder !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia);
+  if (!canRecord) {
+    record.hidden = true;
+    wrap.prepend(h("p", { class: "muted sm", text: "This browser can't record here. You can still send a recording." }));
+  }
+
+  // From Record, or a picked file, until the upload answers, the lead page's polling leaves
+  // this form alone (detail.ts, editing). Another action can still redraw the page and
+  // remove it: a recording is then dropped unsent, and an error goes to a toast.
+  const hold = (): void => wrap.setAttribute("data-busy", "");
+  const ready = (): void => {
+    wrap.removeAttribute("data-busy");
+    unbusy(record, "Record a memo");
+    record.hidden = false;
+    stop.hidden = true;
+    timer.hidden = true;
+    file.disabled = false;
+    file.value = "";
+  };
+  const show = (text: string): void => {
+    if (!wrap.isConnected) {
+      toast(text);
+      return;
+    }
+    status.replaceChildren(h("p", { class: "danger-text", text }));
+    announce(text);
+  };
+  const send = async (audio: Blob): Promise<void> => {
+    const picked = action.value || null;
+    const query = picked ? `?action=${encodeURIComponent(picked)}` : "";
+    status.replaceChildren();
+    hold();
+    record.hidden = false;
+    stop.hidden = true;
+    timer.hidden = true;
+    busy(record, "Sending…");
+    file.disabled = true;
+    try {
+      await api("POST", `/leads/${lead.id}/voice${query}`, audio);
+    } catch (error) {
+      ready();
+      show(memoFailure(error));
+      return;
+    }
+    wrap.removeAttribute("data-busy");
+    const done = picked ? "Memo sent and contact logged." : "Memo sent. Transcribing…";
+    toast(done);
+    announce(done);
+    await reload();
+  };
+
+  file.addEventListener("change", () => {
+    const chosen = file.files?.[0];
+    if (chosen) void send(pickedMemo(chosen));
+  });
+
+  let finish: (() => void) | null = null;
+  const startRecording = async (): Promise<void> => {
+    status.replaceChildren();
+    hold();
+    record.disabled = true;
+    file.disabled = true;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
+    } catch {
+      ready();
+      show("The microphone is blocked. Allow it for this site, or send a recording.");
+      return;
+    }
+    const release = (): void => {
+      for (const track of stream.getTracks()) track.stop();
+    };
+    // The page was redrawn while the browser asked for the microphone.
+    if (!wrap.isConnected) {
+      release();
+      return;
+    }
+    const type = MEMO_TYPES.find((candidate) => MediaRecorder.isTypeSupported(candidate));
+    const chunks: Blob[] = [];
+    let failed = false;
+    let tick = 0;
+    let limit = 0;
+    const cleanup = (): void => {
+      window.clearInterval(tick);
+      window.clearTimeout(limit);
+      release();
+      finish = null;
+    };
+    let recorder: MediaRecorder | null = null;
+    try {
+      const current = new MediaRecorder(stream, { mimeType: type, audioBitsPerSecond: 32_000 });
+      recorder = current;
+      current.addEventListener("dataavailable", (event) => {
+        if (event.data.size) chunks.push(event.data);
+      });
+      current.addEventListener("error", () => {
+        failed = true;
+      });
+      current.addEventListener("stop", () => {
+        cleanup();
+        // Checked here as well as on the timer, so a redraw just before the 3:00 stop still
+        // drops the memo.
+        if (!wrap.isConnected) return;
+        if (failed || !chunks.length) {
+          ready();
+          show("The recording failed. Record it again, or send a recording.");
+          return;
+        }
+        void send(new Blob(chunks, { type: current.mimeType || type || "" }));
+      });
+      current.start();
+    } catch {
+      cleanup();
+      ready();
+      show("This browser couldn't record. You can still send a recording.");
+      return;
+    }
+    const end = (): void => {
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+    };
+    finish = end;
+    const started = Date.now();
+    tick = window.setInterval(() => {
+      // Another action redrew the page mid-memo: drop it and let go of the microphone.
+      if (!wrap.isConnected) {
+        end();
+        return;
+      }
+      timer.textContent = `${minutes(Math.floor((Date.now() - started) / 1000))} / 3:00`;
+    }, 250);
+    limit = window.setTimeout(end, MEMO_STOP_MS);
+    record.hidden = true;
+    timer.textContent = "0:00 / 3:00";
+    timer.hidden = false;
+    stop.disabled = false;
+    stop.hidden = false;
+    stop.focus();
+  };
+  record.addEventListener("click", () => void startRecording());
+  stop.addEventListener("click", () => {
+    stop.disabled = true;
+    finish?.();
+  });
+  return wrap;
 }
 
 function budgetText(profile: Profile): string {

@@ -1,0 +1,15 @@
+{
+  "f1": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "f2": {
+    "status": "fixed",
+    "response": "real"
+  },
+  "x1": {
+    "status": "deferred",
+    "reason": "The README's voice command can reuse a stale app image built before voice support.",
+    "fix": "Add --build to the README's voice startup command."
+  }
+}

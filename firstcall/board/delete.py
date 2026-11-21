@@ -34,13 +34,14 @@ from firstcall.db import (
     NoteSuggestion,
     Outcome,
     PushSend,
+    VoiceAudio,
 )
 from firstcall.locks import lock_all
 
 # Tables whose rows for the lead are deleted outright, children before parents.
 DELETED = (
-    PushSend, Alert, Escalation, Followup, Contact, NoteSuggestion, Note, LeadProfile, Outcome,
-    Activity, Identity,
+    PushSend, Alert, Escalation, Followup, Contact, NoteSuggestion, VoiceAudio, Note, LeadProfile,
+    Outcome, Activity, Identity,
 )  # fmt: skip
 # Message columns cleared; the delivery key and hashes stay. An emptied message can never be
 # read again, so it leaves the reread queue instead of holding a place at its head.

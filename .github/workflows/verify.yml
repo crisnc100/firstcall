@@ -45,6 +45,8 @@ jobs:
           # The gold-before-code test reads the full history.
           fetch-depth: 0
       - uses: ./.github/actions/setup
+        with:
+          ffmpeg: true
       - run: docker compose up -d --wait postgres mailpit
       - run: ./verify.sh --step web
       # verify.sh installs the browser; the runner also needs its system libraries.
@@ -78,6 +80,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+        with:
+          ffmpeg: true
       - run: uv run playwright install-deps chromium
       - run: ./verify.sh --step playwright
       - run: ./verify.sh --step stack
@@ -106,6 +110,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
+        with:
+          ffmpeg: true
       - run: uv run playwright install-deps chromium
       - run: ./verify.sh
 

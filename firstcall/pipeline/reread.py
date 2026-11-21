@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session, aliased, sessionmaker
 from firstcall.core.model_read import combine
 from firstcall.core.read import UnparseableError, read
 from firstcall.db import Identity, Lead, Message, ModelCall, Source
+from firstcall.errors import log_failure
 from firstcall.locks import lock_all
 from firstcall.model.gateway import DOWN, NotSyntheticError, ReplayMissError
 from firstcall.pipeline.model_read import UNREADABLE, ModelReader
@@ -218,7 +219,7 @@ def reread(sessions: sessionmaker[Any], reader: ModelReader, limit: int = BATCH)
             counts["halted"] = counts.get("halted", 0) + 1
             break
         except Exception as error:
-            log.exception("reread of message %s failed", message_id)
+            log_failure(log, error, "reread of message %s failed", message_id)
             _record_error(sessions, message_id, error)
             result = "error"
         counts[result] = counts.get(result, 0) + 1

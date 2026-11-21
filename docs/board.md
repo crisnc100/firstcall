@@ -79,8 +79,11 @@ background. The lead page shows one of these under the note:
   not read again.
 - The **tidied note** and its **suggestions** when the read worked.
 
-The lead page checks again every 15 seconds while a note is waiting to be read. It does not
-redraw while a form on the page is being edited, so unsaved typing is never lost.
+The lead page checks again every 15 seconds while a note is waiting for its transcript (see
+[Voice memos](#voice-memos)) or its read. That check does not redraw while a form on the
+page is being edited, or a memo is being recorded or sent, so it never loses unsaved typing.
+Saving something does redraw the page: a memo the server accepts reloads it, which replaces
+anything typed but not saved in its other forms.
 
 A read can update the buyer's profile (budget, authority, need, timeline). It never changes
 a field a person set, and the profile form sends only the fields the person changed. The
@@ -92,6 +95,49 @@ the note was written and made by the note's author. Dismiss logs none. A suggest
 closed once: a second click gets "already closed" (409). Confirm needs the lead to be owned or
 in nurture. If the note itself already logged that kind of contact, the suggestion closes as
 already logged. Deleting a lead deletes its suggestions and read jobs.
+
+### Voice memos
+
+Whoever may add a note may record a memo instead, under the note form: **Record a memo**,
+then **Stop and send**, with a timer that stops the recording itself just short of 3:00. Or
+**Send a recording** picks a file; a known extension sets the type sent, as browsers often
+give none. The memo takes the form's "This note records" pick, as a typed note does. Saving
+a typed note or any other action while recording, or while the browser asks for the
+microphone, drops the memo unsent. A recording that fails is never sent. The page records in
+the first of WebM, MP4 or Ogg the browser can make.
+The microphone needs HTTPS outside localhost; without it the page offers only the file.
+
+The memo shows at once as a **Voice** note saying **Transcribing…**. Once the transcript is
+saved it becomes the note's text, read like a typed note's: **Reading this note…**, or
+**Needs a model key** when there is none. One that cannot be transcribed says
+**Couldn't transcribe this memo. Record it again.**
+
+The page posts the memo as the raw body to `POST /api/leads/{id}/voice?action=…`, with its
+type in `Content-Type`. Before anything is stored the api refuses:
+- a fourth memo from someone with three still waiting (429), or any memo while ten minutes of
+  audio already wait in the org (503), before reading it;
+- any memo while the api is already checking two (503), also unread;
+- over 5 MB (413), read no further than that;
+- anything but WebM, MP4, WAV, MP3 or Ogg audio, judged by the file's first bytes, sent under
+  a type that does not fit them, or holding anything but one Opus, AAC, PCM, MP3 or Vorbis
+  audio stream (415);
+- over 3 minutes, measured by decoding it rather than trusting its header (422).
+
+An accepted memo is a note with no text yet, waiting to be transcribed, and a picked contact
+is logged at once. A separate transcriber process (`firstcall worker --kind transcribe`)
+turns it into text with faster-whisper on the CPU, with no key (ADR-005); the main worker
+never takes this work, so new-lead alerts never wait behind a memo. The transcript becomes the
+note's text and is read like a typed note, so with no model key the note keeps the
+transcript and says it needs one. A memo that cannot be transcribed (no speech, unreadable
+audio, too long, or out of retries) fails, and the person records it again; a contact they
+picked stays.
+
+The audio is deleted when transcription ends, either way, and the scheduler fails any memo
+still waiting 30 minutes after upload and deletes its audio, even when no transcriber runs.
+Deleting a lead deletes its waiting audio too. Deleted means the row is gone at commit; the
+bytes stay in Postgres's write-ahead log and backups until those turn over. While the api
+checks a memo, ffmpeg reads it from a temporary file with no name on disk, so a crash leaves
+nothing behind.
 
 ## Alerts
 
@@ -168,3 +214,10 @@ salesperson from the command line instead, give a team from `config/demo.yaml`:
 
 Compose leaves the email backend at `inbox`, so digests show up on the Inbox page. Push is
 off: compose sets no VAPID key.
+
+Voice memos need the transcriber, which a plain `up` leaves out:
+`docker compose --profile voice up -d --build --wait`. It runs on 2 CPUs and 1.5 GB. Its
+first start downloads the model (`FIRSTCALL_WHISPER_SIZE`, default `small.en`, about 480 MB)
+into the `whisper-models` volume, and the transcriber keeps it loaded. It takes no memo until
+ffmpeg, faster-whisper and the model are all ready; if one is not, it stops at once and says
+which.

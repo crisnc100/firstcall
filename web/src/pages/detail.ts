@@ -167,8 +167,9 @@ export function detailPage(main: HTMLElement, params: Record<string, string>): C
     watch(lead, teams);
   };
 
-  // While a note waits for the model, look again every poll. The page is redrawn only when a
-  // note's read has changed and nothing is being edited, so no unsaved input is lost.
+  // While a note waits for its transcript or the model, look again every poll. The page is
+  // redrawn only when a note's read has changed and nothing is being edited, so no unsaved
+  // input is lost.
   let timer = 0;
   let drawn = new Map<Element, string>();
   const reads = (lead: LeadDetail): string =>
@@ -184,7 +185,7 @@ export function detailPage(main: HTMLElement, params: Record<string, string>): C
     return found;
   };
   const editing = (): boolean => {
-    if (main.querySelector(".panel")) return true;
+    if (main.querySelector(".panel, [data-busy]")) return true;
     const active = document.activeElement;
     if (active && main.contains(active) && active.matches("input, textarea, select")) return true;
     const now = controls();
@@ -194,7 +195,7 @@ export function detailPage(main: HTMLElement, params: Record<string, string>): C
   };
   const watch = (lead: LeadDetail, teams: Team[]): void => {
     window.clearTimeout(timer);
-    const waiting = (lead.notes ?? []).some((n) => n.read_state === "pending" || n.read_state === "needs_model");
+    const waiting = (lead.notes ?? []).some((n) => ["transcribing", "pending", "needs_model"].includes(n.read_state));
     if (!waiting || stopped) return;
     timer = window.setTimeout(() => {
       void (async () => {
