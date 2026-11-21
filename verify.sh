@@ -25,9 +25,10 @@ secret_scan() {
   step "detect-secrets (against .secrets.baseline)"
   # Generated synthetic data and its hashes are excluded: they hold random ids, not secrets.
   # Recorded model answers are keyed by the SHA-256 of their request, and recorded
-  # transcripts by the SHA-256 of their audio.
+  # transcripts (the page test's and the voice eval's) by the SHA-256 of their audio, beside
+  # the Whisper model's pinned revision.
   git ls-files -z --cached --others --exclude-standard \
-    | grep -zv -E '^(evals/gold/|evals/reports/|evals/recordings/|tests/fixtures/voice/page-transcripts\.jsonl$|uv\.lock$|web/package-lock\.json$)' \
+    | grep -zv -E '^(evals/gold/|evals/reports/|evals/recordings/|evals/voice/|tests/fixtures/voice/page-transcripts\.jsonl$|uv\.lock$|web/package-lock\.json$)' \
     | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
 }
 

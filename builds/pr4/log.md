@@ -304,4 +304,38 @@ What it shook out:
   scripts.
 
 No gold, scorer or pipeline fix came out of the dry run, so `evals/gold/CHANGELOG.md` is
-unchanged.
+unchanged. The "e-mail" spelling and the spoken "… hundred five thousand" stay as known
+effects on seed 11 (orchestrator's call).
+
+## Phase 6: Atlas timing (2026-11-21, decision 5)
+
+- **Clips:** 20 of the dry run's degraded seed-7 clips, the first two of each voice (186.2 s
+  of audio), with their own manifest.
+- **Image:** a `git archive` of 7f63843 copied to a `mktemp -d` folder on Atlas; the
+  Dockerfile's `voice` stage built there as `firstcall-pr4b-voice-timing:7f63843` (2.39 GB,
+  faster-whisper 1.2.1, ctranslate2 4.9.0). The build took 49 minutes, nearly all of it
+  apt and uv downloads, which were slow from Atlas.
+- **Runs:** one size after another, `docker run --rm --cpus 2 --memory 1536m` (the
+  transcriber's compose limits), the model in a throwaway volume, `</dev/null` on every
+  docker command:
+  `firstcall eval-voice --seed 7 --size S --condition degraded --clips /clips --out /out
+  --models /models --transcribe-only`. The startup check (ffmpeg, model download and load,
+  test clip) ran before each size's first clip and is not timed. Docket and Askwell kept
+  running beside it (load average 0.35 before).
+
+| Size | Compute s per audio minute, Atlas | This Mac (dry run, 30 clips) |
+|---|---|---|
+| tiny.en | 4.80 | 2.44 |
+| base.en | 7.37 | 4.30 |
+| small.en | 20.73 | 12.83 |
+
+  Atlas is an AMD EPYC 9354P (x86_64, 4 vCPUs, 16 GB). Every size is inside the 60 s bound;
+  small.en is about 1.6 times this Mac's time. The timings are in
+  `evals/voice/atlas-timing.json`.
+- **Left behind: nothing.** Image, volume and folder removed; image, volume and container
+  ids on Atlas match the list taken before (diffed), and the build cache entries this build
+  created (12, 2.13 GB, all created during the build) were pruned by id. The uv base image
+  was already in Atlas's build cache from 2026-11-12; nothing was pulled. Nothing else on
+  Atlas was touched.
+- `verify.sh`'s secret scan skips `evals/voice/`, as it skips the recordings: its files hold
+  audio SHA-256s and the Whisper models' pinned revisions.
