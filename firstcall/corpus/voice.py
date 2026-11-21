@@ -279,7 +279,11 @@ def render_voice(
     piper: Sequence[str], models: Path, root: Path = VOICE_DIR, seed: int = VOICE_SEED
 ) -> dict[str, str]:
     """Every clip of the seed, its spoken text and clip list, and the voice manifest. The
-    LICENSES.md and name-spellings.json files beside it are written by hand."""
+    LICENSES.md and name-spellings.json files beside it are written by hand.
+
+    The seed is rendered into a folder of its own beside the old one and swapped in only once
+    every clip is made, so a failed render leaves the gold as it was. A run killed during the
+    swap leaves the manifest out of step with the folder, which the gold test reports."""
     for tool in ("ffmpeg", "ffprobe"):
         if shutil.which(tool) is None:
             raise RuntimeError(f"{tool} is needed to render the voice gold")
@@ -287,9 +291,16 @@ def render_voice(
     spoken = spoken_rows(seed)
     texts = {row["id"]: row["text"] for row in spoken}
     clips = plan_clips(seed)
-    for clip in clips:
-        render_clip(piper, models, clip, texts[clip["id"]], folder)
-        clip["seconds"] = seconds(folder / clip["file"])
-    (folder / SPOKEN).write_text(_lines(spoken))
-    (folder / CLIPS).write_text(_lines(clips))
+    root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=root, prefix=f".rendering-seed-{seed}-") as scratch:
+        stage = Path(scratch) / folder.name
+        stage.mkdir()
+        for clip in clips:
+            render_clip(piper, models, clip, texts[clip["id"]], stage)
+            clip["seconds"] = seconds(stage / clip["file"])
+        (stage / SPOKEN).write_text(_lines(spoken))
+        (stage / CLIPS).write_text(_lines(clips))
+        if folder.exists():
+            folder.rename(Path(scratch) / "replaced")
+        stage.rename(folder)
     return write_voice_manifest(root)
