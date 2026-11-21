@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The one local and CI gate. Every step must pass, and a skipped test fails pytest.
-# With no argument it runs every step in order. CI runs the same steps as parallel jobs, one
-# --step at a time (.github/workflows/verify.yml).
+# With no argument it runs every step in order. CI runs the steps as parallel jobs, one --step
+# each, and this whole script only in its slow lane (.github/workflows/verify.yml).
 set -euo pipefail
 cd "$(dirname "$0")"
 
