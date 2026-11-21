@@ -13,13 +13,15 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import io
 import json
 import shutil
+import wave
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 from firstcall.board.notes import NOTE_MAX
-from firstcall.voice.audio import MAX_SECONDS, UndecodableError, decode, seconds
+from firstcall.voice.audio import MAX_SECONDS, SAMPLE_RATE, UndecodableError, decode, seconds
 
 if TYPE_CHECKING:
     from faster_whisper import WhisperModel
@@ -142,12 +144,25 @@ class ReplayTranscripts:
         raise ReplayMissError(f"no recorded transcript for audio {key} in {self.path}")
 
 
+def _test_clip() -> bytes:
+    """One second of silence as a WAV, made here so the startup check needs no file."""
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(SAMPLE_RATE)
+        out.writeframes(bytes(2 * SAMPLE_RATE))
+    return buffer.getvalue()
+
+
 def from_settings(settings: Settings) -> Transcriber:
     """The transcriber the settings ask for. In local mode it first proves it can transcribe,
-    before any job is claimed: ffmpeg and ffprobe are on PATH, faster-whisper imports, and
-    the model loads, downloading if it must. A transcriber missing any of them would fail
-    every memo's attempts on a fault that is not the memo's, and the last attempt deletes
-    its audio. CannotTranscribeError says which and how to fix it."""
+    before any job is claimed: ffmpeg and ffprobe are on PATH, faster-whisper imports, the
+    model loads, downloading if it must, and a generated clip goes the whole way through, so
+    ffmpeg really decodes and the voice filter (onnxruntime) really runs. A transcriber
+    failing any of them would fail every memo's attempts on a fault that is not the memo's,
+    and the last attempt deletes its audio. CannotTranscribeError says which and how to fix
+    it."""
     if settings.transcribe_mode == "replay":
         return ReplayTranscripts(Path(settings.voice_transcripts))
     missing = [tool for tool in ("ffmpeg", "ffprobe") if shutil.which(tool) is None]
@@ -170,5 +185,21 @@ def from_settings(settings: Settings) -> Transcriber:
             f"The Whisper model {settings.whisper_size} could not be loaded into {folder}: "
             f"{type(error).__name__}: {str(error)[:500]}. Check that Hugging Face can be "
             "reached and that the folder is writable with room for the model."
+        ) from error
+    clip = _test_clip()
+    try:
+        decode(clip, "wav")
+    except Exception as error:
+        raise CannotTranscribeError(
+            f"ffmpeg could not decode a generated test clip: {type(error).__name__}: "
+            f"{str(error)[:500]}. Check the ffmpeg on PATH runs, {VOICE_IMAGE}."
+        ) from error
+    try:
+        whisper.transcribe(clip, "wav")
+    except Exception as error:
+        raise CannotTranscribeError(
+            f"A test transcription of a generated clip failed: {type(error).__name__}: "
+            f"{str(error)[:500]}. Check the voice group is fully installed "
+            f"(`uv sync --group voice`), {VOICE_IMAGE}."
         ) from error
     return whisper

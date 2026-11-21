@@ -476,6 +476,53 @@ def test_a_transcriber_whose_model_cannot_load_exits_before_claiming_a_memo(
     assert "OSError: cannot reach huggingface.co" in said
 
 
+def _whisper_module(monkeypatch: pytest.MonkeyPatch, model: type) -> None:
+    module = types.ModuleType("faster_whisper")
+    monkeypatch.setattr(module, "WhisperModel", model, raising=False)
+    monkeypatch.setitem(sys.modules, "faster_whisper", module)
+
+
+class _SilentModel:
+    """Loads, and transcribes anything to no segments."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def transcribe(self, audio: Any, **options: Any) -> tuple[list[Any], None]:
+        return [], None
+
+
+def test_a_transcriber_whose_ffmpeg_does_not_run_exits_before_claiming_a_memo(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _, note_id = _memo(board)
+    _whisper_module(monkeypatch, _SilentModel)
+    for tool in ("ffmpeg", "ffprobe"):
+        broken = tmp_path / tool
+        broken.write_text("#!/bin/sh\necho 'cannot run here' >&2\nexit 1\n")
+        broken.chmod(0o755)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    said = _refused_at_startup(board, database_url, monkeypatch, note_id)
+    assert "ffmpeg could not decode a generated test clip" in said
+    assert "cannot run here" in said
+
+
+def test_a_transcriber_whose_voice_filter_fails_exits_before_claiming_a_memo(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, note_id = _memo(board)
+
+    class NoVoiceFilter(_SilentModel):
+        def transcribe(self, audio: Any, **options: Any) -> tuple[list[Any], None]:
+            assert options["vad_filter"] is True
+            raise ImportError("onnxruntime is not installed")
+
+    _whisper_module(monkeypatch, NoVoiceFilter)
+    said = _refused_at_startup(board, database_url, monkeypatch, note_id)
+    assert "A test transcription of a generated clip failed" in said
+    assert "ImportError: onnxruntime is not installed" in said
+
+
 def test_the_worker_command_runs_the_transcriber_in_replay_mode(
     board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Any
 ) -> None:
