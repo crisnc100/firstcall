@@ -16,6 +16,7 @@ from firstcall.board.followups import run_nightly
 from firstcall.db import LeadEvent, Note, NoteSuggestion
 from tests.board_helpers import Board
 from tests.conftest import FakeClock
+from tests.voice_helpers import upload
 
 ROUTES = (
     "read", "note", "contact", "profile", "outcome", "nurture", "resume", "reopen", "delete",
@@ -193,6 +194,9 @@ CODES = {
     "timing", "bought_elsewhere", "not_ready", "unreachable", "other",
     "north", "south", "east", "west", "central",
 }  # fmt: skip
+# A note's source is checked on its own: a code that is plain elsewhere, such as "call",
+# is never a source.
+NOTE_SOURCES = {"typed", "voice"}
 
 
 def cast_list(value: Any) -> list[Any]:
@@ -217,6 +221,7 @@ def test_event_payloads_carry_only_ids_and_codes(board: Board) -> None:
     board.clock.current = datetime(2026, 3, 3, 15, 0, tzinfo=UTC)
     run_nightly(board.sessions, board.clock)
     client.post(f"/api/leads/{lead}/notes", json={"text": "Called Zed, 400k.", "action": "call"})
+    assert upload(client, lead).status_code == 201
     client.post(f"/api/leads/{lead}/nurture")
     client.post(f"/api/leads/{lead}/resume")
     board.clock.current = datetime(2026, 3, 5, 15, 0, tzinfo=UTC)
@@ -242,5 +247,10 @@ def test_event_payloads_carry_only_ids_and_codes(board: Board) -> None:
             "followup.cancelled"} <= seen  # fmt: skip
     for event in events:
         assert set(event.payload) <= ALLOWED_KEYS[event.type], event.type
+        if event.type == "note.added":
+            assert event.payload.get("source") in NOTE_SOURCES, event.payload
         for key, value in event.payload.items():
-            assert _plain(value), (event.type, key, value)
+            if (event.type, key) != ("note.added", "source"):
+                assert _plain(value), (event.type, key, value)
+    sources = sorted(e.payload["source"] for e in events if e.type == "note.added")
+    assert sources == ["typed", "voice"]
