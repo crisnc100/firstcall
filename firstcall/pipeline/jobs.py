@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from firstcall.board.notes import TRANSCRIBE_JOB
 from firstcall.core.clock import Clock
 from firstcall.db import Job, Message, Note, VoiceAudio
+from firstcall.errors import log_failure, safe_error
 from firstcall.notes.reader import NoteReader, read_note_job
 from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.process import process
@@ -185,7 +186,7 @@ def run(
             job.lease_until = None
             return status
     except Exception as error:
-        log.exception("job %s failed on attempt %s", claimed.job_id, claimed.attempt)
+        log_failure(log, error, "job %s failed on attempt %s", claimed.job_id, claimed.attempt)
         retry_or_fail(sessions, clock, claimed, error, max_attempts)
         return None
 
@@ -213,7 +214,7 @@ def retry_or_fail(
         job = current(session, claimed)
         if job is None:
             return
-        job.last_error = f"{type(error).__name__}: {error}"[:2000]
+        job.last_error = safe_error(error)
         if give_up or job.attempts >= max_attempts:
             _fail(session, job, EXHAUSTED)
         else:

@@ -643,7 +643,9 @@ class Heartbeat(Base):
 
 
 def make_engine(url: str) -> Engine:
-    return create_engine(url, pool_pre_ping=True)
+    # A failed statement's values (a note, a transcript, a message) never go into its error
+    # text, so they cannot reach a log through it.
+    return create_engine(url, pool_pre_ping=True, hide_parameters=True)
 
 
 def make_sessions(engine: Engine) -> sessionmaker[Any]:

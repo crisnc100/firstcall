@@ -24,6 +24,7 @@ from sqlalchemy.orm import sessionmaker
 from firstcall.board.notes import READ_NOTE_JOB
 from firstcall.core.clock import Clock
 from firstcall.db import Job, Lead, Note, VoiceAudio
+from firstcall.errors import log_failure
 from firstcall.pipeline.jobs import (
     NOT_TRANSCRIBED,
     TRANSCRIBE,
@@ -70,7 +71,7 @@ def run_transcription(
         retry_or_fail(sessions, clock, claimed, error, max_attempts, give_up=True)
         return "failed"
     except Exception as error:
-        log.exception("job %s failed on attempt %s", claimed.job_id, claimed.attempt)
+        log_failure(log, error, "job %s failed on attempt %s", claimed.job_id, claimed.attempt)
         retry_or_fail(sessions, clock, claimed, error, max_attempts)
         return None
 

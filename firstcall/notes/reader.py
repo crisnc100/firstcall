@@ -24,6 +24,7 @@ from firstcall.board.leads import team_hours
 from firstcall.core.clock import Clock
 from firstcall.core.note_read import NoteAnswer, answer_schema, parse_note_answer
 from firstcall.db import Lead, Note, Team
+from firstcall.errors import log_failure
 from firstcall.model.gateway import (
     Gateway,
     ModelRequest,
@@ -162,10 +163,10 @@ def reread_notes(
             log.exception("note %s: the model mode cannot read it", note_id)
             done["halted"] = done.get("halted", 0) + 1
             break
-        except Exception:
+        except Exception as error:
             # One note must never stop the pass or the scheduler. It leaves the queue, so it
             # is not paid for again on every pass.
-            log.exception("note %s failed on reread", note_id)
+            log_failure(log, error, "note %s failed on reread", note_id)
             with sessions.begin() as session:
                 session.execute(
                     update(Note)
