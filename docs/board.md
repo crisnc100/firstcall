@@ -97,9 +97,11 @@ already logged. Deleting a lead deletes its suggestions and read jobs.
 
 Whoever may add a note may record a memo instead, under the note form: **Record a memo**,
 then **Stop and send**, with a timer that stops the recording itself just short of 3:00. Or
-**Send a recording** picks a file. The memo takes the form's "This note records" pick, as a
-typed note does. Saving a typed note or any other action while recording drops the memo
-unsent. The page records in the first of WebM, MP4 or Ogg the browser can make.
+**Send a recording** picks a file; a known extension sets the type sent, as browsers often
+give none. The memo takes the form's "This note records" pick, as a typed note does. Saving
+a typed note or any other action while recording, or while the browser asks for the
+microphone, drops the memo unsent. A recording that fails is never sent. The page records in
+the first of WebM, MP4 or Ogg the browser can make.
 The microphone needs HTTPS outside localhost; without it the page offers only the file.
 
 The memo shows at once as a **Voice** note saying **Transcribing…**, and the page checks
@@ -108,13 +110,14 @@ transcribed says **Couldn't transcribe this memo. Record it again.**
 
 The page posts the memo as the raw body to `POST /api/leads/{id}/voice?action=…`, with its
 type in `Content-Type`. Before anything is stored the api refuses:
+- a fourth memo from someone with three still waiting (429), or any memo while ten minutes of
+  audio already wait in the org (503), before reading it;
+- any memo while the api is already checking two (503), also unread;
 - over 5 MB (413), read no further than that;
 - anything but WebM, MP4, WAV, MP3 or Ogg audio, judged by the file's first bytes, sent under
   a type that does not fit them, or holding anything but one Opus, AAC, PCM, MP3 or Vorbis
   audio stream (415);
-- over 3 minutes, measured by decoding it rather than trusting its header (422);
-- a fourth memo from someone with three still waiting (429), or any memo while ten minutes of
-  audio already wait in the org (503).
+- over 3 minutes, measured by decoding it rather than trusting its header (422).
 
 An accepted memo is a note with no text yet, waiting to be transcribed, and a picked contact
 is logged at once. A separate transcriber process (`firstcall worker --kind transcribe`)
@@ -128,7 +131,9 @@ picked stays.
 The audio is deleted when transcription ends, either way, and the scheduler fails any memo
 still waiting 30 minutes after upload and deletes its audio, even when no transcriber runs.
 Deleting a lead deletes its waiting audio too. Deleted means the row is gone at commit; the
-bytes stay in Postgres's write-ahead log and backups until those turn over.
+bytes stay in Postgres's write-ahead log and backups until those turn over. While the api
+checks a memo, ffmpeg reads it from a temporary file with no name on disk, so a crash leaves
+nothing behind.
 
 ## Alerts
 
