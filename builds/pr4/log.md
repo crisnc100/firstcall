@@ -339,3 +339,37 @@ effects on seed 11 (orchestrator's call).
   Atlas was touched.
 - `verify.sh`'s secret scan skips `evals/voice/`, as it skips the recordings: its files hold
   audio SHA-256s and the Whisper models' pinned revisions.
+
+## Phase 7: seed 11, once per pair (2026-11-21)
+
+Prompt sha256 `93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59`, the frozen
+PR3 prompt; model `claude-haiku-5-5`. Each pair was transcribed once on this Mac
+(`--transcribe-only`, models in a scratch folder), then its reads recorded once
+(`--mode record --budget 0.10`), checking the ledger after each pair. No clip came back
+without speech.
+
+| Pair | WER | Floors met | Unsupported, by sound (by spelling) | Compute s per audio minute, this Mac | Reads | Ledger $ |
+|---|---|---|---|---|---|---|
+| tiny.en clean | 0.1224 | 7 of 8 | 20 (25) | 2.33 | 150 | 0.037443 |
+| tiny.en degraded | 0.3105 | 0 of 8 | 40 (41) | 2.39 | 150 | 0.040646 |
+| base.en clean | 0.0936 | 7 of 8 | 16 (24) | 4.27 | 150 | 0.037475 |
+| base.en degraded | 0.2165 | 2 of 8 | 27 (35) | 4.05 | 150 | 0.040850 |
+| small.en clean | 0.0635 | 7 of 8 | 8 (16) | 12.25 | 150 (2 failed attempts retried) | 0.038886 |
+| small.en degraded | 0.1543 | 5 of 8 | 23 (30) | 12.09 | 150 | 0.040938 |
+| **Seed 11** | | | | | 900 | **0.236238** |
+
+- **Spend:** seed 11 $0.236238 by the ledger, plus the dry run's $0.024040: **$0.260278 in
+  all**, under the $0.40 cap. 851 answers were added to
+  `evals/recordings/notes-claude-haiku-5-5.jsonl` (appended only); the other 49 reads hit a
+  transcript already answered, at no cost. Every read was on structured output.
+- **Pick:** no size meets every degraded floor, every size is within the Atlas bound, so the
+  rule ships the largest, `small.en`, PR4a's default. small.en degraded misses authority F1
+  (0.7976), authority exact (0.7701) and unsupported numbers or names (23 of 150). Clean
+  audio meets every floor but the unsupported one at every size.
+- **Report:** `firstcall eval-voice-report --date 2026-11-21` wrote
+  `evals/reports/2026-11-21-voice-seed-11`; `python -m scripts.check_replay_report` reran it,
+  with every other committed report, byte for byte.
+- **F40:** the seed-11 clip for the page test is `clean/note-11-141.mp3` (6.4 s, `vctk:p245`,
+  note date 2026-06-17): small.en heard "called Susan this morning, …" and the recorded read
+  suggests a call quoting "called Susan this morning". Its transcript and read are already
+  committed, so F40 needs no call of its own.

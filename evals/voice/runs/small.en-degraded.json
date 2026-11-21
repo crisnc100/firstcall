@@ -1,0 +1,21 @@
+{
+  "condition": "degraded",
+  "machine": "Apple M5, Darwin arm64",
+  "record_passes": [
+    {
+      "calls": 150,
+      "completion_tokens": 27209,
+      "cost_usd": "0.041436",
+      "failed": 0,
+      "json_prompt_calls": 0,
+      "ledger_usd": "0.040938",
+      "model": "claude-haiku-5-5",
+      "ok": 150,
+      "prompt_tokens": 278248,
+      "unanswered": []
+    }
+  ],
+  "seed": 11,
+  "size": "small.en",
+  "whisper_revision": "d1d751a5f8271d482d14ca55d9e2deeebbae577f"
+}
