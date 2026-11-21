@@ -6,7 +6,8 @@
 # Two files are not made here. unit-page.webm is a real browser recording of a Piper reading
 # of the unit-page note, made through the lead page by scripts/record_memo.py.
 # page-transcripts.jsonl holds the transcripts the page test replays, keyed by each file's
-# SHA-256; the unit-page one is small.en's, from one run in the voice image.
+# SHA-256; the unit-page one is small.en's, from one run in the voice image. Its hashes are
+# refreshed at the end, as an encode is not byte for byte repeatable.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -35,4 +36,11 @@ at = data.find(b"\x44\x89\x88")
 assert at > 0, "no 8-byte Duration element"
 data[at + 3 : at + 11] = struct.pack(">d", 10_000.0)
 open("lying.webm", "wb").write(bytes(data))
+PY
+python3 - <<'PY'
+import hashlib, json
+rows = [json.loads(line) for line in open("page-transcripts.jsonl")]
+for row in rows:
+    row["sha256"] = hashlib.sha256(open(row["file"], "rb").read()).hexdigest()
+open("page-transcripts.jsonl", "w").write("".join(json.dumps(row) + "\n" for row in rows))
 PY

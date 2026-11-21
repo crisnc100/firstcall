@@ -19,7 +19,7 @@ from typer.testing import CliRunner
 from firstcall.board.notes import NOTE_MAX
 from firstcall.cli import app
 from firstcall.db import Contact, Heartbeat, Job, Note, VoiceAudio
-from firstcall.pipeline import jobs
+from firstcall.pipeline import jobs, worker
 from firstcall.pipeline.jobs import TRANSCRIBE, Claimed, claim, keep_lease, reap, run, run_one
 from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.worker import (
@@ -204,6 +204,47 @@ def test_a_memo_still_waiting_after_30_minutes_fails_and_loses_its_audio(board: 
     # Its job is over, so no transcriber picks it up.
     claimed = _claim(board)
     assert claimed.note_id == younger
+
+
+def _stale_and_younger(board: Board) -> tuple[uuid.UUID, uuid.UUID]:
+    """A memo waiting 31 minutes and one waiting 2."""
+    _, stale = _memo(board)
+    board.clock.advance(minutes=29)
+    _, younger = _memo_on_new_lead(board)
+    board.clock.advance(minutes=2)
+    return stale, younger
+
+
+def test_one_scheduler_pass_expires_a_stale_memo_with_no_transcriber_running(
+    board: Board, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stale, younger = _stale_and_younger(board)
+
+    def stop(seconds: float) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(worker.time, "sleep", stop)
+    with pytest.raises(KeyboardInterrupt):
+        worker.schedule(board.sessions, board.clock, Settings(env="test"))
+    _failed(board, stale)
+    assert _audio(board, younger) == 1
+    note = _note(board, younger)
+    assert note is not None
+    assert note.read_state == "transcribing"
+
+
+def test_firstcall_tick_expires_a_stale_memo(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # `firstcall tick` reads the real clock, so the memos are dated from it.
+    board.clock.current = datetime.now(UTC) - timedelta(minutes=31)
+    stale, younger = _stale_and_younger(board)
+    monkeypatch.setenv("FIRSTCALL_DATABASE_URL", database_url)
+    done = CliRunner().invoke(app, ["tick"])
+    assert done.exit_code == 0, done.output
+    assert "'expired_memos': 1" in done.output
+    _failed(board, stale)
+    assert _audio(board, younger) == 1
 
 
 def _memo_on_new_lead(board: Board) -> tuple[uuid.UUID, uuid.UUID]:

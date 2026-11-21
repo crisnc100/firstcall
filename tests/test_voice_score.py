@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from firstcall.corpus.notes import NOTE_SEEDS, SCRIPTS, read_jsonl
+from firstcall.corpus.notes import LABELS, NOTE_SEEDS, SCRIPTS, read_jsonl
 from firstcall.evaluation import note_score, voice_score
 from firstcall.evaluation.note_score import names_in, person_names, unsupported
 from firstcall.evaluation.voice_score import (
@@ -144,6 +144,27 @@ def test_all_met_uses_the_floor_by_sound() -> None:
     # The other floors have no cases here, so they are not met either way.
     assert voice_score.all_met(part) is False
     assert [r["met"] for r in voice_score.floors(part)][-1] is True
+
+
+def test_all_met_passes_on_names_by_sound_where_the_strict_count_misses_the_floor() -> None:
+    scripts = read_jsonl(11, SCRIPTS)
+    labels = read_jsonl(11, LABELS)
+    answers: dict[str, dict[str, Any]] = {
+        k: dict(v or {}) for k, v in note_score.baselines(scripts, labels)["gold"].items()
+    }
+    # Two notes name someone the script spells another way: over the floor of one by
+    # spelling, none by sound.
+    for note_id, said, heard in (("note-11-003", "Chelsea", "Chelsey"),
+                                 ("note-11-004", "Eric", "Erik")):  # fmt: skip
+        assert heard in same_sound(said)
+        answers[note_id]["clean_note"] += f" Spoke with {heard}."
+    texts = {s["id"]: s["text"] for s in scripts}
+    part = voice_score.score_part(texts, labels, answers)
+    assert part["unsupported_strict"] == {"count": 2, "ids": ["note-11-003", "note-11-004"]}
+    assert part["unsupported"]["count"] == 0
+    strict = note_score.floors({**part, "unsupported": part["unsupported_strict"]})
+    assert [row["met"] for row in strict] == [True] * (len(strict) - 1) + [False]
+    assert voice_score.all_met(part) is True
 
 
 def test_the_spelling_table_holds_only_scorer_names_each_once() -> None:

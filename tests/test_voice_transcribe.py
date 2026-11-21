@@ -23,7 +23,7 @@ from firstcall.voice.transcribe import (
     from_settings,
     note_text,
 )
-from tests.voice_helpers import fixture
+from tests.voice_helpers import FIXTURES, fixture
 
 
 class Segment:
@@ -133,3 +133,19 @@ def test_a_transcript_becomes_one_line_of_note_text() -> None:
     assert len(note_text("a" * NOTE_MAX)) == NOTE_MAX
     with pytest.raises(UnusableAudioError, match="over 5000"):
         note_text("a" * (NOTE_MAX + 1))
+
+
+def test_the_page_tests_replayed_transcripts_match_their_audio() -> None:
+    """The page test replays a transcript by its file's hash; a fixture remade without its
+    row would leave that test waiting for a transcript that never comes (make.sh refreshes
+    the rows)."""
+    rows = [json.loads(line) for line in fixture("page-transcripts.jsonl").decode().splitlines()]
+    assert sorted(row["file"] for row in rows) == ["ok.webm", "unit-page.webm"]
+    for row in rows:
+        assert row["sha256"] == hashlib.sha256(fixture(row["file"])).hexdigest(), row["file"]
+        assert (
+            ReplayTranscripts(FIXTURES / "page-transcripts.jsonl").transcribe(
+                fixture(row["file"]), "webm"
+            )
+            == row["text"]
+        )
