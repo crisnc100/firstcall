@@ -412,3 +412,7 @@ completed in replay: the suggested call shows, is confirmed, and the contact is 
 | 19 | F37 with audio at rest | Same as 5 |
 | 20 | Circular pick-rule test | Accepted. Fake reports cover each branch, the speed gate included |
 | — | Over-built | All cut: no stop-at-first-pass, no per-voice or per-style WER, no tmpfs, no fetch-model checksum, no nightly smoke, no process tests |
+
+## Approval
+
+Approved by Cristian on 2026-11-21: all five decisions as recommended. A Firstcall CI speed-up PR lands first; voice names are scored by sound, with the strict spelling count shown on a second line.
