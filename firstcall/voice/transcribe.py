@@ -26,7 +26,8 @@ if TYPE_CHECKING:
 
     from firstcall.settings import Settings
 
-# Systran's CTranslate2 builds of the candidates, each at the revision the eval measured.
+# Systran's CTranslate2 builds of the candidates, each pinned to one revision so a download is
+# always the same model.
 WHISPER_REVISIONS = {
     "tiny.en": "0d3d19a32d3338f10357c0889762bd8d64bbdeba",  # pragma: allowlist secret
     "base.en": "3d3d5dee26484f91867d81cb899cfcf72b96be6c",  # pragma: allowlist secret
