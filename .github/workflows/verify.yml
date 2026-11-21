@@ -54,7 +54,8 @@ jobs:
       # --store-durations rewrites. A test missing from it still runs, counted at the average.
       - run: >-
           ./verify.sh --step tests tests --ignore=tests/fault
-          --splits 4 --group ${{ matrix.group }} --splitting-algorithm least_duration
+          --splits ${{ strategy.job-total }} --group ${{ matrix.group }}
+          --splitting-algorithm least_duration
           --cov-report=
         env:
           COVERAGE_FILE: .cache/ci/coverage
@@ -82,7 +83,8 @@ jobs:
       - run: ./verify.sh --step stack
       - run: >-
           ./verify.sh --step tests tests/fault
-          --splits 6 --group ${{ matrix.group }} --splitting-algorithm least_duration
+          --splits ${{ strategy.job-total }} --group ${{ matrix.group }}
+          --splitting-algorithm least_duration
           --cov-report=
         env:
           COVERAGE_FILE: .cache/ci/coverage
@@ -127,7 +129,17 @@ jobs:
           path: .cache/ci
       - name: Coverage floors
         run: |
-          uv run coverage combine --keep --data-file=.cache/ci.coverage .cache/ci/coverage-*/coverage
+          # Floors on part of the shards could pass, so every shard of the matrices above must
+          # have sent its coverage.
+          tests=$(find .cache/ci -path '.cache/ci/coverage-tests-*/coverage' | wc -l)
+          compose=$(find .cache/ci -path '.cache/ci/coverage-compose-*/coverage' | wc -l)
+          if [[ $tests -ne 4 || $compose -ne 6 ]]; then
+            echo "expected coverage from 4 test and 6 compose groups, found $tests and $compose" >&2
+            exit 1
+          fi
+          # combine only warns about a data file it cannot read; as an error it fails the job.
+          uv run python -W error::Warning -m coverage combine --keep \
+            --data-file=.cache/ci.coverage .cache/ci/coverage-*/coverage
           uv run coverage report --skip-covered --data-file=.cache/ci.coverage
           uv run coverage json --data-file=.cache/ci.coverage -o .cache/ci.json
           ./verify.sh --step floors .cache/ci.json
