@@ -1,351 +1,662 @@
 {
- "rows": [
-  {
-   "behavior": "voice memo upload: who may record, caps, size, format and length limits, refusals",
-   "files": [
-    "firstcall/voice/audio.py",
-    "firstcall/voice/__init__.py",
-    "firstcall/board/routes.py",
-    "firstcall/board/notes.py",
-    "firstcall/board/delete.py",
-    "firstcall/db.py",
-    "migrations/versions/0012_voice_notes.py",
-    "firstcall/errors.py",
-    "firstcall/notes/reader.py",
-    "firstcall/pipeline/reread.py",
-    "docs/board.md"
-   ],
-   "docs": [
+  "rows": [
     {
-     "path": "docs/board.md",
-     "claims": [
-      {
-       "claim": "A person with three memos waiting is refused (429)",
-       "at": "firstcall/board/notes.py:41"
-      },
-      {
-       "claim": "Ten minutes of waiting audio in the org refuses a memo (503)",
-       "at": "firstcall/board/notes.py:42"
-      },
-      {
-       "claim": "Who may record and the caps are checked before the body is read",
-       "at": "firstcall/board/routes.py:608"
-      },
-      {
-       "claim": "A third check at once in the api is refused (503), unread",
-       "at": "firstcall/voice/audio.py:33"
-      },
-      {
-       "claim": "Over 5 MB is 413 and is read no further",
-       "at": "firstcall/voice/audio.py:22"
-      },
-      {
-       "claim": "A format not named by its first bytes is 415",
-       "at": "firstcall/voice/audio.py:159"
-      },
-      {
-       "claim": "A declared type that does not fit the bytes is 415",
-       "at": "firstcall/voice/audio.py:162"
-      },
-      {
-       "claim": "Only Opus, AAC, PCM, MP3 or Vorbis audio is allowed (415)",
-       "at": "firstcall/voice/audio.py:173"
-      },
-      {
-       "claim": "Over 3 minutes by decoding is 422",
-       "at": "firstcall/voice/audio.py:179"
-      },
-      {
-       "claim": "ffmpeg reads the memo from a temporary file with no name on disk",
-       "at": "firstcall/voice/audio.py:98"
-      },
-      {
-       "claim": "A picked contact is logged with the memo, at once",
-       "at": "firstcall/board/notes.py:187"
-      },
-      {
-       "claim": "Deleting a lead deletes its waiting audio",
-       "at": "firstcall/board/delete.py:43"
-      },
-      {
-       "claim": "Audio rows are deleted at commit; Postgres's log and backups keep the bytes until they turn over",
-       "at": "firstcall/db.py:479"
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "behavior": "the memo page: record, send a file, badge, Transcribing, failed line, polling",
-   "files": [
-    "web/src/pages/work.ts",
-    "web/src/pages/detail.ts",
-    "web/src/api.ts",
-    "web/src/styles/app.css"
-   ],
-   "docs": [
-    {
-     "path": "docs/board.md",
-     "claims": [
-      {
-       "claim": "The recorder stops itself at 2:59.5",
-       "at": "web/src/pages/work.ts:200"
-      },
-      {
-       "claim": "It records in the first of WebM, MP4 or Ogg the browser supports",
-       "at": "web/src/pages/work.ts:198"
-      },
-      {
-       "claim": "A known extension sets the type sent for a picked file",
-       "at": "web/src/pages/work.ts:219"
-      },
-      {
-       "claim": "Without a microphone API the page offers only the file",
-       "at": "web/src/pages/work.ts:251"
-      },
-      {
-       "claim": "A redraw while the browser asks for the microphone drops the memo unsent",
-       "at": "web/src/pages/work.ts:326"
-      },
-      {
-       "claim": "A Voice badge shows on a voice note",
-       "at": "web/src/pages/work.ts:115"
-      },
-      {
-       "claim": "A waiting memo says Transcribing\u2026",
-       "at": "web/src/pages/work.ts:132"
-      },
-      {
-       "claim": "A memo that cannot be transcribed says Couldn't transcribe this memo. Record it again.",
-       "at": "web/src/pages/work.ts:139"
-      },
-      {
-       "claim": "A memo with no model key says it needs one",
-       "at": "web/src/pages/work.ts:134"
-      },
-      {
-       "claim": "The lead page does not redraw while a memo is recorded or sent",
-       "at": "web/src/pages/detail.ts:188"
-      },
-      {
-       "claim": "The lead page polls while a note is transcribing, pending or needs a model",
-       "at": "web/src/pages/detail.ts:198"
-      },
-      {
-       "claim": "The poll interval is 15 seconds",
-       "at": "web/src/poller.ts:8"
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "behavior": "transcriber process: separate job kind, startup checks, model download, expiry, failure and deletion",
-   "files": [
-    "firstcall/voice/job.py",
-    "firstcall/voice/transcribe.py",
-    "firstcall/pipeline/jobs.py",
-    "firstcall/pipeline/worker.py",
-    "firstcall/cli.py",
-    "firstcall/settings.py"
-   ],
-   "docs": [
-    {
-     "path": "docs/board.md",
-     "claims": [
-      {
-       "claim": "The transcriber is started as firstcall worker --kind transcribe",
-       "at": "firstcall/cli.py:78"
-      },
-      {
-       "claim": "The main worker never claims transcribe jobs",
-       "at": "firstcall/pipeline/jobs.py:84"
-      },
-      {
-       "claim": "The transcriber claims transcribe jobs only",
-       "at": "firstcall/pipeline/worker.py:160"
-      },
-      {
-       "claim": "It checks ffmpeg and ffprobe before claiming any job",
-       "at": "firstcall/voice/transcribe.py:153"
-      },
-      {
-       "claim": "It imports faster-whisper before claiming any job",
-       "at": "firstcall/voice/transcribe.py:161"
-      },
-      {
-       "claim": "It loads the model, downloading if needed, before claiming any job",
-       "at": "firstcall/voice/transcribe.py:166"
-      },
-      {
-       "claim": "A failed startup check exits 1 and says which",
-       "at": "firstcall/cli.py:85"
-      },
-      {
-       "claim": "The scheduler fails a memo waiting 30 minutes after upload",
-       "at": "firstcall/voice/job.py:41"
-      },
-      {
-       "claim": "The expiry runs in the scheduler, so it happens with no transcriber",
-       "at": "firstcall/cli.py:123"
-      },
-      {
-       "claim": "Any failure sets failed/not_transcribed and deletes the audio",
-       "at": "firstcall/pipeline/jobs.py:60"
-      },
-      {
-       "claim": "A failed memo keeps a picked contact (only the note's read state changes)",
-       "at": "firstcall/pipeline/jobs.py:58"
-      }
-     ]
+      "behavior": "voice memo upload: who may record, caps, size, format and length limits, refusals",
+      "files": [
+        "firstcall/voice/audio.py",
+        "firstcall/voice/__init__.py",
+        "firstcall/board/routes.py",
+        "firstcall/board/notes.py",
+        "firstcall/board/delete.py",
+        "firstcall/db.py",
+        "migrations/versions/0012_voice_notes.py",
+        "firstcall/errors.py",
+        "firstcall/notes/reader.py",
+        "firstcall/pipeline/reread.py",
+        "docs/board.md"
+      ],
+      "docs": [
+        {
+          "path": "docs/board.md",
+          "claims": [
+            {
+              "claim": "A person with three memos waiting is refused (429)",
+              "at": "firstcall/board/notes.py:41"
+            },
+            {
+              "claim": "Ten minutes of waiting audio in the org refuses a memo (503)",
+              "at": "firstcall/board/notes.py:42"
+            },
+            {
+              "claim": "Who may record and the caps are checked before the body is read",
+              "at": "firstcall/board/routes.py:608"
+            },
+            {
+              "claim": "A third check at once in the api is refused (503), unread",
+              "at": "firstcall/voice/audio.py:33"
+            },
+            {
+              "claim": "Over 5 MB is 413 and is read no further",
+              "at": "firstcall/voice/audio.py:22"
+            },
+            {
+              "claim": "A format not named by its first bytes is 415",
+              "at": "firstcall/voice/audio.py:159"
+            },
+            {
+              "claim": "A declared type that does not fit the bytes is 415",
+              "at": "firstcall/voice/audio.py:162"
+            },
+            {
+              "claim": "Only Opus, AAC, PCM, MP3 or Vorbis audio is allowed (415)",
+              "at": "firstcall/voice/audio.py:173"
+            },
+            {
+              "claim": "Over 3 minutes by decoding is 422",
+              "at": "firstcall/voice/audio.py:179"
+            },
+            {
+              "claim": "ffmpeg reads the memo from a temporary file with no name on disk",
+              "at": "firstcall/voice/audio.py:98"
+            },
+            {
+              "claim": "A picked contact is logged with the memo, at once",
+              "at": "firstcall/board/notes.py:187"
+            },
+            {
+              "claim": "Deleting a lead deletes its waiting audio",
+              "at": "firstcall/board/delete.py:43"
+            },
+            {
+              "claim": "Audio rows are deleted at commit; Postgres's log and backups keep the bytes until they turn over",
+              "at": "firstcall/db.py:479"
+            }
+          ]
+        }
+      ]
     },
     {
-     "path": "docs/adr/ADR-005-local-transcription.md",
-     "claims": [
-      {
-       "claim": "Transcription runs in a process of its own, with no key",
-       "at": "firstcall/cli.py:78"
-      },
-      {
-       "claim": "int8 on the CPU",
-       "at": "firstcall/voice/transcribe.py:35"
-      },
-      {
-       "claim": "2 threads",
-       "at": "firstcall/voice/transcribe.py:36"
-      },
-      {
-       "claim": "language en",
-       "at": "firstcall/voice/transcribe.py:37"
-      },
-      {
-       "claim": "beam 5",
-       "at": "firstcall/voice/transcribe.py:38"
-      },
-      {
-       "claim": "voice activity filter on",
-       "at": "firstcall/voice/transcribe.py:121"
-      },
-      {
-       "claim": "no conditioning on earlier text",
-       "at": "firstcall/voice/transcribe.py:123"
-      },
-      {
-       "claim": "The product defaults to small.en until the eval runs",
-       "at": "firstcall/settings.py:48"
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "behavior": "voice gold, scorer and corpus command, ADR-005 candidates and scoring rule",
-   "files": [
-    "firstcall/corpus/voice.py",
-    "firstcall/evaluation/voice_score.py",
-    "scripts/check_coverage.py",
-    "docs/adr/ADR-005-local-transcription.md",
-    "docs/adr/README.md"
-   ],
-   "docs": [
-    {
-     "path": "docs/adr/ADR-005-local-transcription.md",
-     "claims": [
-      {
-       "claim": "Ten voices read the seed-11 scripts",
-       "at": "firstcall/corpus/voice.py:62"
-      },
-      {
-       "claim": "Names are scored by sound from a fixed table of spelling groups",
-       "at": "firstcall/evaluation/voice_score.py:155"
-      },
-      {
-       "claim": "42 of seed 11's 150 scripts hold a name in the spelling table (counted against evals/gold/notes/seed-11/scripts.jsonl)",
-       "at": "evals/gold/voice/name-spellings.json:1"
-      },
-      {
-       "claim": "WER lower-cases, drops punctuation and reads numbers with the note scorer's reader",
-       "at": "firstcall/evaluation/voice_score.py:103"
-      },
-      {
-       "claim": "The strict spelling count is reported on its own line",
-       "at": "firstcall/evaluation/voice_score.py:210"
-      }
-     ]
-    }
-   ]
-  },
-  {
-   "behavior": "ffmpeg requirement, voice profile, voice image and the voice dependency group",
-   "files": [
-    "Dockerfile",
-    "docker-compose.yml",
-    "verify.sh",
-    "pyproject.toml",
-    "typings/faster_whisper/__init__.pyi",
-    "uv.lock",
-    ".github/actions/setup/action.yml",
-    ".github/workflows/verify.yml",
-    ".test_durations",
-    "scripts/record_memo.py",
-    "README.md"
-   ],
-   "docs": [
-    {
-     "path": "README.md",
-     "claims": [
-      {
-       "claim": "ffmpeg is needed for the voice tests",
-       "at": "verify.sh:55"
-      },
-      {
-       "claim": "ffmpeg is needed by an api outside Docker (it runs ffprobe and ffmpeg on every upload)",
-       "at": "firstcall/voice/audio.py:119"
-      },
-      {
-       "claim": "The voice profile adds the transcriber to compose",
-       "at": "docker-compose.yml:83"
-      },
-      {
-       "claim": "The voice group is installed with uv sync --group voice",
-       "at": "firstcall/voice/transcribe.py:59"
-      },
-      {
-       "claim": "Plain uv sync leaves the voice group out (it is not a default group)",
-       "at": "pyproject.toml:43"
-      },
-      {
-       "claim": "The transcriber starts with firstcall worker --kind transcribe",
-       "at": "firstcall/cli.py:78"
-      }
-     ]
+      "behavior": "the memo page: record, send a file, badge, Transcribing, failed line, polling",
+      "files": [
+        "web/src/pages/work.ts",
+        "web/src/pages/detail.ts",
+        "web/src/api.ts",
+        "web/src/styles/app.css"
+      ],
+      "docs": [
+        {
+          "path": "docs/board.md",
+          "claims": [
+            {
+              "claim": "The recorder stops itself at 2:59.5",
+              "at": "web/src/pages/work.ts:200"
+            },
+            {
+              "claim": "It records in the first of WebM, MP4 or Ogg the browser supports",
+              "at": "web/src/pages/work.ts:198"
+            },
+            {
+              "claim": "A known extension sets the type sent for a picked file",
+              "at": "web/src/pages/work.ts:219"
+            },
+            {
+              "claim": "Without a microphone API the page offers only the file",
+              "at": "web/src/pages/work.ts:251"
+            },
+            {
+              "claim": "A redraw while the browser asks for the microphone drops the memo unsent",
+              "at": "web/src/pages/work.ts:326"
+            },
+            {
+              "claim": "A Voice badge shows on a voice note",
+              "at": "web/src/pages/work.ts:115"
+            },
+            {
+              "claim": "A waiting memo says Transcribing\u2026",
+              "at": "web/src/pages/work.ts:132"
+            },
+            {
+              "claim": "A memo that cannot be transcribed says Couldn't transcribe this memo. Record it again.",
+              "at": "web/src/pages/work.ts:139"
+            },
+            {
+              "claim": "A memo with no model key says it needs one",
+              "at": "web/src/pages/work.ts:134"
+            },
+            {
+              "claim": "The lead page does not redraw while a memo is recorded or sent",
+              "at": "web/src/pages/detail.ts:188"
+            },
+            {
+              "claim": "The lead page polls while a note is transcribing, pending or needs a model",
+              "at": "web/src/pages/detail.ts:198"
+            },
+            {
+              "claim": "The poll interval is 15 seconds",
+              "at": "web/src/poller.ts:8"
+            }
+          ]
+        }
+      ]
     },
     {
-     "path": "docs/board.md",
-     "claims": [
-      {
-       "claim": "The transcriber runs on 2 CPUs",
-       "at": "docker-compose.yml:91"
-      },
-      {
-       "claim": "The transcriber has 1.5 GB",
-       "at": "docker-compose.yml:92"
-      },
-      {
-       "claim": "The model downloads into the whisper-models volume",
-       "at": "docker-compose.yml:90"
-      },
-      {
-       "claim": "The default size is small.en",
-       "at": "docker-compose.yml:87"
-      },
-      {
-       "claim": "The small.en model file is about 480 MB (483,545,366 bytes, measured in the local Hugging Face cache)",
-       "at": "firstcall/voice/transcribe.py:33"
-      }
-     ]
+      "behavior": "transcriber process: separate job kind, startup checks, model download, expiry, failure and deletion",
+      "files": [
+        "firstcall/voice/job.py",
+        "firstcall/voice/transcribe.py",
+        "firstcall/pipeline/jobs.py",
+        "firstcall/pipeline/worker.py",
+        "firstcall/cli.py",
+        "firstcall/settings.py"
+      ],
+      "docs": [
+        {
+          "path": "docs/board.md",
+          "claims": [
+            {
+              "claim": "The transcriber is started as firstcall worker --kind transcribe",
+              "at": "firstcall/cli.py:78"
+            },
+            {
+              "claim": "The main worker never claims transcribe jobs",
+              "at": "firstcall/pipeline/jobs.py:84"
+            },
+            {
+              "claim": "The transcriber claims transcribe jobs only",
+              "at": "firstcall/pipeline/worker.py:160"
+            },
+            {
+              "claim": "It checks ffmpeg and ffprobe before claiming any job",
+              "at": "firstcall/voice/transcribe.py:153"
+            },
+            {
+              "claim": "It imports faster-whisper before claiming any job",
+              "at": "firstcall/voice/transcribe.py:161"
+            },
+            {
+              "claim": "It loads the model, downloading if needed, before claiming any job",
+              "at": "firstcall/voice/transcribe.py:166"
+            },
+            {
+              "claim": "A failed startup check exits 1 and says which",
+              "at": "firstcall/cli.py:85"
+            },
+            {
+              "claim": "The scheduler fails a memo waiting 30 minutes after upload",
+              "at": "firstcall/voice/job.py:41"
+            },
+            {
+              "claim": "The expiry runs in the scheduler, so it happens with no transcriber",
+              "at": "firstcall/cli.py:123"
+            },
+            {
+              "claim": "Any failure sets failed/not_transcribed and deletes the audio",
+              "at": "firstcall/pipeline/jobs.py:60"
+            },
+            {
+              "claim": "A failed memo keeps a picked contact (only the note's read state changes)",
+              "at": "firstcall/pipeline/jobs.py:58"
+            }
+          ]
+        },
+        {
+          "path": "docs/adr/ADR-005-local-transcription.md",
+          "claims": [
+            {
+              "claim": "Transcription runs in a process of its own, with no key",
+              "at": "firstcall/cli.py:78"
+            },
+            {
+              "claim": "int8 on the CPU",
+              "at": "firstcall/voice/transcribe.py:35"
+            },
+            {
+              "claim": "2 threads",
+              "at": "firstcall/voice/transcribe.py:36"
+            },
+            {
+              "claim": "language en",
+              "at": "firstcall/voice/transcribe.py:37"
+            },
+            {
+              "claim": "beam 5",
+              "at": "firstcall/voice/transcribe.py:38"
+            },
+            {
+              "claim": "voice activity filter on",
+              "at": "firstcall/voice/transcribe.py:121"
+            },
+            {
+              "claim": "no conditioning on earlier text",
+              "at": "firstcall/voice/transcribe.py:123"
+            },
+            {
+              "claim": "The product defaults to small.en until the eval runs",
+              "at": "firstcall/settings.py:48"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "behavior": "voice gold, scorer and corpus command, ADR-005 candidates and scoring rule",
+      "files": [
+        "firstcall/corpus/voice.py",
+        "firstcall/evaluation/voice_score.py",
+        "scripts/check_coverage.py",
+        "docs/adr/ADR-005-local-transcription.md",
+        "docs/adr/README.md"
+      ],
+      "docs": [
+        {
+          "path": "docs/adr/ADR-005-local-transcription.md",
+          "claims": [
+            {
+              "claim": "Ten voices read the seed-11 scripts",
+              "at": "firstcall/corpus/voice.py:62"
+            },
+            {
+              "claim": "Names are scored by sound from a fixed table of spelling groups",
+              "at": "firstcall/evaluation/voice_score.py:155"
+            },
+            {
+              "claim": "42 of seed 11's 150 scripts hold a name in the spelling table (counted against evals/gold/notes/seed-11/scripts.jsonl)",
+              "at": "evals/gold/voice/name-spellings.json:1"
+            },
+            {
+              "claim": "WER lower-cases, drops punctuation and reads numbers with the note scorer's reader",
+              "at": "firstcall/evaluation/voice_score.py:103"
+            },
+            {
+              "claim": "The strict spelling count is reported on its own line",
+              "at": "firstcall/evaluation/voice_score.py:210"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "behavior": "ffmpeg requirement, voice profile, voice image and the voice dependency group",
+      "files": [
+        "Dockerfile",
+        "docker-compose.yml",
+        "verify.sh",
+        "pyproject.toml",
+        "typings/faster_whisper/__init__.pyi",
+        "uv.lock",
+        ".github/actions/setup/action.yml",
+        ".github/workflows/verify.yml",
+        ".test_durations",
+        "scripts/record_memo.py",
+        "README.md"
+      ],
+      "docs": [
+        {
+          "path": "README.md",
+          "claims": [
+            {
+              "claim": "ffmpeg is needed for the voice tests",
+              "at": "verify.sh:55"
+            },
+            {
+              "claim": "ffmpeg is needed by an api outside Docker (it runs ffprobe and ffmpeg on every upload)",
+              "at": "firstcall/voice/audio.py:119"
+            },
+            {
+              "claim": "The voice profile adds the transcriber to compose",
+              "at": "docker-compose.yml:83"
+            },
+            {
+              "claim": "The voice group is installed with uv sync --group voice",
+              "at": "firstcall/voice/transcribe.py:59"
+            },
+            {
+              "claim": "Plain uv sync leaves the voice group out (it is not a default group)",
+              "at": "pyproject.toml:43"
+            },
+            {
+              "claim": "The transcriber starts with firstcall worker --kind transcribe",
+              "at": "firstcall/cli.py:78"
+            }
+          ]
+        },
+        {
+          "path": "docs/board.md",
+          "claims": [
+            {
+              "claim": "The transcriber runs on 2 CPUs",
+              "at": "docker-compose.yml:91"
+            },
+            {
+              "claim": "The transcriber has 1.5 GB",
+              "at": "docker-compose.yml:92"
+            },
+            {
+              "claim": "The model downloads into the whisper-models volume",
+              "at": "docker-compose.yml:90"
+            },
+            {
+              "claim": "The default size is small.en",
+              "at": "docker-compose.yml:87"
+            },
+            {
+              "claim": "The small.en model file is about 480 MB (483,545,366 bytes, measured in the local Hugging Face cache)",
+              "at": "firstcall/voice/transcribe.py:33"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "behavior": "seed-11 voice gold data (clips, spoken text, clip plan, name table, manifest)",
+      "files": [
+        "evals/gold/voice/LICENSES.md",
+        "evals/gold/voice/MANIFEST.json",
+        "evals/gold/voice/name-spellings.json",
+        "evals/gold/voice/seed-11/clean/note-11-001.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-002.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-003.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-004.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-005.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-006.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-007.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-008.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-009.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-010.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-011.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-012.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-013.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-014.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-015.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-016.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-017.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-018.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-019.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-020.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-021.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-022.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-023.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-024.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-025.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-026.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-027.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-028.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-029.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-030.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-031.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-032.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-033.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-034.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-035.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-036.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-037.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-038.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-039.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-040.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-041.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-042.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-043.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-044.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-045.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-046.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-047.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-048.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-049.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-050.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-051.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-052.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-053.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-054.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-055.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-056.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-057.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-058.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-059.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-060.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-061.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-062.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-063.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-064.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-065.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-066.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-067.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-068.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-069.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-070.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-071.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-072.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-073.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-074.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-075.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-076.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-077.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-078.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-079.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-080.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-081.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-082.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-083.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-084.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-085.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-086.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-087.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-088.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-089.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-090.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-091.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-092.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-093.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-094.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-095.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-096.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-097.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-098.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-099.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-100.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-101.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-102.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-103.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-104.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-105.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-106.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-107.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-108.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-109.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-110.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-111.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-112.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-113.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-114.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-115.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-116.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-117.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-118.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-119.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-120.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-121.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-122.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-123.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-124.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-125.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-126.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-127.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-128.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-129.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-130.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-131.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-132.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-133.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-134.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-135.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-136.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-137.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-138.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-139.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-140.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-141.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-142.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-143.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-144.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-145.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-146.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-147.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-148.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-149.mp3",
+        "evals/gold/voice/seed-11/clean/note-11-150.mp3",
+        "evals/gold/voice/seed-11/clips.jsonl",
+        "evals/gold/voice/seed-11/degraded/note-11-001.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-002.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-003.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-004.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-005.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-006.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-007.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-008.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-009.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-010.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-011.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-012.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-013.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-014.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-015.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-016.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-017.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-018.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-019.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-020.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-021.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-022.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-023.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-024.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-025.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-026.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-027.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-028.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-029.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-030.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-031.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-032.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-033.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-034.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-035.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-036.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-037.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-038.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-039.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-040.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-041.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-042.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-043.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-044.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-045.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-046.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-047.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-048.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-049.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-050.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-051.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-052.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-053.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-054.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-055.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-056.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-057.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-058.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-059.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-060.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-061.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-062.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-063.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-064.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-065.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-066.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-067.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-068.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-069.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-070.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-071.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-072.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-073.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-074.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-075.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-076.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-077.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-078.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-079.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-080.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-081.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-082.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-083.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-084.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-085.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-086.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-087.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-088.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-089.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-090.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-091.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-092.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-093.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-094.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-095.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-096.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-097.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-098.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-099.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-100.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-101.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-102.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-103.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-104.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-105.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-106.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-107.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-108.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-109.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-110.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-111.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-112.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-113.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-114.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-115.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-116.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-117.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-118.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-119.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-120.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-121.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-122.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-123.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-124.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-125.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-126.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-127.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-128.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-129.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-130.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-131.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-132.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-133.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-134.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-135.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-136.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-137.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-138.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-139.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-140.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-141.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-142.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-143.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-144.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-145.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-146.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-147.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-148.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-149.mp3",
+        "evals/gold/voice/seed-11/degraded/note-11-150.mp3",
+        "evals/gold/voice/seed-11/spoken.jsonl"
+      ],
+      "none": "Gold data for the PR4b eval; how it is made and used is described in docs/adr/ADR-005-local-transcription.md and evals/gold/CHANGELOG.md, which are already rows."
     }
-   ]
-  }
- ]
+  ]
 }
