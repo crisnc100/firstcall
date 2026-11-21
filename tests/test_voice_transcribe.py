@@ -115,7 +115,7 @@ def test_replay_finds_a_transcript_by_the_audios_hash_and_a_miss_raises(tmp_path
         replay.transcribe(fixture("ok.mp3"), "mp3")
 
 
-def test_the_mode_comes_from_the_settings() -> None:
+def test_the_mode_comes_from_the_settings(fake_whisper: type[FakeModel]) -> None:
     replay = from_settings(Settings(transcribe_mode="replay", voice_transcripts="x.jsonl"))
     assert isinstance(replay, ReplayTranscripts)
     assert replay.path == Path("x.jsonl")
