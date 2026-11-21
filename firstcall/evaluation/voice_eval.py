@@ -49,6 +49,7 @@ from firstcall.evaluation.note_score import BANT_FIELDS
 from firstcall.evaluation.report import REPORTS
 from firstcall.evaluation.run import REPO_ROOT, throwaway_database
 from firstcall.model.gateway import ReplayMissError
+from firstcall.model.prompts import READ_NOTE
 from firstcall.model.synthetic import VOICE_TRANSCRIPTS, SyntheticIndex, clip_audio
 from firstcall.notes.reader import UNREADABLE, NoteReader
 from firstcall.settings import Settings, WhisperSize
@@ -284,10 +285,20 @@ def _own_clips(
 
 
 def evaluate_pair(
-    clips: Clips, size: str, condition: str, server_url: str, run: NoteRun, out: Path = VOICE_RUNS
+    clips: Clips,
+    size: str,
+    condition: str,
+    server_url: str,
+    run: NoteRun,
+    out: Path = VOICE_RUNS,
+    on_read: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Read one pair's transcripts and score them. Transcripts that are not one for each of
-    the pair's clips, of that clip's audio, raise before any read."""
+    the pair's clips, of that clip's audio, raise before any read.
+
+    `on_read` is given the call log and the ledger before the first read, after each read,
+    and when a read is stopped, with how many record-mode answers came from recordings
+    already on file ("reused", at no cost)."""
     from firstcall.seed import seed as seed_world
 
     clip_rows = clips.rows(condition)
@@ -307,19 +318,38 @@ def evaluate_pair(
         org = seed_world(sessions)
         gateway = _gateway(sessions, run, synthetic)
         reader = NoteReader(gateway, detached=True)
-        for row in transcripts:
-            if not row["text"]:
-                answers[row["id"]] = None
-                continue
-            note_date = scripts[row["id"]]["note_date"]
-            read.append({"text": row["text"], "note_date": note_date})
-            outcome = reader.read(org, None, row["text"], note_date, ZONE)
-            if outcome.answer is not None:
-                answers[row["id"]] = outcome.answer.as_json()
-            elif outcome.reason == UNREADABLE:
-                answers[row["id"]] = None
-            else:
-                unanswered.append(row["id"])
+        on_file = gateway.recordings.for_task(READ_NOTE) if gateway.recordings else None
+        reused = 0
+
+        def report_progress() -> None:
+            if on_read is not None:
+                with sessions() as session:
+                    on_read({**_calls(session), "reused": reused})
+
+        report_progress()
+        try:
+            for row in transcripts:
+                if not row["text"]:
+                    answers[row["id"]] = None
+                    continue
+                note_date = scripts[row["id"]]["note_date"]
+                read.append({"text": row["text"], "note_date": note_date})
+                if run.mode == "record" and on_file is not None:
+                    request = reader.request(org, None, row["text"], note_date, ZONE)
+                    reused += on_file.find(gateway.outbound(request)) is not None
+                outcome = reader.read(org, None, row["text"], note_date, ZONE)
+                if outcome.answer is not None:
+                    answers[row["id"]] = outcome.answer.as_json()
+                elif outcome.reason == UNREADABLE:
+                    answers[row["id"]] = None
+                else:
+                    unanswered.append(row["id"])
+                report_progress()
+        except BaseException:
+            # Stopped mid-read, by an error or Ctrl-C: what the read reserved is on the ledger
+            # and must be kept before the database goes.
+            report_progress()
+            raise
         with sessions() as session:
             calls = _calls(session)
         calls["json_prompt_calls"] = max(
@@ -345,9 +375,10 @@ def evaluate_pair(
     }
 
 
-def _add_record_pass(path: Path, record_pass: dict[str, Any]) -> None:
+def _set_record_pass(path: Path, index: int, record_pass: dict[str, Any]) -> None:
     meta = json.loads(path.read_text())
-    meta["record_passes"].append(record_pass)
+    passes = meta["record_passes"]
+    passes[index:] = [record_pass]
     _write_new(path, json.dumps(meta, indent=2, sort_keys=True) + "\n")
 
 
@@ -355,12 +386,24 @@ def record_pair(
     clips: Clips, size: str, condition: str, server_url: str, run: NoteRun, out: Path = VOICE_RUNS
 ) -> dict[str, Any]:
     """The paid path for one pair: read every transcript, keeping each answer, then score
-    from the recordings. The record pass (calls, failed attempts, ledger spend) joins the
-    pair's run file before the replay, so a replay that fails still keeps what was paid. A
-    pass that answered only some transcripts can be run again, and pays only for the rest."""
-    recorded = evaluate_pair(clips, size, condition, server_url, run, out)
-    record_pass = {**recorded["calls"], "model": run.model, "unanswered": recorded["unanswered"]}
-    _add_record_pass(run_path(out, size, condition), record_pass)
+    from the recordings. The record pass (calls, answers reused from recordings already on
+    file, failed attempts, ledger spend) is in the pair's run file from before the first
+    read and is brought up to date after each, so a pass that is stopped still shows what it
+    spent; until it ends, its unanswered list is null. A pass that left transcripts
+    unanswered can be run again: it pays only for the rest, and the report adds the passes
+    up."""
+    path = run_path(out, size, condition)
+    index = len(json.loads(path.read_text())["record_passes"])
+    latest: dict[str, Any] = {}
+
+    def keep(progress: dict[str, Any]) -> None:
+        latest.update(progress)
+        _set_record_pass(path, index, {**progress, "model": run.model, "unanswered": None})
+
+    recorded = evaluate_pair(clips, size, condition, server_url, run, out, on_read=keep)
+    record_pass = {**recorded["calls"], "reused": latest["reused"], "model": run.model,
+                   "unanswered": recorded["unanswered"]}  # fmt: skip
+    _set_record_pass(path, index, record_pass)
     try:
         result = evaluate_pair(clips, size, condition, server_url, replace(run, mode="replay"), out)
     except ReplayMissError as error:
@@ -370,10 +413,14 @@ def record_pair(
 
 
 def spent(record_passes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Every record pass of a pair added up."""
+    """Every record pass of a pair added up: the answers paid for, those reused from
+    recordings already on file, failed attempts, the ledger's spend, and how many passes
+    were stopped before their end."""
     return {
         "passes": len(record_passes),
-        "calls": sum(p["calls"] for p in record_passes),
+        "stopped": sum(p["unanswered"] is None for p in record_passes),
+        "answers": sum(p["ok"] - p["reused"] for p in record_passes),
+        "reused": sum(p["reused"] for p in record_passes),
         "failed": sum(p["failed"] for p in record_passes),
         "ledger_usd": f"{sum(Decimal(p['ledger_usd']) for p in record_passes):.6f}",
     }
@@ -496,13 +543,15 @@ def _pair_lines(pair: Mapping[str, Any]) -> list[str]:
         f"Suggested contacts: precision {_rate(whole['actions']['precision'])}, recall "
         f"{_rate(whole['actions']['recall'])}.",
         f"Whisper `{pair['size']}` at revision `{pair['whisper_revision']}`, transcribed on "
-        f"{pair['machine']}. Reads: {pair['calls']['calls']} calls; the recorded answers cost "
-        f"${pair['calls']['cost_usd']}.",
+        f"{pair['machine']}. Reads: {pair['calls']['calls']}, replayed from the recorded "
+        f"answers, which cost ${pair['calls']['cost_usd']} when they were recorded.",
     ]
     paid = pair["record_pass"]
+    stopped = f" {paid['stopped']} stopped before its end." if paid["stopped"] else ""
     lines.append(
-        f"Record passes: {paid['passes']}, {paid['calls']} calls, {paid['failed']} failed "
-        f"attempts, ${paid['ledger_usd']} on the ledger."
+        f"Record passes: {paid['passes']}, with {paid['answers']} answers paid for, "
+        f"{paid['reused']} reused from earlier recordings at no cost and {paid['failed']} "
+        f"failed attempts; ${paid['ledger_usd']} spent, by the ledger.{stopped}"
     )
     if not pair["structured_output"]:
         lines.append(

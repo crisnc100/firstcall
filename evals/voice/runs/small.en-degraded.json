@@ -12,6 +12,7 @@
       "model": "claude-haiku-5-5",
       "ok": 150,
       "prompt_tokens": 278248,
+      "reused": 2,
       "unanswered": []
     }
   ],

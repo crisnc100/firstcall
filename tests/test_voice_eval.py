@@ -36,6 +36,7 @@ from firstcall.evaluation.voice_eval import (
     read_transcripts,
     record_pair,
     run_path,
+    spent,
     transcribe_pair,
     transcribed,
     transcripts_path,
@@ -448,6 +449,66 @@ def test_a_run_that_cannot_answer_every_transcript_writes_no_report(
     assert paid["calls"] < len(IDS)
     with pytest.raises(ReplayMissError):
         evaluate_voice(database_url, MODEL, clips, out, recordings)
+
+
+def test_a_stopped_record_pass_keeps_its_spend_and_a_second_pays_only_for_the_rest(
+    clips: Clips, tmp_path: Path, database_url: str
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    transcribe_pair(clips, "tiny.en", "clean", out, Heard(clips), _ticks())
+    gold = _gold_reader()
+    assert gold.respond is not None
+    answer = gold.respond
+
+    def stop_on_the_third(request: TransportRequest) -> str:
+        if len(stopping.requests) == 3:
+            raise KeyboardInterrupt
+        return answer(request)
+
+    stopping = FakeTransport(respond=stop_on_the_third)
+    with pytest.raises(KeyboardInterrupt):
+        record_pair(clips, "tiny.en", "clean", database_url,
+                    _run("record", recordings, stopping), out)  # fmt: skip
+    path = run_path(out, "tiny.en", "clean")
+    [stopped] = json.loads(path.read_text())["record_passes"]
+    assert stopped["unanswered"] is None
+    assert (stopped["ok"], stopped["failed"], stopped["reused"]) == (2, 0, 0)
+    # The third call's reservation stays on the ledger, above the two answers' cost.
+    assert Decimal(stopped["ledger_usd"]) > Decimal(stopped["cost_usd"]) > 0
+
+    finishing = _gold_reader()
+    record_pair(clips, "tiny.en", "clean", database_url, _run("record", recordings, finishing),
+                out)  # fmt: skip
+    assert len(finishing.requests) == len(IDS) - 2
+    first, second = json.loads(path.read_text())["record_passes"]
+    assert first == stopped
+    assert (second["ok"], second["reused"], second["unanswered"]) == (len(IDS), 2, [])
+    assert spent([first, second]) == {
+        "passes": 2,
+        "stopped": 1,
+        "answers": len(IDS),
+        "reused": 2,
+        "failed": 0,
+        "ledger_usd": f"{Decimal(first['ledger_usd']) + Decimal(second['ledger_usd']):.6f}",
+    }
+
+
+def test_answers_already_recorded_are_counted_as_reused_not_paid_for(
+    clips: Clips, tmp_path: Path, database_url: str
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    for size in ("tiny.en", "base.en"):
+        transcribe_pair(clips, size, "clean", out, Heard(clips), _ticks())
+    record_pair(clips, "tiny.en", "clean", database_url,
+                _run("record", recordings, _gold_reader()), out)  # fmt: skip
+    # base.en heard every clip as tiny.en did, so each read is already on file.
+    unused = FakeTransport()
+    record_pair(clips, "base.en", "clean", database_url, _run("record", recordings, unused),
+                out)  # fmt: skip
+    assert unused.requests == []
+    [paid] = json.loads(run_path(out, "base.en", "clean").read_text())["record_passes"]
+    assert (paid["ok"], paid["reused"], paid["ledger_usd"]) == (len(IDS), len(IDS), "0.000000")
+    assert spent([paid])["answers"] == 0
 
 
 def _atlas(per_minute: dict[str, float]) -> dict[str, Any]:
