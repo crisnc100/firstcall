@@ -456,6 +456,27 @@ def test_the_command_refuses_before_any_transcription(arguments: list[str], says
     assert says in result.output
 
 
+def test_the_kill_switch_stops_a_record_run_before_any_transcription(
+    clips: Clips, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from firstcall.evaluation import voice_eval
+
+    def never(*args: object, **kwargs: object) -> None:
+        raise AssertionError("the run went on while the model was off")
+
+    for name in ("local_transcriber", "transcribe_pair", "evaluate_pair", "record_pair"):
+        monkeypatch.setattr(voice_eval, name, never)
+    monkeypatch.setenv("FIRSTCALL_MODEL_KEY", "not-a-real-key")
+    monkeypatch.setenv("FIRSTCALL_MODEL_OFF", "1")
+    result = CliRunner().invoke(app, [
+        "eval-voice", "--size", "tiny.en", "--condition", "clean", "--mode", "record",
+        "--clips", str(clips.root), "--out", str(tmp_path / "out"),
+    ])  # fmt: skip
+    assert result.exit_code == 2, result.output
+    assert "FIRSTCALL_MODEL_OFF" in result.output
+    assert not (tmp_path / "out").exists()
+
+
 def test_the_report_command_writes_nothing_while_the_eval_is_incomplete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -143,6 +143,26 @@ MODES = ("rules", "replay", "record", "live")
 MAX_RUN_BUDGET = 10.0
 
 
+def _paid_key(mode: str) -> str:
+    """The key a paid eval mode calls the model with. The kill switch stops a paid eval
+    before it starts, as it stops the product's calls; the eval gateways are built here, not
+    from the settings, so nothing else would."""
+    from firstcall.settings import Settings
+
+    settings = Settings()
+    if settings.model_off:
+        raise typer.BadParameter(
+            f"--mode {mode} calls the model, and FIRSTCALL_MODEL_OFF turns it off; replay "
+            "needs no call"
+        )
+    key = settings.model_key.get_secret_value()
+    if not key:
+        raise typer.BadParameter(
+            f"--mode {mode} needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
+        )
+    return key
+
+
 @app.command("eval")
 def eval_command(
     seed: int = typer.Option(..., help="7 (tune), 11 (held out) or 13 (confirm, once)"),
@@ -188,11 +208,7 @@ def eval_command(
     from firstcall.evaluation.run import FIELD_METHODS, REPO_ROOT, field_methods_frozen
     from firstcall.pipeline.model_read import load_field_methods
 
-    key = settings.model_key.get_secret_value()
-    if mode in ("record", "live") and not key:
-        raise typer.BadParameter(
-            f"--mode {mode} needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
-        )
+    key = _paid_key(mode) if mode in ("record", "live") else ""
     if budget > MAX_RUN_BUDGET:
         raise typer.BadParameter(f"--budget is at most ${MAX_RUN_BUDGET:.0f} for one run")
     if seed == CONFIRM_SEED and not field_methods_frozen(FIELD_METHODS, REPO_ROOT):
@@ -242,11 +258,7 @@ def eval_notes_command(
     if budget > MAX_RUN_BUDGET:
         raise typer.BadParameter(f"--budget is at most ${MAX_RUN_BUDGET:.0f} for one run")
     settings = Settings()
-    key = settings.model_key.get_secret_value()
-    if mode == "record" and not key:
-        raise typer.BadParameter(
-            "--mode record needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
-        )
+    key = _paid_key(mode) if mode == "record" else ""
     run = NoteRun(mode=mode, model=model, budget_usd=Decimal(str(budget)), key=key)
     url = settings.database_url
     if unit:
@@ -329,11 +341,7 @@ def eval_voice_command(
     gold = seed == VOICE_SEED and source.root.resolve() == VOICE_DIR.resolve()
     if folder.resolve() == VOICE_RUNS.resolve() and not gold:
         raise typer.BadParameter("evals/voice holds the voice gold's runs only; pass --out")
-    key = Settings().model_key.get_secret_value()
-    if mode == "record" and not transcribe_only and not key:
-        raise typer.BadParameter(
-            "--mode record needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
-        )
+    key = _paid_key(mode) if mode == "record" and not transcribe_only else ""
 
     path = transcripts_path(folder, chosen, condition)
     if path.exists():

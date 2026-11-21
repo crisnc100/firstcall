@@ -55,3 +55,30 @@ def test_the_replay_check_finds_every_kind_of_committed_report(tmp_path: Path) -
         ("model", "2026-11-12", 11),
         ("rules", "2026-11-11", 7),
     ]
+
+
+def _never(*args: object, **kwargs: object) -> None:
+    raise AssertionError("a paid eval ran while the model was off")
+
+
+@pytest.mark.parametrize(
+    ("arguments", "paid"),
+    [
+        (["eval", "--seed", "7", "--mode", "record"], "model_eval.record"),
+        (["eval", "--seed", "7", "--mode", "live"], "model_eval.evaluate_models"),
+        (["eval-notes", "--seed", "7", "--mode", "record"], "note_eval.record_and_report"),
+        (["eval-notes", "--unit", "--mode", "record"], "note_eval.read_unit_notes"),
+    ],
+)
+def test_the_kill_switch_stops_a_paid_eval_before_it_starts(
+    arguments: list[str], paid: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from firstcall import evaluation
+
+    module, name = paid.split(".")
+    monkeypatch.setattr(getattr(evaluation, module), name, _never)
+    monkeypatch.setenv("FIRSTCALL_MODEL_KEY", "not-a-real-key")
+    monkeypatch.setenv("FIRSTCALL_MODEL_OFF", "1")
+    result = CliRunner().invoke(app, arguments)
+    assert result.exit_code == 2, result.output
+    assert "FIRSTCALL_MODEL_OFF" in result.output
