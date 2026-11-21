@@ -6,7 +6,9 @@ Each report under evals/reports/ named <date>-<kind>-seed-<N>.json is rerun for 
 date on a throwaway database: rules reports with no model, model, confirm and notes reports
 from the recorded answers in evals/recordings/ (replay mode, no key). A missing recording
 raises. Any difference in the JSON or the Markdown fails. A notes report keeps its paid record
-pass, which a replay cannot know, so that part is carried over from the committed report.
+pass, which a replay cannot know, so that part is carried over from the committed report. The
+voice report needs no carrying over and no Whisper: its transcripts, compute seconds and
+record passes are committed under evals/voice/.
 """
 
 from __future__ import annotations
@@ -23,10 +25,11 @@ from firstcall.evaluation.model_report import confirm_paths, model_paths, write_
 from firstcall.evaluation.note_eval import NoteRun, evaluate_notes, write_notes
 from firstcall.evaluation.report import REPORTS, paths, write
 from firstcall.evaluation.run import evaluate
+from firstcall.evaluation.voice_eval import evaluate_voice, report_paths, write_voice
 from firstcall.settings import Settings
 
 NAME = re.compile(
-    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<kind>rules|model|confirm|notes)-seed-(?P<seed>\d+)\.json$"
+    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<kind>rules|model|confirm|notes|voice)-seed-(?P<seed>\d+)\.json$"
 )
 
 
@@ -50,6 +53,9 @@ def rerun(kind: str, date: str, seed: int, url: str, scratch: Path) -> tuple[Pat
                 report[paid] = old[paid]
         data, text = write_notes(report, date, scratch)
         return data, text
+    if kind == "voice":
+        data, text = write_voice(evaluate_voice(url, old["model"]), date, scratch)
+        return data, text
     run = ModelRun(mode="replay", model=old["model"], budget_usd=Decimal("0"))
     if kind == "model":
         return write_model(evaluate_models(seed, url, run), date, scratch)
@@ -64,6 +70,8 @@ def paths_for(kind: str, date: str, seed: int) -> tuple[Path, Path]:
     if kind == "notes":
         stem = REPORTS / f"{date}-notes-seed-{seed}"
         return stem.with_suffix(".json"), stem.with_suffix(".md")
+    if kind == "voice":
+        return report_paths(seed, date)
     return confirm_paths(seed, date)
 
 

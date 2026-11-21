@@ -89,6 +89,38 @@ answers too.
 `uv run firstcall eval-notes --unit` reads the five fixed F31 notes and prints the contact
 kinds suggested for each, which should be none.
 
+## Recording the voice eval
+
+The voice eval (ADR-005) runs each Whisper size on seed 11's clean and degraded memos. A run
+is one size and one condition. It first transcribes every clip on this machine, which costs
+nothing but needs faster-whisper (`uv sync --group voice`, on Linux or on macOS 14 or later
+with Apple Silicon); then the note reader reads each transcript with the frozen note prompt,
+and its answers go in the notes file above.
+
+```bash
+uv sync --group voice
+set -a; . ./.env; set +a
+uv run firstcall eval-voice --size small.en --condition degraded --mode record --budget 0.10 \
+  --models /some/scratch/folder
+```
+
+Transcripts and the seconds each clip took go to
+`evals/voice/transcripts/<size>-<condition>.jsonl`, and the run's machine, Whisper revision and
+record passes to `evals/voice/runs/<size>-<condition>.json`. Each pair is transcribed once:
+the command never transcribes over those files. If a record pass leaves transcripts
+unanswered, it stops and keeps what was paid; run it again to fill the gaps. Record mode sends
+a transcript to the model only when its audio is a clip in `evals/gold/voice/MANIFEST.json`.
+
+`--transcribe-only` stops after transcribing, with no reads and no key; that is how the
+voice image times each size on the beta host. Clips rendered anywhere else take `--clips`
+and `--out` (and `--seed` when it is not 11), and never write into `evals/voice`.
+
+Once all six pairs and `evals/voice/atlas-timing.json` are in, write the report and its pick:
+
+```bash
+uv run firstcall eval-voice-report --date YYYY-MM-DD
+```
+
 ## Replaying
 
 ```bash
@@ -98,6 +130,7 @@ uv run firstcall eval-notes --seed 11 --mode replay --date YYYY-MM-DD
 ```
 
 `check_replay_report` reruns the notes reports too. The record pass is paid for, so a replay
-cannot reproduce it; the check copies it from the committed report.
+cannot reproduce it; the check copies it from the committed report. It reruns the voice
+report from the committed transcripts and run files, with no Whisper.
 
 Replay needs no key and makes no call.

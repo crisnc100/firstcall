@@ -276,6 +276,132 @@ def eval_notes_command(
         typer.echo(f"wrote {path}")
 
 
+@app.command("eval-voice")
+def eval_voice_command(
+    size: str = typer.Option(..., help="tiny.en, base.en or small.en"),
+    condition: str = typer.Option(..., help="clean or degraded"),
+    mode: str = typer.Option("replay", help="replay (recorded answers) or record (paid)"),
+    budget: float = typer.Option(0.10, help="Most this run's reads may spend, in US dollars"),
+    model: str = typer.Option("claude-haiku-5-5", help="The model that reads the transcripts"),
+    seed: int = typer.Option(11, help="11, the voice gold; any other seed needs --clips"),
+    clips: str = typer.Option("", help="Rendered clips: seed-N/ and MANIFEST.json (gold if empty)"),
+    out: str = typer.Option("", help="Where transcripts and run files go (evals/voice if empty)"),
+    recordings: str = typer.Option("", help="Recorded answers (evals/recordings if empty)"),
+    models: str = typer.Option("", help="Where the Whisper model downloads to"),
+    transcribe_only: bool = typer.Option(False, help="Transcribe, then stop: no reads, no key"),
+) -> None:
+    """One pair of the voice eval: transcribe every clip of a condition with one Whisper size,
+    once, then read each transcript and print the notes floors. record spends money; it reads
+    the key from FIRSTCALL_MODEL_KEY (`set -a; . ./.env; set +a`). Transcribing needs
+    faster-whisper: `uv sync --group voice`, or the voice image. `eval-voice-report` writes
+    the report."""
+    from decimal import Decimal
+
+    from firstcall.corpus.voice import CONDITIONS, VOICE_DIR, VOICE_SEED
+    from firstcall.evaluation.note_eval import RECORDINGS, IncompleteRecordingError, NoteRun
+    from firstcall.evaluation.voice_eval import (
+        VOICE_RUNS,
+        Clips,
+        compute,
+        evaluate_pair,
+        local_transcriber,
+        machine,
+        record_pair,
+        transcribe_pair,
+        transcripts_path,
+        whisper_size,
+    )
+    from firstcall.settings import Settings
+    from firstcall.voice.transcribe import CannotTranscribeError
+
+    try:
+        chosen = whisper_size(size)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    if condition not in CONDITIONS:
+        raise typer.BadParameter(f"condition must be one of {CONDITIONS}")
+    if mode not in ("replay", "record"):
+        raise typer.BadParameter("mode must be replay or record")
+    if budget > MAX_RUN_BUDGET:
+        raise typer.BadParameter(f"--budget is at most ${MAX_RUN_BUDGET:.0f} for one run")
+    source = Clips(Path(clips) if clips else VOICE_DIR, seed)
+    folder = Path(out) if out else VOICE_RUNS
+    gold = seed == VOICE_SEED and source.root.resolve() == VOICE_DIR.resolve()
+    if folder.resolve() == VOICE_RUNS.resolve() and not gold:
+        raise typer.BadParameter("evals/voice holds the voice gold's runs only; pass --out")
+    key = Settings().model_key.get_secret_value()
+    if mode == "record" and not transcribe_only and not key:
+        raise typer.BadParameter(
+            "--mode record needs FIRSTCALL_MODEL_KEY; load it with `set -a; . ./.env; set +a`"
+        )
+
+    path = transcripts_path(folder, chosen, condition)
+    if path.exists():
+        typer.echo(f"using {path}: each pair is transcribed once")
+    else:
+        try:
+            transcriber = local_transcriber(chosen, models)
+        except CannotTranscribeError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
+        rows = transcribe_pair(source, chosen, condition, folder, transcriber)
+        timing = compute(source.rows(condition), rows)
+        typer.echo(
+            f"transcribed {timing['clips']} clips, {timing['audio_seconds']} s of audio, in "
+            f"{timing['compute_seconds']} s: {timing['per_minute']} compute s per audio minute "
+            f"on {machine()}; wrote {path}"
+        )
+    if transcribe_only:
+        return
+
+    run = NoteRun(mode=mode, model=model, budget_usd=Decimal(str(budget)), key=key,
+                  recordings=Path(recordings) if recordings else RECORDINGS)  # fmt: skip
+    url = Settings().database_url
+    if mode == "record":
+        try:
+            result = record_pair(source, chosen, condition, url, run, folder)
+        except IncompleteRecordingError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
+    else:
+        result = evaluate_pair(source, chosen, condition, url, run, folder)
+    whole, wer = result["score"]["all"], result["wer"]
+    typer.echo(
+        f"{chosen} {condition}: {sum(bool(r['met']) for r in whole['floors'])} of "
+        f"{len(whole['floors'])} floors met; WER {wer['wer']} ({wer['errors']} of "
+        f"{wer['words']} words); {len(result['not_transcribed'])} not transcribed; "
+        f"{whole['unreadable']} unreadable; {result['calls']['calls']} reads"
+    )
+    for row in [*whole["floors"], whole["strict"]]:
+        met = {True: "met", False: "MISSED", None: ""}[row["met"]]
+        typer.echo(f"  {row['measure']} {row['floor']}: {row['value']} {met}".rstrip())
+
+
+@app.command("eval-voice-report")
+def eval_voice_report_command(
+    date: str = typer.Option("", help="The report date, YYYY-MM-DD; today when empty"),
+    model: str = typer.Option("claude-haiku-5-5", help="The model that read the transcripts"),
+) -> None:
+    """Write evals/reports/<date>-voice-seed-11 in replay mode, with no Whisper and no key,
+    from the committed transcripts, recorded answers, record passes and Atlas timing, and
+    apply ADR-005's pick rule. Every pair must be in and complete."""
+    from datetime import UTC, datetime
+
+    from firstcall.evaluation.voice_eval import evaluate_voice, write_voice
+    from firstcall.settings import Settings
+
+    day = date or datetime.now(UTC).date().isoformat()
+    report = evaluate_voice(Settings().database_url, model)
+    try:
+        paths = write_voice(report, day)
+    except ValueError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1) from error
+    for path in paths:
+        typer.echo(f"wrote {path}")
+    typer.echo(f"pick: {report['pick']['size']} ({report['pick']['rule']})")
+
+
 user_app = typer.Typer(no_args_is_help=True, help="Users and passwords.")
 app.add_typer(user_app, name="user")
 

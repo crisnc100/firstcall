@@ -57,6 +57,7 @@ FLOORS: dict[str, float] = {
     "firstcall/voice/transcribe.py": EDGE,
     "firstcall/voice/job.py": EDGE,
     "firstcall/evaluation/note_eval.py": EDGE,
+    "firstcall/evaluation/voice_eval.py": EDGE,
     "firstcall/outbound/allowlist.py": EDGE,
     "firstcall/outbound/dispatch.py": EDGE,
     "firstcall/outbound/mail.py": EDGE,

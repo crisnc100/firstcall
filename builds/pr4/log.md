@@ -193,3 +193,68 @@ Checks:
   phase 3: 11.0 s with the download and load, 1.9 s for a second run. The model volume
   was deleted after. Such a real run in the voice image is the check against the stub
   drifting from the library.
+
+# PR4b (branch voice-eval, from main d3fe098)
+
+## Phase 4: the runner (no key)
+
+- **A run** is one Whisper size on one condition: `firstcall eval-voice --size S --condition C
+  [--mode record|replay]` (`firstcall/evaluation/voice_eval.py`). It transcribes every clip
+  first, timing each `transcribe` call (decoding included) with a wall clock, into
+  `evals/voice/transcripts/<size>-<condition>.jsonl` (id, audio sha256, note text, the reason
+  when there is no speech, compute seconds), and writes `evals/voice/runs/<size>-<condition>.json`
+  (seed, size, Whisper revision, the machine's CPU, record passes). Both are written whole or
+  not at all, and the command refuses to transcribe a pair that has either: each pair is
+  transcribed once. Then every transcript is read as `evaluate_notes` reads a script and
+  scored with `voice_score`, WER against the script.
+- **The transcriber** is built by `local_transcriber`, which is `from_settings` with local mode
+  named, so a broken setup (no ffmpeg, no faster-whisper, a model that will not load) stops
+  the command before the first clip, and `FIRSTCALL_TRANSCRIBE_MODE=replay` in the shell
+  cannot stand in for Whisper.
+- **Record passes** join the pair's run file before the replay pass, so a replay that fails
+  keeps what was paid. A pass that leaves transcripts unanswered stops; a rerun pays only for
+  the rest, since a recorded answer is free.
+- **Synthetic check.** `SyntheticIndex.from_gold` also takes each transcript whose audio
+  sha256 is an `.mp3` in the voice manifest. The voice runner builds its index from the
+  transcripts folder and clips folder it reads, through a new optional argument to
+  `note_eval._gateway`.
+- **Report:** `firstcall eval-voice-report --date D` writes `evals/reports/<date>-voice-seed-11`
+  in replay mode from the transcripts, the recorded answers, the run files and
+  `evals/voice/atlas-timing.json`: the pick, then a row per pair (floors met, WER, not
+  transcribed, unreadable, compute seconds per audio minute), then each pair's floors with
+  95% intervals, seen and unseen, the by-spelling line, action precision and recall, the
+  calls and record passes, and the voices. It is written only when all six pairs are in,
+  every transcript answered, and the Atlas timing there.
+- **Replay check.** `scripts/check_replay_report.py` reruns `voice` reports. Nothing is
+  carried over from the committed report: compute seconds and record passes are committed
+  inputs under `evals/voice/`.
+- **Pick rule** (`pick`): the smallest size whose degraded floors are all met and whose Atlas
+  time is at most 60 s per audio minute; else the largest size within the bound, with its
+  misses; else no size.
+
+Choices the plan left open:
+- One report for all six pairs, written by its own command, rather than one per pair, so the
+  pick reads one file and CI replays one report.
+- A transcript with no speech is kept as an empty transcript with its reason and scored as an
+  answer that fills nothing, with its own count; the product would fail that memo.
+- If no size runs within the speed bound, the rule names none; the plan does not say what
+  ships then.
+- `evals/voice` takes only the voice gold's runs; other clips need `--out`.
+
+Checks: `tests/test_voice_eval.py`, 23 tests, on six seed-11 scripts' clips copied with their
+own manifest and fake transcribers and answers. Every metric from fake transcripts and
+answers (`test_every_metric_from_fake_transcripts_and_answers`); an incomplete run writes no
+report (`test_a_run_that_cannot_answer_every_transcript_writes_no_report`,
+`test_a_report_with_a_pair_missing_is_not_written`,
+`test_the_report_command_writes_nothing_while_the_eval_is_incomplete`); record mode refuses
+a transcript whose audio is not in the manifest, before any call
+(`test_record_mode_refuses_a_transcript_whose_audio_is_not_in_the_manifest`); replay
+rebuilds the report byte for byte (`test_replay_rebuilds_the_report_byte_for_byte_and_it_picks`);
+the pick rule's branches on fake reports; a missing faster-whisper stops the command with no
+file written. voice_eval.py branch coverage 97%.
+
+Found on main: `test_voice_gold_and_its_scorer_were_committed_before_any_transcription_code`
+fails since PR4a's squash merge (d3fe098 adds the voice gold and `transcribe.py` together;
+main's CI run after the merge is red on it). PR4a's branch tip e6d49b1 has d3fe098's tree, so
+a `pr4a-history` tag there and a `SQUASHED` entry in `tests/test_corpus.py` fix it, as
+`pr1a-history` did for PR1a; checked locally with the tag, not yet committed or pushed.

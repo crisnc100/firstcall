@@ -56,7 +56,11 @@ def prompt_sha256() -> str:
     return hashlib.sha256(SYSTEM_PROMPTS[READ_NOTE].encode()).hexdigest()
 
 
-def _gateway(sessions: sessionmaker[Session], run: NoteRun) -> Gateway:
+def _gateway(
+    sessions: sessionmaker[Session], run: NoteRun, synthetic: SyntheticIndex | None = None
+) -> Gateway:
+    """In record mode, `synthetic` replaces the committed corpus's index: the voice eval
+    passes one built from the transcripts and clips it is reading."""
     transport = run.transport
     if transport is None and run.mode in ("live", "record"):
         from firstcall.model.anthropic import AnthropicTransport
@@ -77,7 +81,7 @@ def _gateway(sessions: sessionmaker[Session], run: NoteRun) -> Gateway:
         config,
         transport=transport,
         recordings=Recordings(run.recordings) if run.mode in ("replay", "record") else None,
-        synthetic=SyntheticIndex.from_gold() if run.mode == "record" else None,
+        synthetic=(synthetic or SyntheticIndex.from_gold()) if run.mode == "record" else None,
         prices=run.prices,
     )
 
