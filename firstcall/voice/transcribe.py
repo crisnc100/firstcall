@@ -1,9 +1,10 @@
 """Speech to text for voice notes, with no key and nothing sent off the machine (ADR-005).
 
 Two modes:
-- `local` runs faster-whisper on the CPU with ADR-005's fixed settings. The model downloads
-  from Hugging Face at a pinned revision on first use, into the models folder, and stays
-  loaded. faster-whisper is imported only here, so the app image never needs it.
+- `local` runs faster-whisper on the CPU with ADR-005's fixed settings. The model loads when
+  the transcriber starts, downloading from Hugging Face at a pinned revision into the models
+  folder if it is not there yet, and stays loaded. faster-whisper is imported only here, so
+  the app image never needs it.
 - `replay` looks the transcript up by the audio's SHA-256 in a committed file, so tests and
   the page test need no model. A miss raises.
 """
@@ -13,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -44,14 +46,17 @@ class ReplayMissError(Exception):
     """No recorded transcript for this audio."""
 
 
-class WhisperMissingError(Exception):
-    """faster-whisper cannot be imported here, so local mode cannot run."""
+class CannotTranscribeError(Exception):
+    """This process cannot transcribe any memo, whatever the memo, so it must not claim
+    one."""
 
 
+VOICE_IMAGE = (
+    "or run the transcriber from the voice image (`docker compose --profile voice up transcriber`)"
+)
 WHISPER_MISSING = (
     "faster-whisper is not installed, so the transcriber cannot run in local mode. "
-    "Install it with `uv sync --group voice`, or run the transcriber from the voice image "
-    "(`docker compose --profile voice up transcriber`)."
+    f"Install it with `uv sync --group voice`, {VOICE_IMAGE}."
 )
 
 
@@ -82,7 +87,7 @@ class LocalWhisper:
         self.models = models
         self.model: WhisperModel | None = None
 
-    def _model(self) -> WhisperModel:
+    def load(self) -> WhisperModel:
         if self.model is None:
             from faster_whisper import WhisperModel
 
@@ -108,7 +113,7 @@ class LocalWhisper:
         if seconds(samples) > MAX_SECONDS:
             raise UnusableAudioError(f"the audio is over {MAX_SECONDS} seconds")
         waveform = np.frombuffer(samples, dtype="<i2").astype(np.float32) / 32768.0
-        segments, _ = self._model().transcribe(
+        segments, _ = self.load().transcribe(
             waveform,
             language=LANGUAGE,
             beam_size=BEAM_SIZE,
@@ -137,13 +142,32 @@ class ReplayTranscripts:
 
 
 def from_settings(settings: Settings) -> Transcriber:
-    """The transcriber the settings ask for. Local mode imports faster-whisper here, before
-    any job is claimed: a transcriber without it would fail every attempt, and the last
-    attempt deletes the memo's audio."""
+    """The transcriber the settings ask for. In local mode it first proves it can transcribe,
+    before any job is claimed: ffmpeg and ffprobe are on PATH, faster-whisper imports, and
+    the model loads, downloading if it must. A transcriber missing any of them would fail
+    every memo's attempts on a fault that is not the memo's, and the last attempt deletes
+    its audio. CannotTranscribeError says which and how to fix it."""
     if settings.transcribe_mode == "replay":
         return ReplayTranscripts(Path(settings.voice_transcripts))
+    missing = [tool for tool in ("ffmpeg", "ffprobe") if shutil.which(tool) is None]
+    if missing:
+        raise CannotTranscribeError(
+            f"{' and '.join(missing)} not found on PATH, so the transcriber cannot decode "
+            f"memos. Install ffmpeg (brew install ffmpeg, or apt-get install ffmpeg), "
+            f"{VOICE_IMAGE}."
+        )
     try:
         importlib.import_module("faster_whisper")
     except ImportError as error:
-        raise WhisperMissingError(WHISPER_MISSING) from error
-    return LocalWhisper(settings.whisper_size, settings.whisper_models)
+        raise CannotTranscribeError(WHISPER_MISSING) from error
+    whisper = LocalWhisper(settings.whisper_size, settings.whisper_models)
+    try:
+        whisper.load()
+    except Exception as error:
+        folder = settings.whisper_models or "Hugging Face's cache"
+        raise CannotTranscribeError(
+            f"The Whisper model {settings.whisper_size} could not be loaded into {folder}: "
+            f"{type(error).__name__}: {str(error)[:500]}. Check that Hugging Face can be "
+            "reached and that the folder is writable with room for the model."
+        ) from error
+    return whisper

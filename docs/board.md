@@ -212,6 +212,8 @@ Compose leaves the email backend at `inbox`, so digests show up on the Inbox pag
 off: compose sets no VAPID key.
 
 Voice memos need the transcriber, which a plain `up` leaves out:
-`docker compose --profile voice up -d --build --wait`. It runs on 2 CPUs and 1.5 GB. The
-first memo downloads the model (`FIRSTCALL_WHISPER_SIZE`, default `small.en`, about 460 MB)
-into the `whisper-models` volume, and the transcriber keeps it loaded.
+`docker compose --profile voice up -d --build --wait`. It runs on 2 CPUs and 1.5 GB. Its
+first start downloads the model (`FIRSTCALL_WHISPER_SIZE`, default `small.en`, about 460 MB)
+into the `whisper-models` volume, and the transcriber keeps it loaded. It takes no memo until
+ffmpeg, faster-whisper and the model are all ready; if one is not, it stops at once and says
+which.

@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import sys
 import time
+import types
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -424,6 +426,54 @@ def test_a_transcriber_without_faster_whisper_exits_before_claiming_a_memo(
     assert _jobs(board, note_id)[TRANSCRIBE] == ("queued", 0)
     assert _audio(board, note_id) == 1
     assert _waiting(board, note_id).read_state == "transcribing"
+
+
+def _fake_whisper(monkeypatch: pytest.MonkeyPatch, fails: Exception | None = None) -> None:
+    """A faster_whisper module whose model loads, or raises `fails`."""
+
+    class WhisperModel:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            if fails is not None:
+                raise fails
+
+    module = types.ModuleType("faster_whisper")
+    monkeypatch.setattr(module, "WhisperModel", WhisperModel, raising=False)
+    monkeypatch.setitem(sys.modules, "faster_whisper", module)
+
+
+def _refused_at_startup(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch, note_id: uuid.UUID
+) -> str:
+    """Runs the local transcriber command; it must exit 1 with the memo untouched."""
+    monkeypatch.setenv("FIRSTCALL_DATABASE_URL", database_url)
+    monkeypatch.setenv("FIRSTCALL_TRANSCRIBE_MODE", "local")
+    done = CliRunner().invoke(app, ["worker", "--kind", "transcribe", "--until-idle"])
+    assert done.exit_code == 1, done.output
+    assert _jobs(board, note_id)[TRANSCRIBE] == ("queued", 0)
+    assert _audio(board, note_id) == 1
+    assert _waiting(board, note_id).read_state == "transcribing"
+    return done.output
+
+
+def test_a_transcriber_without_ffmpeg_exits_before_claiming_a_memo(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _, note_id = _memo(board)
+    _fake_whisper(monkeypatch)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    said = _refused_at_startup(board, database_url, monkeypatch, note_id)
+    assert "ffmpeg and ffprobe not found on PATH" in said
+    assert "docker compose --profile voice up transcriber" in said
+
+
+def test_a_transcriber_whose_model_cannot_load_exits_before_claiming_a_memo(
+    board: Board, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, note_id = _memo(board)
+    _fake_whisper(monkeypatch, fails=OSError("cannot reach huggingface.co"))
+    said = _refused_at_startup(board, database_url, monkeypatch, note_id)
+    assert "The Whisper model small.en could not be loaded" in said
+    assert "OSError: cannot reach huggingface.co" in said
 
 
 def test_the_worker_command_runs_the_transcriber_in_replay_mode(

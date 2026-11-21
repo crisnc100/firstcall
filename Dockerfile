@@ -20,8 +20,8 @@ COPY alembic.ini ./
 COPY config ./config
 RUN uv sync --locked --no-dev --no-group voice
 
-# The transcriber adds faster-whisper. Its model is never in the image: it downloads on
-# first use into the whisper-models volume.
+# The transcriber adds faster-whisper. Its model is never in the image: it downloads into
+# the whisper-models volume when the transcriber first starts.
 FROM base AS voice
 RUN uv sync --locked --no-dev --group voice
 CMD ["firstcall", "worker", "--kind", "transcribe"]

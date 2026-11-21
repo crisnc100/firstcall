@@ -86,18 +86,21 @@ services:
       <<: *app-environment
       FIRSTCALL_WHISPER_SIZE: ${FIRSTCALL_WHISPER_SIZE:-small.en}
       FIRSTCALL_WHISPER_MODELS: /models
-    # The model downloads here on the first memo and stays.
+    # The model downloads here when the transcriber first starts, and stays.
     volumes: ["whisper-models:/models"]
     cpus: 2
     mem_limit: 1536m
     depends_on:
       migrate:
         condition: service_completed_successfully
+    # The first beat comes once the model is loaded, which on a first start includes its
+    # download (about 460 MB for small.en).
     healthcheck:
       test: ["CMD", "firstcall", "health", "transcriber"]
       interval: 5s
       timeout: 5s
       retries: 20
+      start_period: 10m
 
   # Catches local email, so nothing sent in development leaves the machine.
   mailpit:
