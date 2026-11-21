@@ -1,0 +1,64 @@
+{
+  "rows": [
+    {
+      "behavior": "verify.sh --step runs one check; with no argument it runs every step in order; CI runs the steps as parallel jobs and the whole script only in the slow lane",
+      "files": [
+        "verify.sh",
+        ".github/workflows/verify.yml"
+      ],
+      "docs": [
+        {
+          "path": "README.md",
+          "claims": [
+            {
+              "claim": "./verify.sh runs every check in order",
+              "at": "verify.sh:100"
+            },
+            {
+              "claim": "--step selects one of lint, secrets, web, playwright, stack, eval, tests, floors",
+              "at": "verify.sh:81"
+            },
+            {
+              "claim": "CI runs the steps as parallel jobs, one --step each",
+              "at": ".github/workflows/verify.yml:24"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "behavior": "CI shards tests with pytest-split by .test_durations and merges coverage in the verify job",
+      "files": [
+        ".test_durations",
+        "pyproject.toml",
+        "uv.lock"
+      ],
+      "docs": [
+        {
+          "path": ".github/workflows/verify.yml",
+          "claims": [
+            {
+              "claim": "groups are balanced by .test_durations via least_duration",
+              "at": ".github/workflows/verify.yml:58"
+            },
+            {
+              "claim": "every shard must send coverage: 4 test and 6 compose",
+              "at": ".github/workflows/verify.yml:136"
+            },
+            {
+              "claim": "combine runs with warnings as errors",
+              "at": ".github/workflows/verify.yml:141"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "behavior": "setup action installs uv, Node and the locked dependencies from caches",
+      "files": [
+        ".github/actions/setup/action.yml"
+      ],
+      "none": "the action has no comments and no doc describes it beyond what the code states"
+    }
+  ]
+}
