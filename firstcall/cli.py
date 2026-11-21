@@ -63,14 +63,25 @@ def rotate_secret(slug: str) -> None:
 
 
 @app.command()
-def worker(until_idle: bool = typer.Option(False, help="Stop when the queue is empty.")) -> None:
-    """Process stored messages."""
+def worker(
+    until_idle: bool = typer.Option(False, help="Stop when the queue is empty."),
+    kind: str = typer.Option("", help="transcribe: run only voice memo transcription"),
+) -> None:
+    """Process stored messages and read notes, or with --kind transcribe, transcribe voice
+    memos."""
     from firstcall.outbound.dispatch import Outbound
-    from firstcall.pipeline.worker import model_reader, work
+    from firstcall.pipeline.worker import model_reader, transcribe_work, work
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
 
     sessions, clock, settings = _sessions(), SystemClock(), Settings()
+    if kind == "transcribe":
+        from firstcall.voice.transcribe import from_settings
+
+        transcribe_work(sessions, clock, settings, from_settings(settings), until_idle)
+        return
+    if kind:
+        raise typer.BadParameter("--kind is transcribe, or left out for the main worker")
     reader = model_reader(sessions, clock, settings)
     outbound = Outbound.from_settings(sessions, clock, settings)
     work(sessions, clock, settings, until_idle=until_idle, reader=reader, outbound=outbound)
@@ -91,10 +102,10 @@ def scheduler() -> None:
 
 @app.command()
 def tick() -> None:
-    """One scheduler pass: reap expired jobs, escalate, send due alerts, then reread
-    rules-path messages."""
+    """One scheduler pass: reap expired jobs, reread rules-path messages and waiting notes,
+    expire memos waiting too long, run the follow-up job, escalate and send due alerts."""
     from firstcall.outbound.dispatch import Outbound
-    from firstcall.pipeline.worker import alert_tick, followup_tick, model_reader
+    from firstcall.pipeline.worker import alert_tick, expire_tick, followup_tick, model_reader
     from firstcall.pipeline.worker import tick as run_tick
     from firstcall.runtime import SystemClock
     from firstcall.settings import Settings
@@ -104,13 +115,14 @@ def tick() -> None:
     reader = model_reader(sessions, clock, settings)
     typer.echo(
         run_tick(sessions, clock, settings, reader)
+        | expire_tick(sessions, clock)
         | followup_tick(sessions, clock)
         | alert_tick(sessions, clock, outbound)
     )
 
 
 @app.command()
-def health(kind: str = typer.Argument(..., help="worker or scheduler")) -> None:
+def health(kind: str = typer.Argument(..., help="worker, transcriber or scheduler")) -> None:
     """Exit 0 when this host's process beat in the last 60 seconds."""
     from firstcall.pipeline.worker import healthy
 

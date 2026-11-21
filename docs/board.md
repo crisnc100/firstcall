@@ -93,6 +93,33 @@ closed once: a second click gets "already closed" (409). Confirm needs the lead 
 in nurture. If the note itself already logged that kind of contact, the suggestion closes as
 already logged. Deleting a lead deletes its suggestions and read jobs.
 
+### Voice memos
+
+Whoever may add a note may record a memo instead, and pick the contact it records, as on a
+typed note. The memo is posted as the raw body to `POST /api/leads/{id}/voice?action=…`
+with its type in `Content-Type`. Before anything is stored the api refuses:
+- over 5 MB (413), read no further than that;
+- anything but WebM, MP4, WAV, MP3 or Ogg audio, judged by the file's first bytes, sent under
+  a type that does not fit them, or holding anything but one Opus, AAC, PCM, MP3 or Vorbis
+  audio stream (415);
+- over 3 minutes, measured by decoding it rather than trusting its header (422);
+- a fourth memo from someone with three still waiting (429), or any memo while ten minutes of
+  audio already wait in the org (503).
+
+An accepted memo is a note with no text yet, waiting to be transcribed, and a picked contact
+is logged at once. A separate transcriber process (`firstcall worker --kind transcribe`)
+turns it into text with faster-whisper on the CPU, with no key (ADR-005); the main worker
+never takes this work, so new-lead alerts never wait behind a memo. The transcript becomes the
+note's text and is read like a typed note, so with no model key the note keeps the
+transcript and says it needs one. A memo that cannot be transcribed (no speech, unreadable
+audio, too long, or out of retries) fails, and the person records it again; a contact they
+picked stays.
+
+The audio is deleted when transcription ends, either way, and the scheduler fails any memo
+still waiting 30 minutes after upload and deletes its audio, even when no transcriber runs.
+Deleting a lead deletes its waiting audio too. Deleted means the row is gone at commit; the
+bytes stay in Postgres's write-ahead log and backups until those turn over.
+
 ## Alerts
 
 Alerts go to the in-app Inbox, by email, and by web push. Nothing is ever sent to a buyer.

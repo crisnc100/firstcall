@@ -51,3 +51,46 @@
   the CI runner's build path and failed. `ESPEAK_DATA_PATH` pointing at a short symlink to
   the package fixed it. Piper ran from a throwaway venv in the scratch folder; nothing GPL is
   in `pyproject.toml` or `uv.lock`.
+
+## Phase 2: upload, limits, the job and deletion
+
+- **Upload.** `POST /api/leads/{id}/voice?action=…` (`firstcall/board/routes.py`), raw body.
+  Order: who may record and the action (404, 422, without reading the body), then
+  `Content-Length` over 5 MB (413, unread), the capped read (413), then
+  `firstcall/voice/audio.py`'s `check` in the threadpool: magic bytes and the declared type
+  (415), ffprobe on a temporary file with the demuxer forced and only `file` allowed (415),
+  one audio stream and an allowed codec (415), then decoding at most 181 seconds from a pipe
+  (422 over 180). Then the store, in the threadpool, under the lead's lock and an org lock
+  for the caps (429, 503).
+- **Migration 0012.** `notes.source` (typed or voice), read state `transcribing`, and
+  `voice_audio` (org, lead, note, format, seconds, bytes). Downgrade fails waiting memos as
+  `not_transcribed` and ends their jobs, so the old worker never takes one as a note read.
+  Checked once by hand (upgrade, a memo and a typed note, downgrade to 0011, upgrade again);
+  no committed test, as for earlier migrations.
+- **The transcriber** (`firstcall/voice/job.py`, `firstcall worker --kind transcribe`).
+  Three steps as the plan says. `retry_or_fail` and `current` (`firstcall/pipeline/jobs.py`)
+  are shared with `run`. `transcribe` mode `local` (faster-whisper, pinned revisions) or
+  `replay` (transcripts by SHA-256).
+- **Expiry** runs as its own scheduler step, `expire_tick`, beside the reaper, so the
+  reaper's `tick` result the tests pin is unchanged. `firstcall tick` runs it too.
+- **Fixtures** (`tests/fixtures/voice/`, 180 KB, `make.sh` remakes them with ffmpeg): one
+  second of tone in each format, an ADPCM WAV (codec refused), a WebM with video, 3:05 of
+  near silence, and the same with its header's duration patched to 10 seconds.
+
+Differences from the plan, and choices it left open:
+- The who-may check runs before the 413, so a refusal never depends on the body.
+- The org cap refuses once 600 seconds or more already wait ("already wait"); the person cap
+  refuses the fourth memo.
+- A picked action on a memo logs its contact with source `typed`, as a typed note's does:
+  the source says a person picked it, not how the note was made.
+- `huggingface-hub<2` in the voice group. Hub 2 pulls in `httpx2`, which Starlette's
+  TestClient then prefers over `httpx`: every API test's client changed and pyright failed
+  on 11 test call sites.
+- `retry_or_fail` checks the attempt for message and note jobs too, so an old attempt's
+  error no longer puts back a job the reaper gave to another worker. The main worker's lease
+  thread also beats.
+- The heartbeat and renewal tests wait in real time (under 2 seconds): the lease thread waits
+  on a real timer, not the fake clock.
+- CI installs ffmpeg with apt in the tests, compose and slow jobs (a `setup` input). Its cost
+  is unmeasured until CI runs; `verify.sh --step tests` stops with a plain message without
+  it.

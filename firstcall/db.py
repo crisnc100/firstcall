@@ -259,7 +259,8 @@ class LeadEvent(Base):
 
 
 class Job(Base):
-    """Work for the worker: processing a message, or reading a note. Exactly one is set."""
+    """Work for the workers: processing a message, reading a note or transcribing a voice
+    note. Exactly one subject is set."""
 
     __tablename__ = "jobs"
     __table_args__ = (
@@ -444,14 +445,18 @@ class InboxEmail(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+NOTE_READ_STATES = ("transcribing", "pending", "read", "needs_model", "failed")
+NOTE_SOURCES = ("typed", "voice")
+
+
 class Note(Base):
-    """A note a person wrote on a lead. Notes are never edited; delete lead removes them."""
+    """A note a person wrote or recorded on a lead. A typed note is never edited. A voice
+    note is created empty and filled once, by its transcription. Delete lead removes both."""
 
     __tablename__ = "notes"
     __table_args__ = (
-        CheckConstraint(
-            _in("read_state", ("pending", "read", "needs_model", "failed")), name="note_read_state"
-        ),
+        CheckConstraint(_in("read_state", NOTE_READ_STATES), name="note_read_state"),
+        CheckConstraint(_in("source", NOTE_SOURCES), name="note_source"),
     )
     id: Mapped[uuid.UUID] = _uuid()
     org_id: Mapped[uuid.UUID] = _org()
@@ -459,14 +464,37 @@ class Note(Base):
     author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     text: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    # The model's read: pending until its job runs; needs_model when no model answered (a
-    # reread tries again); failed when the answer was unreadable, a reread raised, or its job
-    # ran out of attempts.
+    source: Mapped[str] = mapped_column(String(8), default="typed", server_default="typed")
+    # transcribing while a voice note waits for its transcript; then the model's read:
+    # pending until its job runs; needs_model when no model answered (a reread tries again);
+    # failed when the answer was unreadable, a reread raised, its job ran out of attempts,
+    # or the memo could not be transcribed.
     read_state: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
     read_reason: Mapped[str | None] = mapped_column(String(32))
     clean_note: Mapped[str | None] = mapped_column(Text)
     model_answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class VoiceAudio(Base):
+    """A voice memo's audio while it waits to be transcribed. The row is deleted in the
+    transaction that ends the transcription, whichever way it ends, or by the 30-minute
+    expiry. Deleted means gone at commit; the bytes stay in Postgres's write-ahead log and
+    backups until those turn over."""
+
+    __tablename__ = "voice_audio"
+    __table_args__ = (
+        CheckConstraint(_in("format", ("webm", "mp4", "wav", "mp3", "ogg")), name="audio_format"),
+    )
+    id: Mapped[uuid.UUID] = _uuid()
+    org_id: Mapped[uuid.UUID] = _org()
+    lead_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("leads.id"), index=True)
+    note_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("notes.id"), unique=True)
+    format: Mapped[str] = mapped_column(String(8))
+    # The length measured by decoding at upload.
+    seconds: Mapped[Decimal] = mapped_column(Numeric(6, 2))
+    audio: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class NoteSuggestion(Base):

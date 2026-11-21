@@ -34,6 +34,19 @@ dev = [
     "playwright>=1.65.1",
     "pytest-split>=0.11.0",
 ]
+voice = [
+    # faster-whisper 1.2.1 fails on every clip with av 19.
+    "av<19",
+    "faster-whisper==1.2.1",
+    # huggingface-hub 2 pulls in httpx2, which Starlette's TestClient then prefers over
+    # httpx, changing the client every API test uses.
+    "huggingface-hub<2",
+]
+
+[tool.uv]
+# The voice group is installed by default, so tests and pyright see faster-whisper. The app
+# image leaves it out; only the transcriber's image installs it.
+default-groups = ["dev", "voice"]
 
 [project.scripts]
 firstcall = "firstcall.cli:app"
@@ -62,6 +75,9 @@ ignore = ["S101"]
 "firstcall/evaluation/run.py" = ["S603", "S607"]
 # The voice gold's generator runs Piper, ffmpeg and ffprobe with arguments it builds itself.
 "firstcall/corpus/voice.py" = ["S603", "S607"]
+# Upload checks and transcription run ffprobe and ffmpeg with fixed arguments; the audio goes
+# in on stdin or as a temporary file, never as an argument.
+"firstcall/voice/audio.py" = ["S603", "S607"]
 # The bootstrap resamples with a fixed seed so a report reproduces; nothing secret is drawn.
 "firstcall/evaluation/note_score.py" = ["S311"]
 

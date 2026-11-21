@@ -1,8 +1,10 @@
 """Notes, real contacts and the buyer profile.
 
-A note may carry an action (call, text, email or meeting). Choosing one is the person's
-confirmation that the contact happened, so it logs a real contact at once. A note without an
-action is not a touch. Every change writes its lead event in the caller's transaction.
+A note is typed, or recorded as a voice memo that the transcriber fills in later. Either may
+carry an action (call, text, email or meeting). Choosing one is the person's confirmation
+that the contact happened, so it logs a real contact at once, before any transcript. A note
+without an action is not a touch. Every change writes its lead event in the caller's
+transaction.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -26,12 +28,18 @@ from firstcall.core.clock import Clock
 from firstcall.core.hours import business_minutes, wall_minutes
 from firstcall.core.note_terms import ACTION_KINDS, AUTHORITIES
 from firstcall.core.outcomes import may_log_contact, may_note
-from firstcall.db import Contact, Job, Lead, LeadProfile, Note, Team
+from firstcall.db import Contact, Job, Lead, LeadProfile, Note, Team, VoiceAudio
+from firstcall.locks import lock_all
 
 log = logging.getLogger("firstcall.board")
 
 NOTE_MAX = 5000
 READ_NOTE_JOB = "read_note"
+TRANSCRIBE_JOB = "transcribe"
+# Memos waiting for the transcriber: at most this many per person, and this much audio per
+# org, so one person cannot queue an hour of CPU.
+USER_WAITING = 3
+ORG_WAITING_SECONDS = 600
 PROFILE_FIELDS = (
     "budget_text",
     "budget_min",
@@ -49,6 +57,14 @@ PROFILE_FIELDS = (
 class Added:
     note_id: uuid.UUID
     contact_id: uuid.UUID | None
+
+
+class TooManyError(Exception):
+    """The person has USER_WAITING memos waiting already."""
+
+
+class BusyError(Exception):
+    """The org's waiting memos hold ORG_WAITING_SECONDS of audio already."""
 
 
 def locked_lead(session: Session, viewer: Viewer, lead_id: uuid.UUID) -> Lead:
@@ -80,19 +96,86 @@ def add_note(
     user_id = uuid.UUID(viewer.user_id)
     note = Note(
         id=uuid.uuid4(), org_id=lead.org_id, lead_id=lead.id, author_id=user_id, text=text,
-        created_at=now,
+        created_at=now, source="typed",
     )  # fmt: skip
     session.add(note)
     session.flush()
     # The model reads the note in its own job, after this commits, so saving a note never
     # waits on a model.
     session.add(Job(org_id=lead.org_id, note_id=note.id, kind=READ_NOTE_JOB))
-    payload = {"note_id": str(note.id), "by": viewer.user_id}
+    return Added(note.id, _added(session, lead, note, action, now))
+
+
+def _added(
+    session: Session, lead: Lead, note: Note, action: str | None, now: datetime
+) -> uuid.UUID | None:
+    """The note's event and, if the person picked an action, its contact."""
+    payload = {"note_id": str(note.id), "by": str(note.author_id), "source": note.source}
     events.write(session, lead, "note.added", f"note:{note.id}", payload, now)
-    contact_id = None
-    if action is not None:
-        contact_id = log_contact(session, lead, note, action, user_id, user_id, "typed", now)
-    return Added(note.id, contact_id)
+    if action is None:
+        return None
+    author = note.author_id
+    return log_contact(session, lead, note, action, author, author, "typed", now)
+
+
+def voice_lead(
+    session: Session, viewer: Viewer, lead_id: uuid.UUID, action: str | None, lock: bool
+) -> Lead:
+    """The lead a memo may be recorded on with this action, as add_note checks a typed note.
+    The api asks first without a lock, before reading the audio, and again on saving."""
+    lead = session.get(Lead, lead_id, with_for_update=lock)
+    if lead is None or str(lead.org_id) != viewer.org_id or lead.deleted_at is not None:
+        raise NotFoundError
+    if not may_note(viewer, ref(lead)):
+        raise NotFoundError
+    if action is not None and action not in ACTION_KINDS:
+        raise InvalidError(f"the action must be one of {ACTION_KINDS}")
+    if action is not None and not may_log_contact(viewer, ref(lead)):
+        raise InvalidError("a contact can be logged only on an owned or nurture lead")
+    return lead
+
+
+def add_voice_note(
+    session: Session,
+    viewer: Viewer,
+    lead_id: uuid.UUID,
+    audio: bytes,
+    audio_format: str,
+    seconds: float,
+    action: str | None,
+    clock: Clock,
+) -> Added:
+    """An empty voice note waiting to be transcribed, its audio and its transcribe job. A
+    picked action logs its contact now: the person's pick stands whatever the transcript."""
+    lead = voice_lead(session, viewer, lead_id, action, lock=True)
+    # One org's uploads count their waiting memos one at a time, after the lead's lock.
+    lock_all(session, [("voice", str(lead.org_id))])
+    user_id = uuid.UUID(viewer.user_id)
+    waiting = select(func.count()).select_from(VoiceAudio).join(Note, Note.id == VoiceAudio.note_id)
+    if (session.scalar(waiting.where(Note.author_id == user_id)) or 0) >= USER_WAITING:
+        raise TooManyError
+    queued = session.scalar(
+        select(func.coalesce(func.sum(VoiceAudio.seconds), 0)).where(
+            VoiceAudio.org_id == lead.org_id
+        )
+    )
+    if float(queued or 0) >= ORG_WAITING_SECONDS:
+        raise BusyError
+    now = clock.now()
+    note = Note(
+        id=uuid.uuid4(), org_id=lead.org_id, lead_id=lead.id, author_id=user_id, text="",
+        created_at=now, source="voice", read_state="transcribing",
+    )  # fmt: skip
+    session.add(note)
+    session.flush()
+    session.add(
+        VoiceAudio(
+            org_id=lead.org_id, lead_id=lead.id, note_id=note.id, format=audio_format,
+            seconds=Decimal(str(seconds)), audio=audio, created_at=now,
+        )
+    )  # fmt: skip
+    session.add(Job(org_id=lead.org_id, note_id=note.id, kind=TRANSCRIBE_JOB))
+    return Added(note.id, _added(session, lead, note, action, now))
 
 
 def log_contact(

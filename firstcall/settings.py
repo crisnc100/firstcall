@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     model_timeout_seconds: float = 8.0
     model_max_output_tokens: int = 400
     model_recordings: str = "evals/recordings"
+    # Voice memos (ADR-005). local runs faster-whisper in the transcriber; replay reads
+    # recorded transcripts, for tests and the page test.
+    transcribe_mode: Literal["local", "replay"] = "local"
+    whisper_size: Literal["tiny.en", "base.en", "small.en"] = "small.en"
+    # Where the Whisper model downloads to and stays; empty is Hugging Face's own cache.
+    whisper_models: str = ""
+    voice_transcripts: str = "evals/recordings/voice-transcripts.jsonl"
     session_days: int = 7
     signin_rate_per_minute: int = 10
     # Alerts. The inbox backend keeps email in the app; smtp sends to a mail server, which is

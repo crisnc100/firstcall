@@ -1,4 +1,5 @@
-"""The worker and scheduler processes, and the heartbeats their healthchecks read."""
+"""The worker, transcriber and scheduler processes, and the heartbeats their healthchecks
+read."""
 
 from __future__ import annotations
 
@@ -16,18 +17,21 @@ from sqlalchemy.orm import sessionmaker
 from firstcall.core.clock import Clock
 from firstcall.db import Heartbeat
 from firstcall.notes.reader import NoteReader, reread_notes
-from firstcall.pipeline.jobs import reap, run_one
+from firstcall.pipeline.jobs import TRANSCRIBE, claim, reap, run_one
 from firstcall.pipeline.model_read import ModelReader
 from firstcall.pipeline.reread import reread
 from firstcall.settings import Settings
+from firstcall.voice.job import expire_waiting, run_transcription
 
 if TYPE_CHECKING:
     from firstcall.outbound.dispatch import Outbound
+    from firstcall.voice.transcribe import Transcriber
 
 log = logging.getLogger("firstcall.worker")
 HEARTBEAT_SECONDS = 5.0
 TICK_SECONDS = 30.0
 HEALTHY_WITHIN_SECONDS = 60
+TRANSCRIBER = "transcriber"
 
 
 def process_name(kind: str) -> str:
@@ -106,11 +110,17 @@ def work(
     print("firstcall worker ready", file=sys.stderr, flush=True)
     last_beat = time.monotonic()
     ran = 0
+
+    def heartbeat() -> None:
+        beat(sessions, "worker")
+
     while True:
         if time.monotonic() - last_beat >= HEARTBEAT_SECONDS:
-            beat(sessions, "worker")
+            heartbeat()
             last_beat = time.monotonic()
-        if run_one(sessions, clock, settings.job_lease_seconds, settings.max_attempts, reader):
+        if run_one(
+            sessions, clock, settings.job_lease_seconds, settings.max_attempts, reader, heartbeat
+        ):
             ran += 1
             if outbound is not None:
                 outbound.push_pending()
@@ -121,6 +131,49 @@ def work(
         if until_idle:
             return ran
         time.sleep(0.5)
+
+
+def transcribe_work(
+    sessions: sessionmaker[Any],
+    clock: Clock,
+    settings: Settings,
+    transcriber: Transcriber,
+    until_idle: bool = False,
+) -> int:
+    """The transcriber process: transcribe jobs only, one at a time, so the main worker's
+    alerts never wait behind a memo. While a memo transcribes, the lease thread beats, so a
+    long one never looks dead. Returns how many jobs ran."""
+    beat(sessions, TRANSCRIBER)
+    print("firstcall transcriber ready", file=sys.stderr, flush=True)
+    last_beat = time.monotonic()
+    ran = 0
+
+    def heartbeat() -> None:
+        beat(sessions, TRANSCRIBER)
+
+    while True:
+        if time.monotonic() - last_beat >= HEARTBEAT_SECONDS:
+            heartbeat()
+            last_beat = time.monotonic()
+        lease, attempts = settings.job_lease_seconds, settings.max_attempts
+        claimed = claim(sessions, clock, lease, attempts, kinds=(TRANSCRIBE,), skip=())
+        if claimed is not None:
+            run_transcription(sessions, clock, claimed, lease, attempts, transcriber, heartbeat)
+            ran += 1
+            continue
+        if until_idle:
+            return ran
+        time.sleep(0.5)
+
+
+def expire_tick(sessions: sessionmaker[Any], clock: Clock) -> dict[str, int]:
+    """Memos waiting past their expiry fail and lose their audio. A failure is logged so the
+    scheduler keeps ticking."""
+    try:
+        return {"expired_memos": expire_waiting(sessions, clock)}
+    except Exception:
+        log.exception("expiring waiting memos failed")
+        return {"expired_memos": 0}
 
 
 def followup_tick(sessions: sessionmaker[Any], clock: Clock) -> dict[str, int]:
@@ -151,6 +204,7 @@ def schedule(
             # The reaper or a reread failed this pass; follow-ups and alerts still run, and
             # the next pass tries again.
             log.exception("the scheduler's tick failed")
+        expire_tick(sessions, clock)
         followup_tick(sessions, clock)
         if outbound is not None:
             alert_tick(sessions, clock, outbound)

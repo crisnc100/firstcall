@@ -50,6 +50,12 @@ stack() {
 # With none, it writes the coverage.json that floors reads, as in the full run.
 tests() {
   step "pytest (zero skips, branch coverage)"
+  # The voice tests run the real ffprobe and ffmpeg; without them they would fail one by one.
+  if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+    echo "verify.sh: the voice tests need ffmpeg and ffprobe on PATH" \
+      "(brew install ffmpeg, or apt-get install ffmpeg)" >&2
+    exit 1
+  fi
   rm -f coverage.json
   if [[ $# -eq 0 ]]; then
     set -- --cov-report=json:coverage.json --cov-report=term:skip-covered
