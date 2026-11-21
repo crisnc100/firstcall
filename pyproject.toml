@@ -77,7 +77,7 @@ ignore = ["S101"]
 # The voice gold's generator runs Piper, ffmpeg and ffprobe with arguments it builds itself.
 "firstcall/corpus/voice.py" = ["S603", "S607"]
 # Upload checks and transcription run ffprobe and ffmpeg with fixed arguments; the audio goes
-# in on stdin or as a temporary file, never as an argument.
+# in through an unnamed temporary file they read as /dev/fd/N, never as an argument.
 "firstcall/voice/audio.py" = ["S603", "S607"]
 # The bootstrap resamples with a fixed seed so a report reproduces; nothing secret is drawn.
 "firstcall/evaluation/note_score.py" = ["S311"]

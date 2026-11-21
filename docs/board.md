@@ -79,8 +79,9 @@ background. The lead page shows one of these under the note:
   not read again.
 - The **tidied note** and its **suggestions** when the read worked.
 
-The lead page checks again every 15 seconds while a note is waiting to be read. It does not
-redraw while a form on the page is being edited, so unsaved typing is never lost.
+The lead page checks again every 15 seconds while a note is waiting for its transcript (see
+[Voice memos](#voice-memos)) or its read. It does not redraw while a form on the page is
+being edited, or a memo is being recorded or sent, so unsaved typing is never lost.
 
 A read can update the buyer's profile (budget, authority, need, timeline). It never changes
 a field a person set, and the profile form sends only the fields the person changed. The
@@ -104,9 +105,9 @@ microphone, drops the memo unsent. A recording that fails is never sent. The pag
 the first of WebM, MP4 or Ogg the browser can make.
 The microphone needs HTTPS outside localhost; without it the page offers only the file.
 
-The memo shows at once as a **Voice** note saying **Transcribing…**, and the page checks
-again every 15 seconds until the transcript appears and is read. One that cannot be
-transcribed says **Couldn't transcribe this memo. Record it again.**
+The memo shows at once as a **Voice** note saying **Transcribing…**, until the transcript
+appears and is read. One that cannot be transcribed says
+**Couldn't transcribe this memo. Record it again.**
 
 The page posts the memo as the raw body to `POST /api/leads/{id}/voice?action=…`, with its
 type in `Content-Type`. Before anything is stored the api refuses:
@@ -213,7 +214,7 @@ off: compose sets no VAPID key.
 
 Voice memos need the transcriber, which a plain `up` leaves out:
 `docker compose --profile voice up -d --build --wait`. It runs on 2 CPUs and 1.5 GB. Its
-first start downloads the model (`FIRSTCALL_WHISPER_SIZE`, default `small.en`, about 460 MB)
+first start downloads the model (`FIRSTCALL_WHISPER_SIZE`, default `small.en`, about 480 MB)
 into the `whisper-models` volume, and the transcriber keeps it loaded. It takes no memo until
 ffmpeg, faster-whisper and the model are all ready; if one is not, it stops at once and says
 which.

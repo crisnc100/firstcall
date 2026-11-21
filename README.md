@@ -13,8 +13,8 @@ message, name and number in this repo is made up.
 ## Try it
 
 You need [uv](https://docs.astral.sh/uv/), Docker, Node with npm, and ffmpeg for the voice
-tests. No API key is needed: the model is off by default (`FIRSTCALL_MODEL_MODE=offline`), so
-every message takes the rules path.
+tests and for an api that runs outside Docker. No API key is needed: the model is off by
+default (`FIRSTCALL_MODEL_MODE=offline`), so every message takes the rules path.
 
 ```sh
 ./verify.sh                       # every check, in order; CI runs its steps as parallel jobs
@@ -31,6 +31,10 @@ a second. Form sources take JSON; [examples/form.html](examples/form.html) is a 
 a spam trap. A form source's URL ends in a form key. The key is public, since any visitor can
 read it in the page, so a form source is protected by its honeypot, its rate limits and the
 spam check, not by the key. Sources that must refuse strangers use basic auth or a signature.
+
+The transcriber runs in its own image. To run it outside Docker, install the voice group,
+which plain `uv sync` leaves out, then start it: `uv sync --group voice`, then
+`uv run firstcall worker --kind transcribe`. [docs/board.md](docs/board.md) has the rest.
 
 To use the board, add yourself as a user, then open <http://localhost:8020/signin>. The front page at
 <http://localhost:8020> is public and needs no sign-in:

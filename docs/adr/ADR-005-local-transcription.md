@@ -7,8 +7,8 @@
 
 ## Context
 Salespeople log calls by voice memo. A hosted speech-to-text service costs money per minute
-and sends audio off the machine. faster-whisper, an open-source Whisper, runs locally in the
-worker with no key.
+and sends audio off the machine. faster-whisper, an open-source Whisper, runs locally in a
+transcriber process of its own, with no key.
 
 ## Decision
 Transcription runs locally with faster-whisper. The eval picks the smallest Whisper size that

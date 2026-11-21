@@ -94,7 +94,7 @@ services:
       migrate:
         condition: service_completed_successfully
     # The first beat comes once the model is loaded, which on a first start includes its
-    # download (about 460 MB for small.en).
+    # download (about 480 MB for small.en).
     healthcheck:
       test: ["CMD", "firstcall", "health", "transcriber"]
       interval: 5s
