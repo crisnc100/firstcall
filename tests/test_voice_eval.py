@@ -43,7 +43,7 @@ from firstcall.evaluation.voice_eval import (
     write_voice,
 )
 from firstcall.evaluation.voice_score import wer
-from firstcall.model.gateway import NotSyntheticError, ReplayMissError
+from firstcall.model.gateway import ReplayMissError
 from firstcall.model.synthetic import SyntheticIndex
 from firstcall.model.transport import TransportRequest
 from firstcall.voice.transcribe import (
@@ -357,7 +357,7 @@ def test_record_mode_refuses_a_transcript_whose_audio_is_not_in_the_manifest(
         rows[0] = {**rows[0], "sha256": unlisted, "text": "Called Pat about the big yard."}
         path.write_text("".join(json.dumps(row) + "\n" for row in rows))
         transport = FakeTransport(default="{}")
-        with pytest.raises(NotSyntheticError):
+        with pytest.raises(ValueError, match="is not of its clip's audio"):
             evaluate_pair(clips, "tiny.en", "clean", database_url,
                           _run("record", tmp_path / "recordings", transport), out)  # fmt: skip
         assert transport.requests == []
