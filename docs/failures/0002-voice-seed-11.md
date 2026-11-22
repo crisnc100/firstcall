@@ -15,27 +15,37 @@ none is a safety floor, so they are published here and do not block the merge.
 |---|---|---|---|
 | Authority F1 >= 0.85 | 0.7976 [0.7111, 0.8765] | 0.9942 | 1.0 |
 | Authority exact >= 0.85 | 0.7701 [0.6714, 0.8460] | 0.9885 | 1.0 |
-| Notes with an unsupported number or name <= 1 | 23 | 8 | 0 |
+| Notes with an unsupported number or name <= 1 | 23 [15.7, 32.9] | 8 [4.1, 15.3] | 0 |
 
 ## 1. Unsupported numbers and names: mostly hearing
 
 The floor counts a note whose answer holds a number or a name that is not in the script.
 Names count by sound (`evals/gold/voice/name-spellings.json`), so "Steven" for "Stephen" is no
 error; the count by spelling is reported beside it. The gap between the two lines is what
-spelling alone costs, and what is left is hearing:
+spelling alone costs:
 
-| `small.en` | By sound (hearing) | By spelling | Spelling only |
+| `small.en` | By sound (other spellings allowed) | By spelling | Spelling only |
 |---|---|---|---|
 | Clean | 8 | 16 | 8 |
 | Degraded | 23 | 30 | 7 |
 
 So on clean audio half of the strict count is a name spelled another way that sounds the
-same, and 8 notes carry something Whisper really misheard. On degraded audio hearing is most of
-it. Of the 23 degraded notes, 18 hold a number the script does not and 5 a name; in 17 of the
-23 the transcript itself holds a figure the script does not ("seven hundred eighty-five
-thousand" written as "$780,000 to $5,000", "four hundred ten thousand" as "4,110,000"). The
-reader copies what it is given, and the scorer checks the answer against the script, as the
-plan chose: a misheard figure is one the salesperson would see.
+same. The by-sound count is not all hearing either: the scorer checks the reader's answer,
+and the reader can add a fact of its own. Each of those notes, split by where its unsupported
+numbers and names first appear:
+
+| `small.en` | Notes | All in the transcript | Some in the transcript, some added by the reader | Added by the reader only |
+|---|---|---|---|---|
+| Clean | 8 | 5 | 3 | 0 |
+| Degraded | 23 | 19 | 3 | 1 |
+
+On degraded audio, 22 of the 23 notes carry something Whisper misheard ("seven hundred
+eighty-five thousand" written as "$780,000 to $5,000", "four hundred ten thousand" as
+"4,110,000"). In the 3 mixed notes the reader also wrote a budget bound of its own, worked
+out from the misheard figure. The one note from the reader alone is `note-11-113`,
+where the transcript is right and the reader added a date to its notes. A misheard figure is
+one the salesperson would see, so the scorer checks the answer against the script, as the
+plan chose.
 
 Two effects of how the audio was made, kept as they are:
 - A figure such as 705,000 is spoken "seven hundred five thousand", with no "and", and Whisper

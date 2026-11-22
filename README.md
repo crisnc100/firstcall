@@ -77,7 +77,9 @@ one-time confirm run. Seed 13 refuses to run until `config/field_methods.yaml` i
 Each report checks safety floors (no wrong merges, no wrong attaches, no attack sentence
 changing a field, no agent's contact taken as the buyer's) and quality floors (field accuracy,
 matching recall, team and category). Misses are published in [docs/failures/](docs/failures/), not tuned
-away. A rerun gives the same bytes, and `./verify.sh` checks that. The decision records in
+away. Voice memos have their own report,
+[evals/reports/2026-11-21-voice-seed-11.md](evals/reports/2026-11-21-voice-seed-11.md): each
+Whisper size on clean and degraded recordings of held-out notes, and the size it picks. A rerun gives the same bytes, and `./verify.sh` checks that. The decision records in
 [docs/adr/](docs/adr/) state what we expected before any result existed.
 
 `--mode` picks what reads the messages. `rules` (the default) uses no model. The other modes

@@ -113,8 +113,9 @@ budget or is stopped still shows what it spent. Run the same command again to fi
 the new pass pays only for transcripts with no answer yet, and the report adds up every pass,
 telling answers paid for from answers reused from earlier recordings. That resumes the one
 pass; it never transcribes again or replaces an answer, since a recorded answer is reused, not
-asked for again. Before any read, each transcript must be of its own clip's audio, as
-`evals/gold/voice/MANIFEST.json` hashes it, and record mode sends only that pair's transcripts.
+asked for again. Before any read, each transcript must be of its own clip's audio, as the
+clips folder's manifest hashes it (`evals/gold/voice/MANIFEST.json` for the voice gold), and
+record mode sends only that pair's transcripts.
 `FIRSTCALL_MODEL_OFF` stops every record run before it starts.
 
 `--transcribe-only` stops after transcribing, with no reads and no key; that is how the
