@@ -481,3 +481,15 @@ Sibling check, for each check, guard, rule or output this round added or changed
 | Secret-scan skip by name | CI runs the same `verify.sh --step secrets` | Applied; a new size needs its names added |
 | Page test registers containers before launch | `tests/fault/test_pages_voice.py` and `tests/fault/test_pages_suggestions.py` start their first worker and api before the cleanup block | Not handled: PR4a and PR3 tests, outside this brief |
 | Committed report read by name | No other test globs for it | Applied |
+
+### After the test-only check
+
+- **256fc42 was weaker** (the cross-vendor check): the same pass logged twice passed and
+  doubled the reported spend. Each record pass now has an id and the transcript ids it paid
+  for (3b499fb; the committed passes' paid ids derived as their reused counts were, their ids
+  made new), and the committed-report test fails on a repeated pass id or a transcript paid
+  for twice (17aba95, test-only). Both probes, the copy as is and the copy with a new id, fail.
+- **Docs f5** fixed after all: 11 of the 13 parent-clause notes got a wrong authority and 2
+  were left unknown (ae7a8dd).
+- Sibling: the notes eval's record-pass files (PR3) have no pass id or paid list, so a pass
+  written twice there would not show. Not handled: PR3 code.
