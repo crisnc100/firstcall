@@ -1,0 +1,28 @@
+{
+ "f1": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f2": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f3": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f4": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "x1": {
+  "status": "deferred",
+  "reason": "Same cause as the code slice's x2 (reuse counted before the read is served); only after a budget-refused read during a resumed run, which has not happened.",
+  "fix": "Fixed with code x2; the doc then holds."
+ },
+ "x2": {
+  "status": "deferred",
+  "reason": "The doc's stopped-pass guarantee covers Ctrl-C and exceptions, not SIGTERM; same cause as code x3.",
+  "fix": "Fix with code x3, or add 'except a hard kill' to the sentence."
+ }
+}

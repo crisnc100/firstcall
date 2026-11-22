@@ -1,0 +1,130 @@
+{
+ "rows": [
+  {
+   "behavior": "eval-voice and eval-voice-report commands, record passes, resume and the pass chain",
+   "files": [
+    "firstcall/cli.py",
+    "firstcall/evaluation/voice_eval.py",
+    "firstcall/evaluation/note_eval.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/rerecord.md",
+     "claims": [
+      {
+       "claim": "A stopped or failed record pass keeps its spend; a hard kill skips the final write",
+       "at": "firstcall/evaluation/voice_eval.py:361"
+      },
+      {
+       "claim": "--transcribe-only stops after transcribing with no reads and no key",
+       "at": "firstcall/cli.py:372"
+      },
+      {
+       "claim": "The report is rebuilt from committed transcripts and run files with no Whisper",
+       "at": "scripts/check_replay_report.py:56"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "Whisper size pick and its result",
+   "files": [
+    "firstcall/evaluation/voice_eval.py",
+    "firstcall/settings.py"
+   ],
+   "docs": [
+    {
+     "path": "README.md",
+     "claims": [
+      {
+       "claim": "The voice report is rebuilt from committed transcripts, recorded answers and saved timings, not a fresh Whisper run",
+       "at": "firstcall/evaluation/voice_eval.py:455"
+      }
+     ]
+    },
+    {
+     "path": "docs/adr/ADR-005-local-transcription.md",
+     "claims": [
+      {
+       "claim": "No size meets every floor, so the largest within the speed bound ships",
+       "at": "firstcall/evaluation/voice_eval.py:510"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "model kill switch refusing paid eval runs",
+   "files": [
+    "firstcall/cli.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/rerecord.md",
+     "claims": [
+      {
+       "claim": "FIRSTCALL_MODEL_OFF stops record runs before they start; --transcribe-only skips the check",
+       "at": "firstcall/cli.py:349"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "record-mode allowlist bound to the clips manifest",
+   "files": [
+    "firstcall/model/synthetic.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/rerecord.md",
+     "claims": [
+      {
+       "claim": "Each transcript must be of its own clip's audio per the manifest before it is sent",
+       "at": "firstcall/model/synthetic.py:50"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "FIRSTCALL_WHISPER_MODELS honoured unless --models is given",
+   "files": [
+    "firstcall/settings.py"
+   ],
+   "none": "docs/definitions.md and docs/board.md do not mention the variable; the code comment at firstcall/evaluation/voice_eval.py:159 covers it"
+  },
+  {
+   "behavior": "replay check rebuilds the voice report",
+   "files": [
+    "scripts/check_replay_report.py"
+   ],
+   "docs": [
+    {
+     "path": "docs/rerecord.md",
+     "claims": [
+      {
+       "claim": "check_replay_report reruns the voice report from committed files, no Whisper",
+       "at": "scripts/check_replay_report.py:56"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "behavior": "secret-scan skip for voice eval files",
+   "files": [
+    "verify.sh"
+   ],
+   "none": "internal gate detail, documented by the comment in verify.sh"
+  },
+  {
+   "behavior": "coverage floor for voice_eval.py",
+   "files": [
+    "scripts/check_coverage.py"
+   ],
+   "none": "one floor entry, nothing to describe"
+  }
+ ]
+}

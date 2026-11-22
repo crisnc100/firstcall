@@ -1,0 +1,29 @@
+{
+ "f1": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f2": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f3": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "x1": {
+  "status": "deferred",
+  "reason": "Same gap as the code slice's x1: a wrong-size transcript file in the same condition passes. Needs the per-pair transcript digest first.",
+  "fix": "Assert each run file's transcripts digest and size match the pair's files."
+ },
+ "x2": {
+  "status": "deferred",
+  "reason": "A container left in Created state if compose aborts between create and start; a test-harness leak only, with no effect on results.",
+  "fix": "Use docker rm -f in teardown instead of docker stop."
+ },
+ "x3": {
+  "status": "deferred",
+  "reason": "A clean result copied under a degraded key passes the three committed-report tests; the CI replay check catches that edit, as the reviewer notes.",
+  "fix": "Assert each result's own size and condition equal its key."
+ }
+}
