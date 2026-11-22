@@ -853,14 +853,19 @@ def _refusal(arguments: list[str]) -> str:
     ],
 )  # fmt: skip
 def test_the_command_refuses_before_any_transcription(
-    arguments: list[str], says: str, monkeypatch: pytest.MonkeyPatch
+    arguments: list[str], says: str, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     from firstcall.evaluation import voice_eval
 
+    # The default output folder, empty: the committed evals/voice holds every pair, so a
+    # refusal that came after the transcription step would find nothing to transcribe there.
+    empty = tmp_path / "voice"
+    monkeypatch.setattr(voice_eval, "VOICE_RUNS", empty)
     built: list[str] = []
     monkeypatch.setattr(voice_eval, "local_transcriber", lambda *args: built.append("whisper"))
     assert says in _refusal(["eval-voice", *arguments])
     assert built == []
+    assert not empty.exists()
 
 
 def test_the_kill_switch_stops_a_record_run_before_any_transcription(
