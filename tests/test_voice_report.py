@@ -74,9 +74,18 @@ def test_seed_11_ran_once_per_pair_with_150_reads_under_the_frozen_prompt() -> N
         assert (meta["seed"], meta["whisper_revision"]) == (11, WHISPER_REVISIONS[size])
         # A stopped pass may be resumed by another; the last one ended with every
         # transcript answered, and the report adds them all up.
-        assert meta["record_passes"], (size, condition)
-        assert meta["record_passes"][-1]["unanswered"] == [], (size, condition)
-        assert pair["record_pass"] == spent(meta["record_passes"]), (size, condition)
+        passes = meta["record_passes"]
+        assert passes, (size, condition)
+        assert passes[-1]["unanswered"] == [], (size, condition)
+        assert passes[-1]["ok"] == len([row for row in rows if row["text"]]), (size, condition)
+        assert pair["record_pass"] == spent(passes), (size, condition)
+        # No pass is written twice and no transcript's answer is paid for twice.
+        assert len({p["id"] for p in passes}) == len(passes), (size, condition)
+        paid = [transcript for p in passes for transcript in p["paid"]]
+        assert len(paid) == len(set(paid)), (size, condition)
+        assert set(paid) <= {row["id"] for row in rows}, (size, condition)
+        for p in passes:
+            assert len(p["paid"]) == p["ok"] - p["reused"], (size, condition)
 
 
 def test_every_miss_of_the_shipped_size_is_published() -> None:
