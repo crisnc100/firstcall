@@ -493,6 +493,35 @@ def test_a_stopped_record_pass_keeps_its_spend_and_a_second_pays_only_for_the_re
     }
 
 
+def test_each_pass_has_its_own_id_and_names_the_transcripts_it_paid_for(
+    clips: Clips, tmp_path: Path, database_url: str
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    transcribe_pair(clips, "tiny.en", "clean", out, Heard(clips), _ticks())
+    gold = _gold_reader()
+    assert gold.respond is not None
+    answer = gold.respond
+
+    def stop_on_the_third(request: TransportRequest) -> str:
+        if len(stopping.requests) == 3:
+            raise KeyboardInterrupt
+        return answer(request)
+
+    stopping = FakeTransport(respond=stop_on_the_third)
+    with pytest.raises(KeyboardInterrupt):
+        record_pair(clips, "tiny.en", "clean", database_url,
+                    _run("record", recordings, stopping), out)  # fmt: skip
+    record_pair(clips, "tiny.en", "clean", database_url,
+                _run("record", recordings, _gold_reader()), out)  # fmt: skip
+    first, second = json.loads(run_path(out, "tiny.en", "clean").read_text())["record_passes"]
+    assert re.fullmatch(r"[0-9a-f]{32}", first["id"])
+    assert first["id"] != second["id"]
+    assert first["paid"] == IDS[:2]
+    assert second["paid"] == IDS[2:]
+    for paid in (first, second):
+        assert len(paid["paid"]) == paid["ok"] - paid["reused"]
+
+
 def test_answers_already_recorded_are_counted_as_reused_not_paid_for(
     clips: Clips, tmp_path: Path, database_url: str
 ) -> None:

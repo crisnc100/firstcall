@@ -24,6 +24,7 @@ import os
 import platform
 import subprocess
 import time
+import uuid
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -52,6 +53,7 @@ from firstcall.evaluation.run import REPO_ROOT, throwaway_database
 from firstcall.model.gateway import ReplayMissError
 from firstcall.model.prompts import READ_NOTE
 from firstcall.model.synthetic import VOICE_TRANSCRIPTS, SyntheticIndex, clip_audio
+from firstcall.model.transport import TransportRequest
 from firstcall.notes.reader import UNREADABLE, NoteReader
 from firstcall.settings import Settings, WhisperSize
 from firstcall.voice.transcribe import (
@@ -299,7 +301,8 @@ def evaluate_pair(
 
     `on_read` is given the call log and the ledger before the first read, after each read,
     and when a read is stopped, with how many record-mode answers came from recordings
-    already on file ("reused", at no cost)."""
+    already on file ("reused", at no cost) and which transcripts' answers were paid for
+    ("paid", the ids whose answer this run recorded)."""
     from firstcall.seed import seed as seed_world
 
     clip_rows = clips.rows(condition)
@@ -321,11 +324,18 @@ def evaluate_pair(
         reader = NoteReader(gateway, detached=True)
         on_file = gateway.recordings.for_task(READ_NOTE) if gateway.recordings else None
         reused = 0
+        paid: list[str] = []
+
+        def on_record(outbound: TransportRequest) -> bool:
+            """Whether record mode has this request's answer on file."""
+            if run.mode != "record" or on_file is None:
+                return False
+            return on_file.find(outbound) is not None
 
         def report_progress() -> None:
             if on_read is not None:
                 with sessions() as session:
-                    on_read({**_calls(session), "reused": reused})
+                    on_read({**_calls(session), "reused": reused, "paid": list(paid)})
 
         report_progress()
         try:
@@ -335,10 +345,12 @@ def evaluate_pair(
                     continue
                 note_date = scripts[row["id"]]["note_date"]
                 read.append({"text": row["text"], "note_date": note_date})
-                if run.mode == "record" and on_file is not None:
-                    request = reader.request(org, None, row["text"], note_date, ZONE)
-                    reused += on_file.find(gateway.outbound(request)) is not None
+                outbound = gateway.outbound(reader.request(org, None, row["text"], note_date, ZONE))
+                already = on_record(outbound)
+                reused += already
                 outcome = reader.read(org, None, row["text"], note_date, ZONE)
+                if not already and on_record(outbound):
+                    paid.append(row["id"])
                 if outcome.answer is not None:
                     answers[row["id"]] = outcome.answer.as_json()
                 elif outcome.reason == UNREADABLE:
@@ -388,21 +400,26 @@ def record_pair(
 ) -> dict[str, Any]:
     """The paid path for one pair: read every transcript, keeping each answer, then score
     from the recordings. The record pass (calls, answers reused from recordings already on
-    file, failed attempts, ledger spend) is in the pair's run file from before the first
-    read and is brought up to date after each, so a pass that is stopped still shows what it
-    spent; until it ends, its unanswered list is null. A pass that left transcripts
-    unanswered can be run again: it pays only for the rest, and the report adds the passes
-    up."""
+    file, the transcripts paid for, failed attempts, ledger spend) is in the pair's run file
+    from before the first read and is brought up to date after each, so a pass that is
+    stopped still shows what it spent; until it ends, its unanswered list is null. A pass
+    that left transcripts unanswered can be run again: it pays only for the rest, and the
+    report adds the passes up. Each pass has an id of its own, so a pass written twice shows
+    as one."""
     path = run_path(out, size, condition)
     index = len(json.loads(path.read_text())["record_passes"])
+    identity = uuid.uuid4().hex
     latest: dict[str, Any] = {}
 
     def keep(progress: dict[str, Any]) -> None:
         latest.update(progress)
-        _set_record_pass(path, index, {**progress, "model": run.model, "unanswered": None})
+        _set_record_pass(
+            path, index, {"id": identity, **progress, "model": run.model, "unanswered": None}
+        )
 
     recorded = evaluate_pair(clips, size, condition, server_url, run, out, on_read=keep)
-    record_pass = {**recorded["calls"], "reused": latest["reused"], "model": run.model,
+    record_pass = {"id": identity, **recorded["calls"], "reused": latest["reused"],
+                   "paid": latest["paid"], "model": run.model,
                    "unanswered": recorded["unanswered"]}  # fmt: skip
     _set_record_pass(path, index, record_pass)
     try:
