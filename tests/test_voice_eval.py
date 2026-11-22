@@ -20,11 +20,12 @@ from typer.testing import CliRunner
 from firstcall.cli import app
 from firstcall.corpus.notes import LABELS, SCRIPTS, read_jsonl
 from firstcall.corpus.voice import CLIPS, spoken_rows, write_voice_manifest
-from firstcall.evaluation.note_eval import IncompleteRecordingError, NoteRun
+from firstcall.evaluation.note_eval import RECORDINGS, IncompleteRecordingError, NoteRun
 from firstcall.evaluation.note_score import baselines
 from firstcall.evaluation.voice_eval import (
     ATLAS_TIMING,
     SIZES,
+    VOICE_RUNS,
     ClipFailedError,
     Clips,
     TranscribedError,
@@ -544,6 +545,33 @@ def test_each_pass_names_the_pass_before_it(
     assert Decimal(first["ledger_usd"]) > 0
     assert first["after"] is None
     assert second["after"] == first["id"] != second["id"]
+
+
+def test_a_read_refused_over_budget_is_unanswered_not_reused(
+    clips: Clips, tmp_path: Path, database_url: str
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    committed = read_transcripts(transcripts_path(VOICE_RUNS, "small.en", "clean"))
+    transcripts = transcripts_path(out, "small.en", "clean")
+    transcripts.parent.mkdir(parents=True)
+    transcripts.write_text("".join(json.dumps(row) + "\n" for row in committed
+                                   if row["id"] in IDS))  # fmt: skip
+    meta = {"seed": SEED, "size": "small.en", "condition": "clean", "machine": machine(),
+            "whisper_revision": WHISPER_REVISIONS["small.en"], "record_passes": []}  # fmt: skip
+    run_path(out, "small.en", "clean").parent.mkdir(parents=True)
+    run_path(out, "small.en", "clean").write_text(json.dumps(meta))
+    # Every one of these reads has its answer in the committed recordings.
+    recordings.mkdir()
+    shutil.copy(RECORDINGS / "notes-claude-haiku-5-5.jsonl", recordings)
+    unused = FakeTransport()
+    run = NoteRun(mode="record", model="claude-haiku-5-5", budget_usd=Decimal(0),
+                  recordings=recordings, transport=unused)  # fmt: skip
+    record_pair(clips, "small.en", "clean", database_url, run, out)
+    assert unused.requests == []
+    [refused] = json.loads(run_path(out, "small.en", "clean").read_text())["record_passes"]
+    assert (refused["ok"], refused["reused"], refused["paid"]) == (0, 0, [])
+    assert refused["unanswered"] == IDS
+    assert spent([refused])["answers"] == 0
 
 
 def test_answers_already_recorded_are_counted_as_reused_not_paid_for(

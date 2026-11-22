@@ -347,8 +347,11 @@ def evaluate_pair(
                 read.append({"text": row["text"], "note_date": note_date})
                 outbound = gateway.outbound(reader.request(org, None, row["text"], note_date, ZONE))
                 already = on_record(outbound)
-                reused += already
                 outcome = reader.read(org, None, row["text"], note_date, ZONE)
+                # On file is not served: a read the gateway refused (over budget, the model
+                # off) is unanswered, not reused.
+                served = outcome.answer is not None or outcome.reason == UNREADABLE
+                reused += already and served
                 if not already and on_record(outbound):
                     paid.append(row["id"])
                 if outcome.answer is not None:
