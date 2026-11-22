@@ -61,10 +61,12 @@
       "not_transcribed": [],
       "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
       "record_pass": {
-        "calls": 150,
+        "answers": 134,
         "failed": 0,
         "ledger_usd": "0.037475",
-        "passes": 1
+        "passes": 1,
+        "reused": 16,
+        "stopped": 0
       },
       "score": {
         "all": {
@@ -909,10 +911,12 @@
       "not_transcribed": [],
       "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
       "record_pass": {
-        "calls": 150,
+        "answers": 149,
         "failed": 0,
         "ledger_usd": "0.040850",
-        "passes": 1
+        "passes": 1,
+        "reused": 1,
+        "stopped": 0
       },
       "score": {
         "all": {
@@ -1801,10 +1805,12 @@
       "not_transcribed": [],
       "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
       "record_pass": {
-        "calls": 152,
+        "answers": 136,
         "failed": 2,
         "ledger_usd": "0.038886",
-        "passes": 1
+        "passes": 1,
+        "reused": 14,
+        "stopped": 0
       },
       "score": {
         "all": {
@@ -2617,10 +2623,12 @@
       "not_transcribed": [],
       "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
       "record_pass": {
-        "calls": 150,
+        "answers": 148,
         "failed": 0,
         "ledger_usd": "0.040938",
-        "passes": 1
+        "passes": 1,
+        "reused": 2,
+        "stopped": 0
       },
       "score": {
         "all": {
@@ -3491,10 +3499,12 @@
       "not_transcribed": [],
       "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
       "record_pass": {
-        "calls": 150,
+        "answers": 135,
         "failed": 0,
         "ledger_usd": "0.037443",
-        "passes": 1
+        "passes": 1,
+        "reused": 15,
+        "stopped": 0
       },
       "score": {
         "all": {
@@ -4349,10 +4359,12 @@
       "not_transcribed": [],
       "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
       "record_pass": {
-        "calls": 150,
+        "answers": 149,
         "failed": 0,
         "ledger_usd": "0.040646",
-        "passes": 1
+        "passes": 1,
+        "reused": 1,
+        "stopped": 0
       },
       "score": {
         "all": {
