@@ -15,6 +15,7 @@ import hashlib
 import subprocess
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from playwright.sync_api import expect, sync_playwright
@@ -68,11 +69,18 @@ def test_a_voice_memo_leads_to_a_confirmed_contact_in_a_browser(
     base = f"http://127.0.0.1:{port}"
     no_key = {"FIRSTCALL_MODEL_MODE": "live", "FIRSTCALL_MODEL_NAME": MODEL}
     first_worker = f"firstcall-memo-worker-{run}"
-    names = [first_worker, f"firstcall-memo-api-{run}"]
-    _run(names[0], container_url, "worker", ["worker"], no_key)
-    _run(names[1], container_url, "api", ["api", "--host", ALL_INTERFACES, "--port", "8000"],
-         {}, port=port)  # fmt: skip
+    # Each name is kept before its container starts, so a launch that fails partway is
+    # stopped too.
+    names: list[str] = []
+
+    def launch(name: str, *args: Any, **kwargs: Any) -> None:
+        names.append(name)
+        _run(name, *args, **kwargs)
+
     try:
+        launch(first_worker, container_url, "worker", ["worker"], no_key)
+        launch(f"firstcall-memo-api-{run}", container_url, "api",
+               ["api", "--host", ALL_INTERFACES, "--port", "8000"], {}, port=port)  # fmt: skip
 
         def processed() -> bool:
             with sessions() as session:
@@ -91,12 +99,10 @@ def test_a_voice_memo_leads_to_a_confirmed_contact_in_a_browser(
         # The buyer's message took the rules path with no key. The note's read needs the
         # recorded answer, so a worker in replay mode takes over before the memo arrives.
         subprocess.run(["docker", "stop", first_worker], capture_output=True, timeout=60)
-        replay_worker = f"firstcall-memo-replay-worker-{run}"
-        _run(replay_worker, container_url, "worker", ["worker"],
-             {"FIRSTCALL_MODEL_MODE": "replay", "FIRSTCALL_MODEL_NAME": MODEL,
-              "FIRSTCALL_MODEL_RECORDINGS": "/recordings"},
-             volume=f"{RECORDINGS}:/recordings:ro")  # fmt: skip
-        names.append(replay_worker)
+        launch(f"firstcall-memo-replay-worker-{run}", container_url, "worker", ["worker"],
+               {"FIRSTCALL_MODEL_MODE": "replay", "FIRSTCALL_MODEL_NAME": MODEL,
+                "FIRSTCALL_MODEL_RECORDINGS": "/recordings"},
+               volume=f"{RECORDINGS}:/recordings:ro")  # fmt: skip
 
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
@@ -119,12 +125,11 @@ def test_a_voice_memo_leads_to_a_confirmed_contact_in_a_browser(
                 # 10:00 in New York on the script's date, the day its answer was recorded.
                 dated = datetime.fromisoformat(_note_date()).replace(hour=14, tzinfo=UTC)
                 session.execute(update(Note).values(created_at=dated))
-            transcriber = f"firstcall-memo-transcriber-{run}"
-            _run(transcriber, container_url, "worker", ["worker", "--kind", "transcribe"],
-                 {"FIRSTCALL_TRANSCRIBE_MODE": "replay",
-                  "FIRSTCALL_VOICE_TRANSCRIPTS": f"/transcripts/{TRANSCRIPTS.name}"},
-                 volume=f"{TRANSCRIPTS.parent}:/transcripts:ro")  # fmt: skip
-            names.append(transcriber)
+            launch(f"firstcall-memo-transcriber-{run}", container_url, "worker",
+                   ["worker", "--kind", "transcribe"],
+                   {"FIRSTCALL_TRANSCRIBE_MODE": "replay",
+                    "FIRSTCALL_VOICE_TRANSCRIPTS": f"/transcripts/{TRANSCRIPTS.name}"},
+                   volume=f"{TRANSCRIPTS.parent}:/transcripts:ro")  # fmt: skip
 
             expect(memo.get_by_text(_transcript())).to_be_visible(timeout=POLL_WAIT_MS)
             suggested = memo.get_by_text(f"Suggested: Called — “{QUOTE}”")
@@ -143,6 +148,7 @@ def test_a_voice_memo_leads_to_a_confirmed_contact_in_a_browser(
             assert (contact.kind, contact.source) == ("call", "suggestion")
             assert session.scalars(select(NoteSuggestion.state)).all() == ["confirmed"]
     finally:
+        # A container that never started is already gone, and its stop fails quietly.
         for name in names:
             subprocess.run(["docker", "stop", name], capture_output=True, timeout=60)
 
