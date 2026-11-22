@@ -522,6 +522,30 @@ def test_each_pass_has_its_own_id_and_names_the_transcripts_it_paid_for(
         assert len(paid["paid"]) == paid["ok"] - paid["reused"]
 
 
+def test_each_pass_names_the_pass_before_it(
+    clips: Clips, tmp_path: Path, database_url: str
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    transcribe_pair(clips, "tiny.en", "clean", out, Heard(clips), _ticks())
+
+    # Stopped in its first paid call: it paid for no answer, but the call's reservation is
+    # on its ledger.
+    def stop(request: TransportRequest) -> str:
+        raise KeyboardInterrupt
+
+    stopped = FakeTransport(respond=stop)
+    with pytest.raises(KeyboardInterrupt):
+        record_pair(clips, "tiny.en", "clean", database_url,
+                    _run("record", recordings, stopped), out)  # fmt: skip
+    record_pair(clips, "tiny.en", "clean", database_url,
+                _run("record", recordings, _gold_reader()), out)  # fmt: skip
+    first, second = json.loads(run_path(out, "tiny.en", "clean").read_text())["record_passes"]
+    assert (first["paid"], first["unanswered"]) == ([], None)
+    assert Decimal(first["ledger_usd"]) > 0
+    assert first["after"] is None
+    assert second["after"] == first["id"] != second["id"]
+
+
 def test_answers_already_recorded_are_counted_as_reused_not_paid_for(
     clips: Clips, tmp_path: Path, database_url: str
 ) -> None:

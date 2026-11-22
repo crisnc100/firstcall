@@ -404,21 +404,22 @@ def record_pair(
     from before the first read and is brought up to date after each, so a pass that is
     stopped still shows what it spent; until it ends, its unanswered list is null. A pass
     that left transcripts unanswered can be run again: it pays only for the rest, and the
-    report adds the passes up. Each pass has an id of its own, so a pass written twice shows
-    as one."""
+    report adds the passes up. Each pass has an id of its own and names the pass before it
+    ("after", null for the first), so the passes form one chain: a pass written twice, under
+    its own id or a new one, breaks it, even a pass that paid for no answer and holds only
+    the reservation of a call it was stopped in."""
     path = run_path(out, size, condition)
-    index = len(json.loads(path.read_text())["record_passes"])
-    identity = uuid.uuid4().hex
+    passes = json.loads(path.read_text())["record_passes"]
+    index = len(passes)
+    chain = {"id": uuid.uuid4().hex, "after": passes[-1]["id"] if passes else None}
     latest: dict[str, Any] = {}
 
     def keep(progress: dict[str, Any]) -> None:
         latest.update(progress)
-        _set_record_pass(
-            path, index, {"id": identity, **progress, "model": run.model, "unanswered": None}
-        )
+        _set_record_pass(path, index, {**chain, **progress, "model": run.model, "unanswered": None})
 
     recorded = evaluate_pair(clips, size, condition, server_url, run, out, on_read=keep)
-    record_pass = {"id": identity, **recorded["calls"], "reused": latest["reused"],
+    record_pass = {**chain, **recorded["calls"], "reused": latest["reused"],
                    "paid": latest["paid"], "model": run.model,
                    "unanswered": recorded["unanswered"]}  # fmt: skip
     _set_record_pass(path, index, record_pass)

@@ -3,6 +3,7 @@
   "machine": "Apple M5, Darwin arm64",
   "record_passes": [
     {
+      "after": null,
       "calls": 150,
       "completion_tokens": 26170,
       "cost_usd": "0.040885",
