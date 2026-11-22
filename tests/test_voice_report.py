@@ -79,8 +79,11 @@ def test_seed_11_ran_once_per_pair_with_150_reads_under_the_frozen_prompt() -> N
         assert passes[-1]["unanswered"] == [], (size, condition)
         assert passes[-1]["ok"] == len([row for row in rows if row["text"]]), (size, condition)
         assert pair["record_pass"] == spent(passes), (size, condition)
-        # No pass is written twice and no transcript's answer is paid for twice.
+        # No pass is written twice, under its own id or another, and no transcript's
+        # answer is paid for twice.
         assert len({p["id"] for p in passes}) == len(passes), (size, condition)
+        chain = [None, *(p["id"] for p in passes[:-1])]
+        assert [p["after"] for p in passes] == chain, (size, condition)
         paid = [transcript for p in passes for transcript in p["paid"]]
         assert len(paid) == len(set(paid)), (size, condition)
         assert set(paid) <= {row["id"] for row in rows}, (size, condition)
