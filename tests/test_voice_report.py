@@ -28,12 +28,12 @@ from firstcall.settings import Settings
 from firstcall.voice.transcribe import WHISPER_REVISIONS
 
 FAILURES = REPO_ROOT / "docs" / "failures"
+REPORT = REPORTS / "2026-11-21-voice-seed-11.json"
 
 
 @cache
 def committed() -> dict[str, Any]:
-    [path] = sorted(REPORTS.glob("*-voice-seed-11.json"))
-    return json.loads(path.read_text())
+    return json.loads(REPORT.read_text())
 
 
 def _compose_default() -> str:
@@ -58,7 +58,7 @@ def test_seed_11_ran_once_per_pair_with_150_reads_under_the_frozen_prompt() -> N
     notes = json.loads((REPORTS / "2026-11-14-notes-seed-11.json").read_text())
     assert report["prompt_sha256"] == notes["prompt_sha256"] == prompt_sha256()
     assert set(report["pairs"]) == {f"{s}-{c}" for s in SIZES for c in CONDITIONS}
-    audio = set(read_voice_manifest().values())
+    audio = read_voice_manifest()
     clips = Clips()
     for pair in report["pairs"].values():
         size, condition = pair["size"], pair["condition"]
@@ -67,8 +67,9 @@ def test_seed_11_ran_once_per_pair_with_150_reads_under_the_frozen_prompt() -> N
         assert pair["structured_output"] is True, (size, condition)
         assert pair["record_pass"]["passes"] == 1, (size, condition)
         rows = read_transcripts(transcripts_path(VOICE_RUNS, size, condition))
+        own = [audio[f"{clips.folder.name}/{clip['file']}"] for clip in clips.rows(condition)]
         assert [row["id"] for row in rows] == [row["id"] for row in clips.rows(condition)]
-        assert all(row["sha256"] in audio for row in rows), (size, condition)
+        assert [row["sha256"] for row in rows] == own, (size, condition)
         meta = json.loads(run_path(VOICE_RUNS, size, condition).read_text())
         assert (meta["seed"], meta["whisper_revision"]) == (11, WHISPER_REVISIONS[size])
 
