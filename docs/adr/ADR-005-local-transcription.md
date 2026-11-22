@@ -60,8 +60,8 @@ after transcription.
 ## Disclosure
 Before the candidates and settings were fixed, two hand-written clips of the `unit-page` note
 (`evals/gold/unit-notes.jsonl`) ran through all three sizes on a Mac, to check the pipeline
-and the faster-whisper version. They shaped the spoken-text rule. A dry run on 30 degraded seed-7 clips
-followed and changed nothing. Seed-11 audio was first transcribed in the eval itself, once
+and the faster-whisper version. They shaped the spoken-text rule. A dry run on 30 degraded
+seed-7 clips followed and changed nothing. Seed-11 audio was first transcribed in the eval itself, once
 per size and condition.
 
 ## Result (2026-11-21)

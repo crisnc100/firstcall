@@ -79,7 +79,10 @@ changing a field, no agent's contact taken as the buyer's) and quality floors (f
 matching recall, team and category). Misses are published in [docs/failures/](docs/failures/), not tuned
 away. Voice memos have their own report,
 [evals/reports/2026-11-21-voice-seed-11.md](evals/reports/2026-11-21-voice-seed-11.md): each
-Whisper size on clean and degraded recordings of held-out notes, and the size it picks. A rerun gives the same bytes, and `./verify.sh` checks that. The decision records in
+Whisper size on clean and degraded recordings of held-out notes, and the size it picks.
+Rebuilding a report from what is committed gives the same bytes, and `./verify.sh` checks
+that. For the voice report, that means the committed transcripts, recorded answers and saved
+timings; a fresh Whisper run measures new timings and is outside the check. The decision records in
 [docs/adr/](docs/adr/) state what we expected before any result existed.
 
 `--mode` picks what reads the messages. `rules` (the default) uses no model. The other modes
