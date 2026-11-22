@@ -493,3 +493,11 @@ Sibling check, for each check, guard, rule or output this round added or changed
   were left unknown (ae7a8dd).
 - Sibling: the notes eval's record-pass files (PR3) have no pass id or paid list, so a pass
   written twice there would not show. Not handled: PR3 code.
+- **A copied pass that paid for nothing** (the second cross-vendor check): a pass stopped in
+  its first paid call, copied under a new id before the finishing pass, still passed. No
+  reservation has an id (the ledger is one running sum), so each pass names the pass before
+  it ("after"), and the test requires one unbroken chain (c134751, cee0673 test-only). The
+  committed passes, each alone in its pair, have `after: null`. Probed on base.en clean: the
+  copy before the finishing pass fails, the copy linked after its original fails, a real
+  stopped-then-finished pair passes. Passing the check would take rewriting a real pass's
+  link by hand.
