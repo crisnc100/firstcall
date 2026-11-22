@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import typer
 from typer.testing import CliRunner
 
 from firstcall.cli import app
@@ -827,6 +828,17 @@ def test_the_machine_is_named_from_the_cpu(tmp_path: Path) -> None:
     assert machine(tmp_path / "none").endswith(os.uname().machine)
 
 
+def _refusal(arguments: list[str]) -> str:
+    """The message of the refusal the command stops with, as raised, after checking it
+    exits 2 as a usage error from the command line. The message is not read from the
+    output: drawn by Rich on a narrow colour terminal, as in CI, an option name in it is
+    split by colour codes and a long line is cut."""
+    assert CliRunner().invoke(app, arguments).exit_code == 2
+    result = CliRunner().invoke(app, arguments, standalone_mode=False)
+    assert isinstance(result.exception, typer.BadParameter), result.output
+    return result.exception.format_message()
+
+
 @pytest.mark.parametrize(
     ("arguments", "says"),
     [
@@ -840,10 +852,15 @@ def test_the_machine_is_named_from_the_cpu(tmp_path: Path) -> None:
          "FIRSTCALL_MODEL_KEY"),
     ],
 )  # fmt: skip
-def test_the_command_refuses_before_any_transcription(arguments: list[str], says: str) -> None:
-    result = CliRunner().invoke(app, ["eval-voice", *arguments])
-    assert result.exit_code != 0
-    assert says in result.output
+def test_the_command_refuses_before_any_transcription(
+    arguments: list[str], says: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from firstcall.evaluation import voice_eval
+
+    built: list[str] = []
+    monkeypatch.setattr(voice_eval, "local_transcriber", lambda *args: built.append("whisper"))
+    assert says in _refusal(["eval-voice", *arguments])
+    assert built == []
 
 
 def test_the_kill_switch_stops_a_record_run_before_any_transcription(
@@ -858,12 +875,11 @@ def test_the_kill_switch_stops_a_record_run_before_any_transcription(
         monkeypatch.setattr(voice_eval, name, never)
     monkeypatch.setenv("FIRSTCALL_MODEL_KEY", "not-a-real-key")
     monkeypatch.setenv("FIRSTCALL_MODEL_OFF", "1")
-    result = CliRunner().invoke(app, [
+    refusal = _refusal([
         "eval-voice", "--size", "tiny.en", "--condition", "clean", "--mode", "record",
         "--clips", str(clips.root), "--out", str(tmp_path / "out"),
     ])  # fmt: skip
-    assert result.exit_code == 2, result.output
-    assert "FIRSTCALL_MODEL_OFF" in result.output
+    assert "FIRSTCALL_MODEL_OFF" in refusal
     assert not (tmp_path / "out").exists()
 
 
