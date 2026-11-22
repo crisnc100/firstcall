@@ -1,0 +1,30 @@
+{
+ "f1": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f2": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "x1": {
+  "status": "deferred",
+  "reason": "A second Ctrl-C landing inside the counter reconciliation query can drop one served reply from the tally. Needs two interrupts within milliseconds during an operator-run eval; the committed passes are unaffected and replay byte-identical.",
+  "fix": "Shield the reconciliation from KeyboardInterrupt (signal mask or a second-interrupt guard) so the finally block always completes."
+ },
+ "x2": {
+  "status": "deferred",
+  "reason": "A retry can pay for reads before the report refuses an inherited inconsistent pass. Only a pass written by pre-fix code is inconsistent, and none exists in the committed run files.",
+  "fix": "Validate earlier passes with the same check spent() uses before the retry makes its first paid call."
+ },
+ "x3": {
+  "status": "deferred",
+  "reason": "Two record runs on the same pair at once can overwrite each other's passes. One operator runs one pass per pair; same cause as the earlier deferred concurrent-writer finding.",
+  "fix": "Hold a per-pair lock file for the length of a record run, or write checkpoints keyed by pass id."
+ },
+ "x4": {
+  "status": "deferred",
+  "reason": "With no MANIFEST.json in the clips folder, a transcript row with a null sha256 matches a missing manifest entry. The gold clips folder always has a manifest; the CLI refuses non-gold output under evals/voice.",
+  "fix": "Refuse when the manifest is missing or a clip is unlisted, before comparing hashes."
+ }
+}

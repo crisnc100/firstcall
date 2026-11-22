@@ -1,0 +1,5315 @@
+{
+  "atlas": {
+    "clips": 20,
+    "condition": "degraded",
+    "cpus": 2,
+    "date": "2026-11-21",
+    "host": "AMD EPYC 9354P 32-Core Processor, Linux x86_64, 4 vCPUs",
+    "image": "the Dockerfile's voice stage, built on Atlas from 7f63843",
+    "memory": "1536m",
+    "seed": 7,
+    "sizes": {
+      "base.en": {
+        "audio_seconds": 186.217,
+        "clips": 20,
+        "compute_seconds": 22.874,
+        "per_minute": 7.37,
+        "whisper_revision": "3d3d5dee26484f91867d81cb899cfcf72b96be6c"
+      },
+      "small.en": {
+        "audio_seconds": 186.217,
+        "clips": 20,
+        "compute_seconds": 64.336,
+        "per_minute": 20.73,
+        "whisper_revision": "d1d751a5f8271d482d14ca55d9e2deeebbae577f"
+      },
+      "tiny.en": {
+        "audio_seconds": 186.217,
+        "clips": 20,
+        "compute_seconds": 14.907,
+        "per_minute": 4.8,
+        "whisper_revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba"
+      }
+    }
+  },
+  "complete": true,
+  "missing": [],
+  "model": "claude-haiku-5-5",
+  "pairs": {
+    "base.en-clean": {
+      "calls": {
+        "calls": 150,
+        "completion_tokens": 27269,
+        "cost_usd": "0.041473",
+        "failed": 0,
+        "json_prompt_calls": 0,
+        "ledger_usd": "0.000000",
+        "ok": 150,
+        "prompt_tokens": 278240
+      },
+      "complete": true,
+      "compute": {
+        "audio_seconds": 1600.152,
+        "clips": 150,
+        "compute_seconds": 113.94,
+        "per_minute": 4.27
+      },
+      "condition": "clean",
+      "machine": "Apple M5, Darwin arm64",
+      "mode": "replay",
+      "model": "claude-haiku-5-5",
+      "not_transcribed": [],
+      "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+      "record_pass": {
+        "answers": 134,
+        "failed": 0,
+        "ledger_usd": "0.037475",
+        "passes": 1,
+        "reused": 16,
+        "stopped": 0
+      },
+      "score": {
+        "all": {
+          "actions": {
+            "precision": {
+              "hits": 56,
+              "interval": [
+                0.8608,
+                0.9826
+              ],
+              "rate": 0.9492,
+              "total": 59
+            },
+            "recall": {
+              "hits": 56,
+              "interval": [
+                0.6379,
+                0.8314
+              ],
+              "rate": 0.7467,
+              "total": 75
+            }
+          },
+          "authority_exact": {
+            "hits": 82,
+            "interval": [
+              0.8724,
+              0.9752
+            ],
+            "rate": 0.9425,
+            "total": 87
+          },
+          "copied_fields": 2,
+          "fields": {
+            "authority": {
+              "f1": 0.9591,
+              "f1_interval": [
+                0.9202,
+                0.9877
+              ],
+              "fill_rate": {
+                "hits": 84,
+                "interval": [
+                  0.48,
+                  0.637
+                ],
+                "rate": 0.56,
+                "total": 150
+              },
+              "fn": 5,
+              "fp": 2,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 82
+            },
+            "budget": {
+              "f1": 0.9195,
+              "f1_interval": [
+                0.8537,
+                0.9688
+              ],
+              "fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "fn": 7,
+              "fp": 7,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 80
+            },
+            "need": {
+              "f1": 0.8889,
+              "f1_interval": [
+                0.8293,
+                0.9381
+              ],
+              "fill_rate": {
+                "hits": 104,
+                "interval": [
+                  0.6155,
+                  0.7615
+                ],
+                "rate": 0.6933,
+                "total": 150
+              },
+              "fn": 6,
+              "fp": 16,
+              "gold_fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "tp": 88
+            },
+            "timeline": {
+              "f1": 0.8696,
+              "f1_interval": [
+                0.8043,
+                0.9263
+              ],
+              "fill_rate": {
+                "hits": 97,
+                "interval": [
+                  0.5674,
+                  0.7186
+                ],
+                "rate": 0.6467,
+                "total": 150
+              },
+              "fn": 7,
+              "fp": 17,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 80
+            }
+          },
+          "floors": [
+            {
+              "floor": ">= 0.85",
+              "measure": "budget F1",
+              "met": true,
+              "value": 0.9195
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority F1",
+              "met": true,
+              "value": 0.9591
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "need F1",
+              "met": true,
+              "value": 0.8889
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline F1",
+              "met": true,
+              "value": 0.8696
+            },
+            {
+              "floor": ">= 0.8",
+              "measure": "key-term recall",
+              "met": true,
+              "value": 0.9283
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority exact",
+              "met": true,
+              "value": 0.9425
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline month exact",
+              "met": true,
+              "value": 0.9143
+            },
+            {
+              "floor": "<= 1",
+              "measure": "notes with an unsupported number or name, names by sound",
+              "met": false,
+              "value": 16
+            }
+          ],
+          "key_terms": {
+            "hits": 285,
+            "interval": [
+              0.8939,
+              0.9522
+            ],
+            "rate": 0.9283,
+            "total": 307
+          },
+          "month_exact": {
+            "hits": 64,
+            "interval": [
+              0.8253,
+              0.9601
+            ],
+            "rate": 0.9143,
+            "total": 70
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 13,
+              "interval": [
+                0.6212,
+                0.9626
+              ],
+              "rate": 0.8667,
+              "total": 15
+            },
+            "future": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "hypothetical": {
+              "hits": 14,
+              "interval": [
+                0.7018,
+                0.9881
+              ],
+              "rate": 0.9333,
+              "total": 15
+            },
+            "negation": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "plan": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            }
+          },
+          "scripts": 150,
+          "strict": {
+            "floor": "reported",
+            "measure": "notes with an unsupported number or name, names by spelling",
+            "met": null,
+            "value": 24
+          },
+          "unreadable": 0,
+          "unsupported": {
+            "count": 16,
+            "ids": [
+              "note-11-001",
+              "note-11-006",
+              "note-11-012",
+              "note-11-013",
+              "note-11-029",
+              "note-11-033",
+              "note-11-050",
+              "note-11-068",
+              "note-11-070",
+              "note-11-072",
+              "note-11-080",
+              "note-11-082",
+              "note-11-101",
+              "note-11-117",
+              "note-11-127",
+              "note-11-138"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 24,
+            "ids": [
+              "note-11-001",
+              "note-11-006",
+              "note-11-010",
+              "note-11-012",
+              "note-11-013",
+              "note-11-029",
+              "note-11-033",
+              "note-11-035",
+              "note-11-038",
+              "note-11-040",
+              "note-11-042",
+              "note-11-050",
+              "note-11-068",
+              "note-11-070",
+              "note-11-072",
+              "note-11-080",
+              "note-11-082",
+              "note-11-083",
+              "note-11-101",
+              "note-11-110",
+              "note-11-117",
+              "note-11-127",
+              "note-11-135",
+              "note-11-138"
+            ]
+          }
+        },
+        "seen": {
+          "actions": {
+            "precision": {
+              "hits": 21,
+              "interval": [
+                0.8454,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 21
+            },
+            "recall": {
+              "hits": 21,
+              "interval": [
+                0.5428,
+                0.853
+              ],
+              "rate": 0.7241,
+              "total": 29
+            }
+          },
+          "authority_exact": {
+            "hits": 28,
+            "interval": [
+              0.8282,
+              0.9939
+            ],
+            "rate": 0.9655,
+            "total": 29
+          },
+          "copied_fields": 2,
+          "fields": {
+            "authority": {
+              "f1": 0.9825,
+              "f1_interval": [
+                0.9412,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "fn": 1,
+              "fp": 0,
+              "gold_fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "tp": 28
+            },
+            "budget": {
+              "f1": 0.9286,
+              "f1_interval": [
+                0.8182,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "fn": 2,
+              "fp": 2,
+              "gold_fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "tp": 26
+            },
+            "need": {
+              "f1": 0.8889,
+              "f1_interval": [
+                0.7887,
+                0.963
+              ],
+              "fill_rate": {
+                "hits": 38,
+                "interval": [
+                  0.5068,
+                  0.7438
+                ],
+                "rate": 0.6333,
+                "total": 60
+              },
+              "fn": 2,
+              "fp": 6,
+              "gold_fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "tp": 32
+            },
+            "timeline": {
+              "f1": 0.8286,
+              "f1_interval": [
+                0.7059,
+                0.9296
+              ],
+              "fill_rate": {
+                "hits": 38,
+                "interval": [
+                  0.5068,
+                  0.7438
+                ],
+                "rate": 0.6333,
+                "total": 60
+              },
+              "fn": 3,
+              "fp": 9,
+              "gold_fill_rate": {
+                "hits": 32,
+                "interval": [
+                  0.4089,
+                  0.6537
+                ],
+                "rate": 0.5333,
+                "total": 60
+              },
+              "tp": 29
+            }
+          },
+          "key_terms": {
+            "hits": 103,
+            "interval": [
+              0.8642,
+              0.963
+            ],
+            "rate": 0.9279,
+            "total": 111
+          },
+          "month_exact": {
+            "hits": 23,
+            "interval": [
+              0.7503,
+              0.9778
+            ],
+            "rate": 0.92,
+            "total": 25
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "future": {
+              "hits": 7,
+              "interval": [
+                0.6457,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 7
+            },
+            "hypothetical": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "negation": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            },
+            "plan": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            }
+          },
+          "scripts": 60,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 4,
+            "ids": [
+              "note-11-006",
+              "note-11-013",
+              "note-11-082",
+              "note-11-101"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 5,
+            "ids": [
+              "note-11-006",
+              "note-11-013",
+              "note-11-035",
+              "note-11-082",
+              "note-11-101"
+            ]
+          }
+        },
+        "unseen": {
+          "actions": {
+            "precision": {
+              "hits": 35,
+              "interval": [
+                0.792,
+                0.9728
+              ],
+              "rate": 0.9211,
+              "total": 38
+            },
+            "recall": {
+              "hits": 35,
+              "interval": [
+                0.6206,
+                0.8609
+              ],
+              "rate": 0.7609,
+              "total": 46
+            }
+          },
+          "authority_exact": {
+            "hits": 54,
+            "interval": [
+              0.8357,
+              0.9729
+            ],
+            "rate": 0.931,
+            "total": 58
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.9474,
+              "f1_interval": [
+                0.8947,
+                0.9908
+              ],
+              "fill_rate": {
+                "hits": 56,
+                "interval": [
+                  0.519,
+                  0.7154
+                ],
+                "rate": 0.6222,
+                "total": 90
+              },
+              "fn": 4,
+              "fp": 2,
+              "gold_fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "tp": 54
+            },
+            "budget": {
+              "f1": 0.9153,
+              "f1_interval": [
+                0.84,
+                0.9821
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 5,
+              "fp": 5,
+              "gold_fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "tp": 54
+            },
+            "need": {
+              "f1": 0.8889,
+              "f1_interval": [
+                0.816,
+                0.9481
+              ],
+              "fill_rate": {
+                "hits": 66,
+                "interval": [
+                  0.6338,
+                  0.8138
+                ],
+                "rate": 0.7333,
+                "total": 90
+              },
+              "fn": 4,
+              "fp": 10,
+              "gold_fill_rate": {
+                "hits": 60,
+                "interval": [
+                  0.5642,
+                  0.7555
+                ],
+                "rate": 0.6667,
+                "total": 90
+              },
+              "tp": 56
+            },
+            "timeline": {
+              "f1": 0.8947,
+              "f1_interval": [
+                0.8197,
+                0.958
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 4,
+              "fp": 8,
+              "gold_fill_rate": {
+                "hits": 55,
+                "interval": [
+                  0.5078,
+                  0.7053
+                ],
+                "rate": 0.6111,
+                "total": 90
+              },
+              "tp": 51
+            }
+          },
+          "key_terms": {
+            "hits": 182,
+            "interval": [
+              0.8837,
+              0.957
+            ],
+            "rate": 0.9286,
+            "total": 196
+          },
+          "month_exact": {
+            "hits": 41,
+            "interval": [
+              0.7927,
+              0.9649
+            ],
+            "rate": 0.9111,
+            "total": 45
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 8,
+              "interval": [
+                0.4902,
+                0.9433
+              ],
+              "rate": 0.8,
+              "total": 10
+            },
+            "future": {
+              "hits": 8,
+              "interval": [
+                0.6756,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 8
+            },
+            "hypothetical": {
+              "hits": 9,
+              "interval": [
+                0.5958,
+                0.9821
+              ],
+              "rate": 0.9,
+              "total": 10
+            },
+            "negation": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            },
+            "plan": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            }
+          },
+          "scripts": 90,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 12,
+            "ids": [
+              "note-11-001",
+              "note-11-012",
+              "note-11-029",
+              "note-11-033",
+              "note-11-050",
+              "note-11-068",
+              "note-11-070",
+              "note-11-072",
+              "note-11-080",
+              "note-11-117",
+              "note-11-127",
+              "note-11-138"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 19,
+            "ids": [
+              "note-11-001",
+              "note-11-010",
+              "note-11-012",
+              "note-11-029",
+              "note-11-033",
+              "note-11-038",
+              "note-11-040",
+              "note-11-042",
+              "note-11-050",
+              "note-11-068",
+              "note-11-070",
+              "note-11-072",
+              "note-11-080",
+              "note-11-083",
+              "note-11-110",
+              "note-11-117",
+              "note-11-127",
+              "note-11-135",
+              "note-11-138"
+            ]
+          }
+        }
+      },
+      "seed": 11,
+      "size": "base.en",
+      "structured_output": true,
+      "unanswered": [],
+      "wer": {
+        "errors": 402,
+        "wer": 0.0936,
+        "words": 4296
+      },
+      "whisper_revision": "3d3d5dee26484f91867d81cb899cfcf72b96be6c"
+    },
+    "base.en-degraded": {
+      "calls": {
+        "calls": 150,
+        "completion_tokens": 26581,
+        "cost_usd": "0.041101",
+        "failed": 0,
+        "json_prompt_calls": 0,
+        "ledger_usd": "0.000000",
+        "ok": 150,
+        "prompt_tokens": 278005
+      },
+      "complete": true,
+      "compute": {
+        "audio_seconds": 1614.419,
+        "clips": 150,
+        "compute_seconds": 108.921,
+        "per_minute": 4.05
+      },
+      "condition": "degraded",
+      "machine": "Apple M5, Darwin arm64",
+      "mode": "replay",
+      "model": "claude-haiku-5-5",
+      "not_transcribed": [],
+      "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+      "record_pass": {
+        "answers": 149,
+        "failed": 0,
+        "ledger_usd": "0.040850",
+        "passes": 1,
+        "reused": 1,
+        "stopped": 0
+      },
+      "score": {
+        "all": {
+          "actions": {
+            "precision": {
+              "hits": 47,
+              "interval": [
+                0.8378,
+                0.9794
+              ],
+              "rate": 0.94,
+              "total": 50
+            },
+            "recall": {
+              "hits": 47,
+              "interval": [
+                0.5135,
+                0.7274
+              ],
+              "rate": 0.6267,
+              "total": 75
+            }
+          },
+          "authority_exact": {
+            "hits": 68,
+            "interval": [
+              0.6839,
+              0.8555
+            ],
+            "rate": 0.7816,
+            "total": 87
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 0.8193,
+              "f1_interval": [
+                0.7375,
+                0.8927
+              ],
+              "fill_rate": {
+                "hits": 79,
+                "interval": [
+                  0.4471,
+                  0.6049
+                ],
+                "rate": 0.5267,
+                "total": 150
+              },
+              "fn": 19,
+              "fp": 11,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 68
+            },
+            "budget": {
+              "f1": 0.8391,
+              "f1_interval": [
+                0.7586,
+                0.9136
+              ],
+              "fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "fn": 14,
+              "fp": 14,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 73
+            },
+            "need": {
+              "f1": 0.7879,
+              "f1_interval": [
+                0.7109,
+                0.8587
+              ],
+              "fill_rate": {
+                "hits": 104,
+                "interval": [
+                  0.6155,
+                  0.7615
+                ],
+                "rate": 0.6933,
+                "total": 150
+              },
+              "fn": 16,
+              "fp": 26,
+              "gold_fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "tp": 78
+            },
+            "timeline": {
+              "f1": 0.8261,
+              "f1_interval": [
+                0.7531,
+                0.8927
+              ],
+              "fill_rate": {
+                "hits": 97,
+                "interval": [
+                  0.5674,
+                  0.7186
+                ],
+                "rate": 0.6467,
+                "total": 150
+              },
+              "fn": 11,
+              "fp": 21,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 76
+            }
+          },
+          "floors": [
+            {
+              "floor": ">= 0.85",
+              "measure": "budget F1",
+              "met": false,
+              "value": 0.8391
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority F1",
+              "met": false,
+              "value": 0.8193
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "need F1",
+              "met": false,
+              "value": 0.7879
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline F1",
+              "met": false,
+              "value": 0.8261
+            },
+            {
+              "floor": ">= 0.8",
+              "measure": "key-term recall",
+              "met": true,
+              "value": 0.8436
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority exact",
+              "met": false,
+              "value": 0.7816
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline month exact",
+              "met": true,
+              "value": 0.8714
+            },
+            {
+              "floor": "<= 1",
+              "measure": "notes with an unsupported number or name, names by sound",
+              "met": false,
+              "value": 27
+            }
+          ],
+          "key_terms": {
+            "hits": 259,
+            "interval": [
+              0.7988,
+              0.88
+            ],
+            "rate": 0.8436,
+            "total": 307
+          },
+          "month_exact": {
+            "hits": 61,
+            "interval": [
+              0.7734,
+              0.9309
+            ],
+            "rate": 0.8714,
+            "total": 70
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 13,
+              "interval": [
+                0.6212,
+                0.9626
+              ],
+              "rate": 0.8667,
+              "total": 15
+            },
+            "future": {
+              "hits": 14,
+              "interval": [
+                0.7018,
+                0.9881
+              ],
+              "rate": 0.9333,
+              "total": 15
+            },
+            "hypothetical": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "negation": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "plan": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            }
+          },
+          "scripts": 150,
+          "strict": {
+            "floor": "reported",
+            "measure": "notes with an unsupported number or name, names by spelling",
+            "met": null,
+            "value": 35
+          },
+          "unreadable": 0,
+          "unsupported": {
+            "count": 27,
+            "ids": [
+              "note-11-007",
+              "note-11-013",
+              "note-11-021",
+              "note-11-026",
+              "note-11-035",
+              "note-11-046",
+              "note-11-050",
+              "note-11-051",
+              "note-11-062",
+              "note-11-063",
+              "note-11-064",
+              "note-11-070",
+              "note-11-075",
+              "note-11-080",
+              "note-11-085",
+              "note-11-086",
+              "note-11-093",
+              "note-11-094",
+              "note-11-096",
+              "note-11-101",
+              "note-11-116",
+              "note-11-120",
+              "note-11-121",
+              "note-11-138",
+              "note-11-141",
+              "note-11-146",
+              "note-11-150"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 35,
+            "ids": [
+              "note-11-007",
+              "note-11-010",
+              "note-11-013",
+              "note-11-021",
+              "note-11-026",
+              "note-11-035",
+              "note-11-038",
+              "note-11-040",
+              "note-11-042",
+              "note-11-046",
+              "note-11-050",
+              "note-11-051",
+              "note-11-062",
+              "note-11-063",
+              "note-11-064",
+              "note-11-070",
+              "note-11-075",
+              "note-11-080",
+              "note-11-083",
+              "note-11-085",
+              "note-11-086",
+              "note-11-093",
+              "note-11-094",
+              "note-11-096",
+              "note-11-100",
+              "note-11-101",
+              "note-11-110",
+              "note-11-116",
+              "note-11-120",
+              "note-11-121",
+              "note-11-135",
+              "note-11-138",
+              "note-11-141",
+              "note-11-146",
+              "note-11-150"
+            ]
+          }
+        },
+        "seen": {
+          "actions": {
+            "precision": {
+              "hits": 21,
+              "interval": [
+                0.8454,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 21
+            },
+            "recall": {
+              "hits": 21,
+              "interval": [
+                0.5428,
+                0.853
+              ],
+              "rate": 0.7241,
+              "total": 29
+            }
+          },
+          "authority_exact": {
+            "hits": 23,
+            "interval": [
+              0.6161,
+              0.9015
+            ],
+            "rate": 0.7931,
+            "total": 29
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 0.8364,
+              "f1_interval": [
+                0.6939,
+                0.9538
+              ],
+              "fill_rate": {
+                "hits": 26,
+                "interval": [
+                  0.3157,
+                  0.559
+                ],
+                "rate": 0.4333,
+                "total": 60
+              },
+              "fn": 6,
+              "fp": 3,
+              "gold_fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "tp": 23
+            },
+            "budget": {
+              "f1": 0.8214,
+              "f1_interval": [
+                0.6667,
+                0.9583
+              ],
+              "fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "fn": 5,
+              "fp": 5,
+              "gold_fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "tp": 23
+            },
+            "need": {
+              "f1": 0.6667,
+              "f1_interval": [
+                0.5128,
+                0.8056
+              ],
+              "fill_rate": {
+                "hits": 38,
+                "interval": [
+                  0.5068,
+                  0.7438
+                ],
+                "rate": 0.6333,
+                "total": 60
+              },
+              "fn": 10,
+              "fp": 14,
+              "gold_fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "tp": 24
+            },
+            "timeline": {
+              "f1": 0.7714,
+              "f1_interval": [
+                0.6349,
+                0.8923
+              ],
+              "fill_rate": {
+                "hits": 38,
+                "interval": [
+                  0.5068,
+                  0.7438
+                ],
+                "rate": 0.6333,
+                "total": 60
+              },
+              "fn": 5,
+              "fp": 11,
+              "gold_fill_rate": {
+                "hits": 32,
+                "interval": [
+                  0.4089,
+                  0.6537
+                ],
+                "rate": 0.5333,
+                "total": 60
+              },
+              "tp": 27
+            }
+          },
+          "key_terms": {
+            "hits": 89,
+            "interval": [
+              0.7181,
+              0.8653
+            ],
+            "rate": 0.8018,
+            "total": 111
+          },
+          "month_exact": {
+            "hits": 22,
+            "interval": [
+              0.7004,
+              0.9583
+            ],
+            "rate": 0.88,
+            "total": 25
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "future": {
+              "hits": 7,
+              "interval": [
+                0.6457,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 7
+            },
+            "hypothetical": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "negation": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            },
+            "plan": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            }
+          },
+          "scripts": 60,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 12,
+            "ids": [
+              "note-11-013",
+              "note-11-021",
+              "note-11-026",
+              "note-11-035",
+              "note-11-046",
+              "note-11-051",
+              "note-11-075",
+              "note-11-086",
+              "note-11-096",
+              "note-11-101",
+              "note-11-121",
+              "note-11-141"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 12,
+            "ids": [
+              "note-11-013",
+              "note-11-021",
+              "note-11-026",
+              "note-11-035",
+              "note-11-046",
+              "note-11-051",
+              "note-11-075",
+              "note-11-086",
+              "note-11-096",
+              "note-11-101",
+              "note-11-121",
+              "note-11-141"
+            ]
+          }
+        },
+        "unseen": {
+          "actions": {
+            "precision": {
+              "hits": 26,
+              "interval": [
+                0.7361,
+                0.9642
+              ],
+              "rate": 0.8966,
+              "total": 29
+            },
+            "recall": {
+              "hits": 26,
+              "interval": [
+                0.4225,
+                0.6979
+              ],
+              "rate": 0.5652,
+              "total": 46
+            }
+          },
+          "authority_exact": {
+            "hits": 45,
+            "interval": [
+              0.6534,
+              0.8641
+            ],
+            "rate": 0.7759,
+            "total": 58
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.8108,
+              "f1_interval": [
+                0.7143,
+                0.9027
+              ],
+              "fill_rate": {
+                "hits": 53,
+                "interval": [
+                  0.4856,
+                  0.6849
+                ],
+                "rate": 0.5889,
+                "total": 90
+              },
+              "fn": 13,
+              "fp": 8,
+              "gold_fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "tp": 45
+            },
+            "budget": {
+              "f1": 0.8475,
+              "f1_interval": [
+                0.75,
+                0.9322
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 9,
+              "fp": 9,
+              "gold_fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "tp": 50
+            },
+            "need": {
+              "f1": 0.8571,
+              "f1_interval": [
+                0.7731,
+                0.9302
+              ],
+              "fill_rate": {
+                "hits": 66,
+                "interval": [
+                  0.6338,
+                  0.8138
+                ],
+                "rate": 0.7333,
+                "total": 90
+              },
+              "fn": 6,
+              "fp": 12,
+              "gold_fill_rate": {
+                "hits": 60,
+                "interval": [
+                  0.5642,
+                  0.7555
+                ],
+                "rate": 0.6667,
+                "total": 90
+              },
+              "tp": 54
+            },
+            "timeline": {
+              "f1": 0.8596,
+              "f1_interval": [
+                0.7742,
+                0.9322
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 6,
+              "fp": 10,
+              "gold_fill_rate": {
+                "hits": 55,
+                "interval": [
+                  0.5078,
+                  0.7053
+                ],
+                "rate": 0.6111,
+                "total": 90
+              },
+              "tp": 49
+            }
+          },
+          "key_terms": {
+            "hits": 170,
+            "interval": [
+              0.8127,
+              0.9078
+            ],
+            "rate": 0.8673,
+            "total": 196
+          },
+          "month_exact": {
+            "hits": 39,
+            "interval": [
+              0.7382,
+              0.9374
+            ],
+            "rate": 0.8667,
+            "total": 45
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 8,
+              "interval": [
+                0.4902,
+                0.9433
+              ],
+              "rate": 0.8,
+              "total": 10
+            },
+            "future": {
+              "hits": 7,
+              "interval": [
+                0.5291,
+                0.9776
+              ],
+              "rate": 0.875,
+              "total": 8
+            },
+            "hypothetical": {
+              "hits": 10,
+              "interval": [
+                0.7225,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 10
+            },
+            "negation": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            },
+            "plan": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            }
+          },
+          "scripts": 90,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 15,
+            "ids": [
+              "note-11-007",
+              "note-11-050",
+              "note-11-062",
+              "note-11-063",
+              "note-11-064",
+              "note-11-070",
+              "note-11-080",
+              "note-11-085",
+              "note-11-093",
+              "note-11-094",
+              "note-11-116",
+              "note-11-120",
+              "note-11-138",
+              "note-11-146",
+              "note-11-150"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 23,
+            "ids": [
+              "note-11-007",
+              "note-11-010",
+              "note-11-038",
+              "note-11-040",
+              "note-11-042",
+              "note-11-050",
+              "note-11-062",
+              "note-11-063",
+              "note-11-064",
+              "note-11-070",
+              "note-11-080",
+              "note-11-083",
+              "note-11-085",
+              "note-11-093",
+              "note-11-094",
+              "note-11-100",
+              "note-11-110",
+              "note-11-116",
+              "note-11-120",
+              "note-11-135",
+              "note-11-138",
+              "note-11-146",
+              "note-11-150"
+            ]
+          }
+        }
+      },
+      "seed": 11,
+      "size": "base.en",
+      "structured_output": true,
+      "unanswered": [],
+      "wer": {
+        "errors": 930,
+        "wer": 0.2165,
+        "words": 4296
+      },
+      "whisper_revision": "3d3d5dee26484f91867d81cb899cfcf72b96be6c"
+    },
+    "small.en-clean": {
+      "calls": {
+        "calls": 150,
+        "completion_tokens": 27424,
+        "cost_usd": "0.041546",
+        "failed": 0,
+        "json_prompt_calls": 0,
+        "ledger_usd": "0.000000",
+        "ok": 150,
+        "prompt_tokens": 278303
+      },
+      "complete": true,
+      "compute": {
+        "audio_seconds": 1600.152,
+        "clips": 150,
+        "compute_seconds": 326.698,
+        "per_minute": 12.25
+      },
+      "condition": "clean",
+      "machine": "Apple M5, Darwin arm64",
+      "mode": "replay",
+      "model": "claude-haiku-5-5",
+      "not_transcribed": [],
+      "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+      "record_pass": {
+        "answers": 136,
+        "failed": 2,
+        "ledger_usd": "0.038886",
+        "passes": 1,
+        "reused": 14,
+        "stopped": 0
+      },
+      "score": {
+        "all": {
+          "actions": {
+            "precision": {
+              "hits": 56,
+              "interval": [
+                0.8407,
+                0.9738
+              ],
+              "rate": 0.9333,
+              "total": 60
+            },
+            "recall": {
+              "hits": 56,
+              "interval": [
+                0.6379,
+                0.8314
+              ],
+              "rate": 0.7467,
+              "total": 75
+            }
+          },
+          "authority_exact": {
+            "hits": 86,
+            "interval": [
+              0.9377,
+              0.998
+            ],
+            "rate": 0.9885,
+            "total": 87
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 0.9942,
+              "f1_interval": [
+                0.9811,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 86,
+                "interval": [
+                  0.4933,
+                  0.6497
+                ],
+                "rate": 0.5733,
+                "total": 150
+              },
+              "fn": 1,
+              "fp": 0,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 86
+            },
+            "budget": {
+              "f1": 0.9655,
+              "f1_interval": [
+                0.9211,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "fn": 3,
+              "fp": 3,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 84
+            },
+            "need": {
+              "f1": 0.934,
+              "f1_interval": [
+                0.8876,
+                0.9703
+              ],
+              "fill_rate": {
+                "hits": 103,
+                "interval": [
+                  0.6086,
+                  0.7555
+                ],
+                "rate": 0.6867,
+                "total": 150
+              },
+              "fn": 2,
+              "fp": 11,
+              "gold_fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "tp": 92
+            },
+            "timeline": {
+              "f1": 0.895,
+              "f1_interval": [
+                0.8333,
+                0.9479
+              ],
+              "fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "fn": 6,
+              "fp": 13,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 81
+            }
+          },
+          "floors": [
+            {
+              "floor": ">= 0.85",
+              "measure": "budget F1",
+              "met": true,
+              "value": 0.9655
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority F1",
+              "met": true,
+              "value": 0.9942
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "need F1",
+              "met": true,
+              "value": 0.934
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline F1",
+              "met": true,
+              "value": 0.895
+            },
+            {
+              "floor": ">= 0.8",
+              "measure": "key-term recall",
+              "met": true,
+              "value": 0.9479
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority exact",
+              "met": true,
+              "value": 0.9885
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline month exact",
+              "met": true,
+              "value": 0.9286
+            },
+            {
+              "floor": "<= 1",
+              "measure": "notes with an unsupported number or name, names by sound",
+              "met": false,
+              "value": 8
+            }
+          ],
+          "key_terms": {
+            "hits": 291,
+            "interval": [
+              0.917,
+              0.9677
+            ],
+            "rate": 0.9479,
+            "total": 307
+          },
+          "month_exact": {
+            "hits": 65,
+            "interval": [
+              0.8434,
+              0.9691
+            ],
+            "rate": 0.9286,
+            "total": 70
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 13,
+              "interval": [
+                0.6212,
+                0.9626
+              ],
+              "rate": 0.8667,
+              "total": 15
+            },
+            "future": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "hypothetical": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "negation": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "plan": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            }
+          },
+          "scripts": 150,
+          "strict": {
+            "floor": "reported",
+            "measure": "notes with an unsupported number or name, names by spelling",
+            "met": null,
+            "value": 16
+          },
+          "unreadable": 0,
+          "unsupported": {
+            "count": 8,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-029",
+              "note-11-076",
+              "note-11-078",
+              "note-11-080",
+              "note-11-089",
+              "note-11-145"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 16,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-010",
+              "note-11-029",
+              "note-11-035",
+              "note-11-040",
+              "note-11-042",
+              "note-11-076",
+              "note-11-078",
+              "note-11-080",
+              "note-11-083",
+              "note-11-089",
+              "note-11-101",
+              "note-11-110",
+              "note-11-135",
+              "note-11-145"
+            ]
+          }
+        },
+        "seen": {
+          "actions": {
+            "precision": {
+              "hits": 20,
+              "interval": [
+                0.8389,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 20
+            },
+            "recall": {
+              "hits": 20,
+              "interval": [
+                0.5077,
+                0.8272
+              ],
+              "rate": 0.6897,
+              "total": 29
+            }
+          },
+          "authority_exact": {
+            "hits": 29,
+            "interval": [
+              0.883,
+              1.0
+            ],
+            "rate": 1.0,
+            "total": 29
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 1.0,
+              "f1_interval": [
+                1.0,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "fn": 0,
+              "fp": 0,
+              "gold_fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "tp": 29
+            },
+            "budget": {
+              "f1": 1.0,
+              "f1_interval": [
+                1.0,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "fn": 0,
+              "fp": 0,
+              "gold_fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "tp": 28
+            },
+            "need": {
+              "f1": 0.9296,
+              "f1_interval": [
+                0.8462,
+                0.9873
+              ],
+              "fill_rate": {
+                "hits": 37,
+                "interval": [
+                  0.4902,
+                  0.7291
+                ],
+                "rate": 0.6167,
+                "total": 60
+              },
+              "fn": 1,
+              "fp": 4,
+              "gold_fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "tp": 33
+            },
+            "timeline": {
+              "f1": 0.8955,
+              "f1_interval": [
+                0.7879,
+                0.9744
+              ],
+              "fill_rate": {
+                "hits": 35,
+                "interval": [
+                  0.4573,
+                  0.6994
+                ],
+                "rate": 0.5833,
+                "total": 60
+              },
+              "fn": 2,
+              "fp": 5,
+              "gold_fill_rate": {
+                "hits": 32,
+                "interval": [
+                  0.4089,
+                  0.6537
+                ],
+                "rate": 0.5333,
+                "total": 60
+              },
+              "tp": 30
+            }
+          },
+          "key_terms": {
+            "hits": 107,
+            "interval": [
+              0.911,
+              0.9859
+            ],
+            "rate": 0.964,
+            "total": 111
+          },
+          "month_exact": {
+            "hits": 24,
+            "interval": [
+              0.8046,
+              0.9929
+            ],
+            "rate": 0.96,
+            "total": 25
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "future": {
+              "hits": 7,
+              "interval": [
+                0.6457,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 7
+            },
+            "hypothetical": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "negation": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            },
+            "plan": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            }
+          },
+          "scripts": 60,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 1,
+            "ids": [
+              "note-11-089"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 3,
+            "ids": [
+              "note-11-035",
+              "note-11-089",
+              "note-11-101"
+            ]
+          }
+        },
+        "unseen": {
+          "actions": {
+            "precision": {
+              "hits": 36,
+              "interval": [
+                0.7695,
+                0.9604
+              ],
+              "rate": 0.9,
+              "total": 40
+            },
+            "recall": {
+              "hits": 36,
+              "interval": [
+                0.6443,
+                0.8774
+              ],
+              "rate": 0.7826,
+              "total": 46
+            }
+          },
+          "authority_exact": {
+            "hits": 57,
+            "interval": [
+              0.9086,
+              0.9969
+            ],
+            "rate": 0.9828,
+            "total": 58
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.9913,
+              "f1_interval": [
+                0.9709,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 57,
+                "interval": [
+                  0.5302,
+                  0.7255
+                ],
+                "rate": 0.6333,
+                "total": 90
+              },
+              "fn": 1,
+              "fp": 0,
+              "gold_fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "tp": 57
+            },
+            "budget": {
+              "f1": 0.9492,
+              "f1_interval": [
+                0.8846,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 3,
+              "fp": 3,
+              "gold_fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "tp": 56
+            },
+            "need": {
+              "f1": 0.9365,
+              "f1_interval": [
+                0.885,
+                0.9778
+              ],
+              "fill_rate": {
+                "hits": 66,
+                "interval": [
+                  0.6338,
+                  0.8138
+                ],
+                "rate": 0.7333,
+                "total": 90
+              },
+              "fn": 1,
+              "fp": 7,
+              "gold_fill_rate": {
+                "hits": 60,
+                "interval": [
+                  0.5642,
+                  0.7555
+                ],
+                "rate": 0.6667,
+                "total": 90
+              },
+              "tp": 59
+            },
+            "timeline": {
+              "f1": 0.8947,
+              "f1_interval": [
+                0.8182,
+                0.9615
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 4,
+              "fp": 8,
+              "gold_fill_rate": {
+                "hits": 55,
+                "interval": [
+                  0.5078,
+                  0.7053
+                ],
+                "rate": 0.6111,
+                "total": 90
+              },
+              "tp": 51
+            }
+          },
+          "key_terms": {
+            "hits": 184,
+            "interval": [
+              0.896,
+              0.9646
+            ],
+            "rate": 0.9388,
+            "total": 196
+          },
+          "month_exact": {
+            "hits": 41,
+            "interval": [
+              0.7927,
+              0.9649
+            ],
+            "rate": 0.9111,
+            "total": 45
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 8,
+              "interval": [
+                0.4902,
+                0.9433
+              ],
+              "rate": 0.8,
+              "total": 10
+            },
+            "future": {
+              "hits": 8,
+              "interval": [
+                0.6756,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 8
+            },
+            "hypothetical": {
+              "hits": 10,
+              "interval": [
+                0.7225,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 10
+            },
+            "negation": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            },
+            "plan": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            }
+          },
+          "scripts": 90,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 7,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-029",
+              "note-11-076",
+              "note-11-078",
+              "note-11-080",
+              "note-11-145"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 13,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-010",
+              "note-11-029",
+              "note-11-040",
+              "note-11-042",
+              "note-11-076",
+              "note-11-078",
+              "note-11-080",
+              "note-11-083",
+              "note-11-110",
+              "note-11-135",
+              "note-11-145"
+            ]
+          }
+        }
+      },
+      "seed": 11,
+      "size": "small.en",
+      "structured_output": true,
+      "unanswered": [],
+      "wer": {
+        "errors": 273,
+        "wer": 0.0635,
+        "words": 4296
+      },
+      "whisper_revision": "d1d751a5f8271d482d14ca55d9e2deeebbae577f"
+    },
+    "small.en-degraded": {
+      "calls": {
+        "calls": 150,
+        "completion_tokens": 27209,
+        "cost_usd": "0.041436",
+        "failed": 0,
+        "json_prompt_calls": 0,
+        "ledger_usd": "0.000000",
+        "ok": 150,
+        "prompt_tokens": 278248
+      },
+      "complete": true,
+      "compute": {
+        "audio_seconds": 1614.419,
+        "clips": 150,
+        "compute_seconds": 325.386,
+        "per_minute": 12.09
+      },
+      "condition": "degraded",
+      "machine": "Apple M5, Darwin arm64",
+      "mode": "replay",
+      "model": "claude-haiku-5-5",
+      "not_transcribed": [],
+      "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+      "record_pass": {
+        "answers": 148,
+        "failed": 0,
+        "ledger_usd": "0.040938",
+        "passes": 1,
+        "reused": 2,
+        "stopped": 0
+      },
+      "score": {
+        "all": {
+          "actions": {
+            "precision": {
+              "hits": 51,
+              "interval": [
+                0.7888,
+                0.9509
+              ],
+              "rate": 0.8947,
+              "total": 57
+            },
+            "recall": {
+              "hits": 51,
+              "interval": [
+                0.5679,
+                0.7746
+              ],
+              "rate": 0.68,
+              "total": 75
+            }
+          },
+          "authority_exact": {
+            "hits": 67,
+            "interval": [
+              0.6714,
+              0.846
+            ],
+            "rate": 0.7701,
+            "total": 87
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 0.7976,
+              "f1_interval": [
+                0.7111,
+                0.8765
+              ],
+              "fill_rate": {
+                "hits": 81,
+                "interval": [
+                  0.4602,
+                  0.6178
+                ],
+                "rate": 0.54,
+                "total": 150
+              },
+              "fn": 20,
+              "fp": 14,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 67
+            },
+            "budget": {
+              "f1": 0.8621,
+              "f1_interval": [
+                0.7872,
+                0.9286
+              ],
+              "fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "fn": 12,
+              "fp": 12,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 75
+            },
+            "need": {
+              "f1": 0.8513,
+              "f1_interval": [
+                0.7831,
+                0.9128
+              ],
+              "fill_rate": {
+                "hits": 101,
+                "interval": [
+                  0.5948,
+                  0.7432
+                ],
+                "rate": 0.6733,
+                "total": 150
+              },
+              "fn": 11,
+              "fp": 18,
+              "gold_fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "tp": 83
+            },
+            "timeline": {
+              "f1": 0.8778,
+              "f1_interval": [
+                0.8122,
+                0.9333
+              ],
+              "fill_rate": {
+                "hits": 93,
+                "interval": [
+                  0.5402,
+                  0.6938
+                ],
+                "rate": 0.62,
+                "total": 150
+              },
+              "fn": 8,
+              "fp": 14,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 79
+            }
+          },
+          "floors": [
+            {
+              "floor": ">= 0.85",
+              "measure": "budget F1",
+              "met": true,
+              "value": 0.8621
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority F1",
+              "met": false,
+              "value": 0.7976
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "need F1",
+              "met": true,
+              "value": 0.8513
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline F1",
+              "met": true,
+              "value": 0.8778
+            },
+            {
+              "floor": ">= 0.8",
+              "measure": "key-term recall",
+              "met": true,
+              "value": 0.8762
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority exact",
+              "met": false,
+              "value": 0.7701
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline month exact",
+              "met": true,
+              "value": 0.9
+            },
+            {
+              "floor": "<= 1",
+              "measure": "notes with an unsupported number or name, names by sound",
+              "met": false,
+              "value": 23
+            }
+          ],
+          "key_terms": {
+            "hits": 269,
+            "interval": [
+              0.8347,
+              0.9085
+            ],
+            "rate": 0.8762,
+            "total": 307
+          },
+          "month_exact": {
+            "hits": 63,
+            "interval": [
+              0.8077,
+              0.9507
+            ],
+            "rate": 0.9,
+            "total": 70
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 14,
+              "interval": [
+                0.7018,
+                0.9881
+              ],
+              "rate": 0.9333,
+              "total": 15
+            },
+            "future": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "hypothetical": {
+              "hits": 13,
+              "interval": [
+                0.6212,
+                0.9626
+              ],
+              "rate": 0.8667,
+              "total": 15
+            },
+            "negation": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "plan": {
+              "hits": 14,
+              "interval": [
+                0.7018,
+                0.9881
+              ],
+              "rate": 0.9333,
+              "total": 15
+            }
+          },
+          "scripts": 150,
+          "strict": {
+            "floor": "reported",
+            "measure": "notes with an unsupported number or name, names by spelling",
+            "met": null,
+            "value": 30
+          },
+          "unreadable": 0,
+          "unsupported": {
+            "count": 23,
+            "ids": [
+              "note-11-004",
+              "note-11-009",
+              "note-11-013",
+              "note-11-021",
+              "note-11-034",
+              "note-11-046",
+              "note-11-050",
+              "note-11-066",
+              "note-11-068",
+              "note-11-070",
+              "note-11-074",
+              "note-11-076",
+              "note-11-078",
+              "note-11-093",
+              "note-11-101",
+              "note-11-113",
+              "note-11-116",
+              "note-11-117",
+              "note-11-119",
+              "note-11-120",
+              "note-11-124",
+              "note-11-141",
+              "note-11-146"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 30,
+            "ids": [
+              "note-11-004",
+              "note-11-009",
+              "note-11-013",
+              "note-11-021",
+              "note-11-034",
+              "note-11-035",
+              "note-11-040",
+              "note-11-042",
+              "note-11-046",
+              "note-11-050",
+              "note-11-066",
+              "note-11-068",
+              "note-11-070",
+              "note-11-074",
+              "note-11-076",
+              "note-11-078",
+              "note-11-083",
+              "note-11-089",
+              "note-11-093",
+              "note-11-101",
+              "note-11-110",
+              "note-11-113",
+              "note-11-116",
+              "note-11-117",
+              "note-11-119",
+              "note-11-120",
+              "note-11-124",
+              "note-11-135",
+              "note-11-141",
+              "note-11-146"
+            ]
+          }
+        },
+        "seen": {
+          "actions": {
+            "precision": {
+              "hits": 21,
+              "interval": [
+                0.69,
+                0.9566
+              ],
+              "rate": 0.875,
+              "total": 24
+            },
+            "recall": {
+              "hits": 21,
+              "interval": [
+                0.5428,
+                0.853
+              ],
+              "rate": 0.7241,
+              "total": 29
+            }
+          },
+          "authority_exact": {
+            "hits": 21,
+            "interval": [
+              0.5428,
+              0.853
+            ],
+            "rate": 0.7241,
+            "total": 29
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 0.75,
+              "f1_interval": [
+                0.5862,
+                0.8966
+              ],
+              "fill_rate": {
+                "hits": 27,
+                "interval": [
+                  0.3309,
+                  0.5751
+                ],
+                "rate": 0.45,
+                "total": 60
+              },
+              "fn": 8,
+              "fp": 6,
+              "gold_fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "tp": 21
+            },
+            "budget": {
+              "f1": 0.8929,
+              "f1_interval": [
+                0.7619,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "fn": 3,
+              "fp": 3,
+              "gold_fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "tp": 25
+            },
+            "need": {
+              "f1": 0.8235,
+              "f1_interval": [
+                0.6933,
+                0.9333
+              ],
+              "fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "fn": 6,
+              "fp": 6,
+              "gold_fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "tp": 28
+            },
+            "timeline": {
+              "f1": 0.806,
+              "f1_interval": [
+                0.6667,
+                0.9153
+              ],
+              "fill_rate": {
+                "hits": 35,
+                "interval": [
+                  0.4573,
+                  0.6994
+                ],
+                "rate": 0.5833,
+                "total": 60
+              },
+              "fn": 5,
+              "fp": 8,
+              "gold_fill_rate": {
+                "hits": 32,
+                "interval": [
+                  0.4089,
+                  0.6537
+                ],
+                "rate": 0.5333,
+                "total": 60
+              },
+              "tp": 27
+            }
+          },
+          "key_terms": {
+            "hits": 95,
+            "interval": [
+              0.7786,
+              0.9093
+            ],
+            "rate": 0.8559,
+            "total": 111
+          },
+          "month_exact": {
+            "hits": 21,
+            "interval": [
+              0.6535,
+              0.936
+            ],
+            "rate": 0.84,
+            "total": 25
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "future": {
+              "hits": 7,
+              "interval": [
+                0.6457,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 7
+            },
+            "hypothetical": {
+              "hits": 3,
+              "interval": [
+                0.2307,
+                0.8824
+              ],
+              "rate": 0.6,
+              "total": 5
+            },
+            "negation": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            },
+            "plan": {
+              "hits": 5,
+              "interval": [
+                0.4365,
+                0.9699
+              ],
+              "rate": 0.8333,
+              "total": 6
+            }
+          },
+          "scripts": 60,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 6,
+            "ids": [
+              "note-11-013",
+              "note-11-021",
+              "note-11-046",
+              "note-11-101",
+              "note-11-124",
+              "note-11-141"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 8,
+            "ids": [
+              "note-11-013",
+              "note-11-021",
+              "note-11-035",
+              "note-11-046",
+              "note-11-089",
+              "note-11-101",
+              "note-11-124",
+              "note-11-141"
+            ]
+          }
+        },
+        "unseen": {
+          "actions": {
+            "precision": {
+              "hits": 30,
+              "interval": [
+                0.7643,
+                0.9686
+              ],
+              "rate": 0.9091,
+              "total": 33
+            },
+            "recall": {
+              "hits": 30,
+              "interval": [
+                0.5077,
+                0.7732
+              ],
+              "rate": 0.6522,
+              "total": 46
+            }
+          },
+          "authority_exact": {
+            "hits": 46,
+            "interval": [
+              0.6723,
+              0.8775
+            ],
+            "rate": 0.7931,
+            "total": 58
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.8214,
+              "f1_interval": [
+                0.7156,
+                0.9143
+              ],
+              "fill_rate": {
+                "hits": 54,
+                "interval": [
+                  0.4967,
+                  0.6951
+                ],
+                "rate": 0.6,
+                "total": 90
+              },
+              "fn": 12,
+              "fp": 8,
+              "gold_fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "tp": 46
+            },
+            "budget": {
+              "f1": 0.8475,
+              "f1_interval": [
+                0.75,
+                0.9365
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 9,
+              "fp": 9,
+              "gold_fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "tp": 50
+            },
+            "need": {
+              "f1": 0.8661,
+              "f1_interval": [
+                0.7899,
+                0.9355
+              ],
+              "fill_rate": {
+                "hits": 67,
+                "interval": [
+                  0.6456,
+                  0.8233
+                ],
+                "rate": 0.7444,
+                "total": 90
+              },
+              "fn": 5,
+              "fp": 12,
+              "gold_fill_rate": {
+                "hits": 60,
+                "interval": [
+                  0.5642,
+                  0.7555
+                ],
+                "rate": 0.6667,
+                "total": 90
+              },
+              "tp": 55
+            },
+            "timeline": {
+              "f1": 0.9204,
+              "f1_interval": [
+                0.8519,
+                0.9744
+              ],
+              "fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "fn": 3,
+              "fp": 6,
+              "gold_fill_rate": {
+                "hits": 55,
+                "interval": [
+                  0.5078,
+                  0.7053
+                ],
+                "rate": 0.6111,
+                "total": 90
+              },
+              "tp": 52
+            }
+          },
+          "key_terms": {
+            "hits": 174,
+            "interval": [
+              0.8359,
+              0.9247
+            ],
+            "rate": 0.8878,
+            "total": 196
+          },
+          "month_exact": {
+            "hits": 42,
+            "interval": [
+              0.8214,
+              0.9771
+            ],
+            "rate": 0.9333,
+            "total": 45
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 9,
+              "interval": [
+                0.5958,
+                0.9821
+              ],
+              "rate": 0.9,
+              "total": 10
+            },
+            "future": {
+              "hits": 8,
+              "interval": [
+                0.6756,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 8
+            },
+            "hypothetical": {
+              "hits": 10,
+              "interval": [
+                0.7225,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 10
+            },
+            "negation": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            },
+            "plan": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            }
+          },
+          "scripts": 90,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 17,
+            "ids": [
+              "note-11-004",
+              "note-11-009",
+              "note-11-034",
+              "note-11-050",
+              "note-11-066",
+              "note-11-068",
+              "note-11-070",
+              "note-11-074",
+              "note-11-076",
+              "note-11-078",
+              "note-11-093",
+              "note-11-113",
+              "note-11-116",
+              "note-11-117",
+              "note-11-119",
+              "note-11-120",
+              "note-11-146"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 22,
+            "ids": [
+              "note-11-004",
+              "note-11-009",
+              "note-11-034",
+              "note-11-040",
+              "note-11-042",
+              "note-11-050",
+              "note-11-066",
+              "note-11-068",
+              "note-11-070",
+              "note-11-074",
+              "note-11-076",
+              "note-11-078",
+              "note-11-083",
+              "note-11-093",
+              "note-11-110",
+              "note-11-113",
+              "note-11-116",
+              "note-11-117",
+              "note-11-119",
+              "note-11-120",
+              "note-11-135",
+              "note-11-146"
+            ]
+          }
+        }
+      },
+      "seed": 11,
+      "size": "small.en",
+      "structured_output": true,
+      "unanswered": [],
+      "wer": {
+        "errors": 663,
+        "wer": 0.1543,
+        "words": 4296
+      },
+      "whisper_revision": "d1d751a5f8271d482d14ca55d9e2deeebbae577f"
+    },
+    "tiny.en-clean": {
+      "calls": {
+        "calls": 150,
+        "completion_tokens": 27003,
+        "cost_usd": "0.041316",
+        "failed": 0,
+        "json_prompt_calls": 0,
+        "ledger_usd": "0.000000",
+        "ok": 150,
+        "prompt_tokens": 278125
+      },
+      "complete": true,
+      "compute": {
+        "audio_seconds": 1600.152,
+        "clips": 150,
+        "compute_seconds": 62.253,
+        "per_minute": 2.33
+      },
+      "condition": "clean",
+      "machine": "Apple M5, Darwin arm64",
+      "mode": "replay",
+      "model": "claude-haiku-5-5",
+      "not_transcribed": [],
+      "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+      "record_pass": {
+        "answers": 135,
+        "failed": 0,
+        "ledger_usd": "0.037443",
+        "passes": 1,
+        "reused": 15,
+        "stopped": 0
+      },
+      "score": {
+        "all": {
+          "actions": {
+            "precision": {
+              "hits": 52,
+              "interval": [
+                0.8106,
+                0.9619
+              ],
+              "rate": 0.9123,
+              "total": 57
+            },
+            "recall": {
+              "hits": 52,
+              "interval": [
+                0.5817,
+                0.7861
+              ],
+              "rate": 0.6933,
+              "total": 75
+            }
+          },
+          "authority_exact": {
+            "hits": 82,
+            "interval": [
+              0.8724,
+              0.9752
+            ],
+            "rate": 0.9425,
+            "total": 87
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 0.9591,
+              "f1_interval": [
+                0.9193,
+                0.9937
+              ],
+              "fill_rate": {
+                "hits": 84,
+                "interval": [
+                  0.48,
+                  0.637
+                ],
+                "rate": 0.56,
+                "total": 150
+              },
+              "fn": 5,
+              "fp": 2,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 82
+            },
+            "budget": {
+              "f1": 0.8736,
+              "f1_interval": [
+                0.8,
+                0.9412
+              ],
+              "fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "fn": 11,
+              "fp": 11,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 76
+            },
+            "need": {
+              "f1": 0.8657,
+              "f1_interval": [
+                0.8021,
+                0.9238
+              ],
+              "fill_rate": {
+                "hits": 107,
+                "interval": [
+                  0.6364,
+                  0.7797
+                ],
+                "rate": 0.7133,
+                "total": 150
+              },
+              "fn": 7,
+              "fp": 20,
+              "gold_fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "tp": 87
+            },
+            "timeline": {
+              "f1": 0.884,
+              "f1_interval": [
+                0.8199,
+                0.9405
+              ],
+              "fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "fn": 7,
+              "fp": 14,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 80
+            }
+          },
+          "floors": [
+            {
+              "floor": ">= 0.85",
+              "measure": "budget F1",
+              "met": true,
+              "value": 0.8736
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority F1",
+              "met": true,
+              "value": 0.9591
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "need F1",
+              "met": true,
+              "value": 0.8657
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline F1",
+              "met": true,
+              "value": 0.884
+            },
+            {
+              "floor": ">= 0.8",
+              "measure": "key-term recall",
+              "met": true,
+              "value": 0.9218
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority exact",
+              "met": true,
+              "value": 0.9425
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline month exact",
+              "met": true,
+              "value": 0.9143
+            },
+            {
+              "floor": "<= 1",
+              "measure": "notes with an unsupported number or name, names by sound",
+              "met": false,
+              "value": 20
+            }
+          ],
+          "key_terms": {
+            "hits": 283,
+            "interval": [
+              0.8863,
+              0.9469
+            ],
+            "rate": 0.9218,
+            "total": 307
+          },
+          "month_exact": {
+            "hits": 64,
+            "interval": [
+              0.8253,
+              0.9601
+            ],
+            "rate": 0.9143,
+            "total": 70
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 11,
+              "interval": [
+                0.4805,
+                0.891
+              ],
+              "rate": 0.7333,
+              "total": 15
+            },
+            "future": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "hypothetical": {
+              "hits": 14,
+              "interval": [
+                0.7018,
+                0.9881
+              ],
+              "rate": 0.9333,
+              "total": 15
+            },
+            "negation": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "plan": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            }
+          },
+          "scripts": 150,
+          "strict": {
+            "floor": "reported",
+            "measure": "notes with an unsupported number or name, names by spelling",
+            "met": null,
+            "value": 25
+          },
+          "unreadable": 0,
+          "unsupported": {
+            "count": 20,
+            "ids": [
+              "note-11-003",
+              "note-11-008",
+              "note-11-029",
+              "note-11-033",
+              "note-11-040",
+              "note-11-050",
+              "note-11-054",
+              "note-11-057",
+              "note-11-063",
+              "note-11-071",
+              "note-11-078",
+              "note-11-079",
+              "note-11-080",
+              "note-11-088",
+              "note-11-091",
+              "note-11-101",
+              "note-11-110",
+              "note-11-117",
+              "note-11-140",
+              "note-11-145"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 25,
+            "ids": [
+              "note-11-003",
+              "note-11-008",
+              "note-11-029",
+              "note-11-033",
+              "note-11-035",
+              "note-11-040",
+              "note-11-042",
+              "note-11-050",
+              "note-11-054",
+              "note-11-057",
+              "note-11-063",
+              "note-11-071",
+              "note-11-078",
+              "note-11-079",
+              "note-11-080",
+              "note-11-088",
+              "note-11-091",
+              "note-11-095",
+              "note-11-100",
+              "note-11-101",
+              "note-11-110",
+              "note-11-117",
+              "note-11-135",
+              "note-11-140",
+              "note-11-145"
+            ]
+          }
+        },
+        "seen": {
+          "actions": {
+            "precision": {
+              "hits": 21,
+              "interval": [
+                0.8454,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 21
+            },
+            "recall": {
+              "hits": 21,
+              "interval": [
+                0.5428,
+                0.853
+              ],
+              "rate": 0.7241,
+              "total": 29
+            }
+          },
+          "authority_exact": {
+            "hits": 29,
+            "interval": [
+              0.883,
+              1.0
+            ],
+            "rate": 1.0,
+            "total": 29
+          },
+          "copied_fields": 1,
+          "fields": {
+            "authority": {
+              "f1": 1.0,
+              "f1_interval": [
+                1.0,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "fn": 0,
+              "fp": 0,
+              "gold_fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "tp": 29
+            },
+            "budget": {
+              "f1": 0.9643,
+              "f1_interval": [
+                0.8846,
+                1.0
+              ],
+              "fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "fn": 1,
+              "fp": 1,
+              "gold_fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "tp": 27
+            },
+            "need": {
+              "f1": 0.8611,
+              "f1_interval": [
+                0.7536,
+                0.9552
+              ],
+              "fill_rate": {
+                "hits": 38,
+                "interval": [
+                  0.5068,
+                  0.7438
+                ],
+                "rate": 0.6333,
+                "total": 60
+              },
+              "fn": 3,
+              "fp": 7,
+              "gold_fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "tp": 31
+            },
+            "timeline": {
+              "f1": 0.8529,
+              "f1_interval": [
+                0.7333,
+                0.9508
+              ],
+              "fill_rate": {
+                "hits": 36,
+                "interval": [
+                  0.4737,
+                  0.7143
+                ],
+                "rate": 0.6,
+                "total": 60
+              },
+              "fn": 3,
+              "fp": 7,
+              "gold_fill_rate": {
+                "hits": 32,
+                "interval": [
+                  0.4089,
+                  0.6537
+                ],
+                "rate": 0.5333,
+                "total": 60
+              },
+              "tp": 29
+            }
+          },
+          "key_terms": {
+            "hits": 106,
+            "interval": [
+              0.8989,
+              0.9806
+            ],
+            "rate": 0.955,
+            "total": 111
+          },
+          "month_exact": {
+            "hits": 23,
+            "interval": [
+              0.7503,
+              0.9778
+            ],
+            "rate": 0.92,
+            "total": 25
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "future": {
+              "hits": 7,
+              "interval": [
+                0.6457,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 7
+            },
+            "hypothetical": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "negation": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            },
+            "plan": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            }
+          },
+          "scripts": 60,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 3,
+            "ids": [
+              "note-11-003",
+              "note-11-079",
+              "note-11-101"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 4,
+            "ids": [
+              "note-11-003",
+              "note-11-035",
+              "note-11-079",
+              "note-11-101"
+            ]
+          }
+        },
+        "unseen": {
+          "actions": {
+            "precision": {
+              "hits": 31,
+              "interval": [
+                0.7134,
+                0.9392
+              ],
+              "rate": 0.8611,
+              "total": 36
+            },
+            "recall": {
+              "hits": 31,
+              "interval": [
+                0.5297,
+                0.7913
+              ],
+              "rate": 0.6739,
+              "total": 46
+            }
+          },
+          "authority_exact": {
+            "hits": 53,
+            "interval": [
+              0.8136,
+              0.9626
+            ],
+            "rate": 0.9138,
+            "total": 58
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.9381,
+              "f1_interval": [
+                0.8762,
+                0.9836
+              ],
+              "fill_rate": {
+                "hits": 55,
+                "interval": [
+                  0.5078,
+                  0.7053
+                ],
+                "rate": 0.6111,
+                "total": 90
+              },
+              "fn": 5,
+              "fp": 2,
+              "gold_fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "tp": 53
+            },
+            "budget": {
+              "f1": 0.8305,
+              "f1_interval": [
+                0.7333,
+                0.9231
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 10,
+              "fp": 10,
+              "gold_fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "tp": 49
+            },
+            "need": {
+              "f1": 0.8682,
+              "f1_interval": [
+                0.7903,
+                0.9353
+              ],
+              "fill_rate": {
+                "hits": 69,
+                "interval": [
+                  0.6695,
+                  0.842
+                ],
+                "rate": 0.7667,
+                "total": 90
+              },
+              "fn": 4,
+              "fp": 13,
+              "gold_fill_rate": {
+                "hits": 60,
+                "interval": [
+                  0.5642,
+                  0.7555
+                ],
+                "rate": 0.6667,
+                "total": 90
+              },
+              "tp": 56
+            },
+            "timeline": {
+              "f1": 0.9027,
+              "f1_interval": [
+                0.8276,
+                0.9655
+              ],
+              "fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "fn": 4,
+              "fp": 7,
+              "gold_fill_rate": {
+                "hits": 55,
+                "interval": [
+                  0.5078,
+                  0.7053
+                ],
+                "rate": 0.6111,
+                "total": 90
+              },
+              "tp": 51
+            }
+          },
+          "key_terms": {
+            "hits": 177,
+            "interval": [
+              0.8536,
+              0.9371
+            ],
+            "rate": 0.9031,
+            "total": 196
+          },
+          "month_exact": {
+            "hits": 41,
+            "interval": [
+              0.7927,
+              0.9649
+            ],
+            "rate": 0.9111,
+            "total": 45
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 6,
+              "interval": [
+                0.3127,
+                0.8318
+              ],
+              "rate": 0.6,
+              "total": 10
+            },
+            "future": {
+              "hits": 8,
+              "interval": [
+                0.6756,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 8
+            },
+            "hypothetical": {
+              "hits": 9,
+              "interval": [
+                0.5958,
+                0.9821
+              ],
+              "rate": 0.9,
+              "total": 10
+            },
+            "negation": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            },
+            "plan": {
+              "hits": 9,
+              "interval": [
+                0.7009,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 9
+            }
+          },
+          "scripts": 90,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 17,
+            "ids": [
+              "note-11-008",
+              "note-11-029",
+              "note-11-033",
+              "note-11-040",
+              "note-11-050",
+              "note-11-054",
+              "note-11-057",
+              "note-11-063",
+              "note-11-071",
+              "note-11-078",
+              "note-11-080",
+              "note-11-088",
+              "note-11-091",
+              "note-11-110",
+              "note-11-117",
+              "note-11-140",
+              "note-11-145"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 21,
+            "ids": [
+              "note-11-008",
+              "note-11-029",
+              "note-11-033",
+              "note-11-040",
+              "note-11-042",
+              "note-11-050",
+              "note-11-054",
+              "note-11-057",
+              "note-11-063",
+              "note-11-071",
+              "note-11-078",
+              "note-11-080",
+              "note-11-088",
+              "note-11-091",
+              "note-11-095",
+              "note-11-100",
+              "note-11-110",
+              "note-11-117",
+              "note-11-135",
+              "note-11-140",
+              "note-11-145"
+            ]
+          }
+        }
+      },
+      "seed": 11,
+      "size": "tiny.en",
+      "structured_output": true,
+      "unanswered": [],
+      "wer": {
+        "errors": 526,
+        "wer": 0.1224,
+        "words": 4296
+      },
+      "whisper_revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba"
+    },
+    "tiny.en-degraded": {
+      "calls": {
+        "calls": 150,
+        "completion_tokens": 26170,
+        "cost_usd": "0.040885",
+        "failed": 0,
+        "json_prompt_calls": 0,
+        "ledger_usd": "0.000000",
+        "ok": 150,
+        "prompt_tokens": 277992
+      },
+      "complete": true,
+      "compute": {
+        "audio_seconds": 1614.419,
+        "clips": 150,
+        "compute_seconds": 64.373,
+        "per_minute": 2.39
+      },
+      "condition": "degraded",
+      "machine": "Apple M5, Darwin arm64",
+      "mode": "replay",
+      "model": "claude-haiku-5-5",
+      "not_transcribed": [],
+      "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+      "record_pass": {
+        "answers": 149,
+        "failed": 0,
+        "ledger_usd": "0.040646",
+        "passes": 1,
+        "reused": 1,
+        "stopped": 0
+      },
+      "score": {
+        "all": {
+          "actions": {
+            "precision": {
+              "hits": 40,
+              "interval": [
+                0.7433,
+                0.9388
+              ],
+              "rate": 0.8696,
+              "total": 46
+            },
+            "recall": {
+              "hits": 40,
+              "interval": [
+                0.4216,
+                0.6418
+              ],
+              "rate": 0.5333,
+              "total": 75
+            }
+          },
+          "authority_exact": {
+            "hits": 61,
+            "interval": [
+              0.5981,
+              0.7872
+            ],
+            "rate": 0.7011,
+            "total": 87
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.7625,
+              "f1_interval": [
+                0.6667,
+                0.8451
+              ],
+              "fill_rate": {
+                "hits": 73,
+                "interval": [
+                  0.408,
+                  0.566
+                ],
+                "rate": 0.4867,
+                "total": 150
+              },
+              "fn": 26,
+              "fp": 12,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 61
+            },
+            "budget": {
+              "f1": 0.6667,
+              "f1_interval": [
+                0.5696,
+                0.7614
+              ],
+              "fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "fn": 29,
+              "fp": 29,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 58
+            },
+            "need": {
+              "f1": 0.7565,
+              "f1_interval": [
+                0.6667,
+                0.8316
+              ],
+              "fill_rate": {
+                "hits": 99,
+                "interval": [
+                  0.581,
+                  0.731
+                ],
+                "rate": 0.66,
+                "total": 150
+              },
+              "fn": 21,
+              "fp": 26,
+              "gold_fill_rate": {
+                "hits": 94,
+                "interval": [
+                  0.547,
+                  0.7
+                ],
+                "rate": 0.6267,
+                "total": 150
+              },
+              "tp": 73
+            },
+            "timeline": {
+              "f1": 0.7841,
+              "f1_interval": [
+                0.7024,
+                0.8535
+              ],
+              "fill_rate": {
+                "hits": 89,
+                "interval": [
+                  0.5133,
+                  0.6687
+                ],
+                "rate": 0.5933,
+                "total": 150
+              },
+              "fn": 18,
+              "fp": 20,
+              "gold_fill_rate": {
+                "hits": 87,
+                "interval": [
+                  0.5,
+                  0.656
+                ],
+                "rate": 0.58,
+                "total": 150
+              },
+              "tp": 69
+            }
+          },
+          "floors": [
+            {
+              "floor": ">= 0.85",
+              "measure": "budget F1",
+              "met": false,
+              "value": 0.6667
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority F1",
+              "met": false,
+              "value": 0.7625
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "need F1",
+              "met": false,
+              "value": 0.7565
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline F1",
+              "met": false,
+              "value": 0.7841
+            },
+            {
+              "floor": ">= 0.8",
+              "measure": "key-term recall",
+              "met": false,
+              "value": 0.7492
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "authority exact",
+              "met": false,
+              "value": 0.7011
+            },
+            {
+              "floor": ">= 0.85",
+              "measure": "timeline month exact",
+              "met": false,
+              "value": 0.7429
+            },
+            {
+              "floor": "<= 1",
+              "measure": "notes with an unsupported number or name, names by sound",
+              "met": false,
+              "value": 40
+            }
+          ],
+          "key_terms": {
+            "hits": 230,
+            "interval": [
+              0.6978,
+              0.7944
+            ],
+            "rate": 0.7492,
+            "total": 307
+          },
+          "month_exact": {
+            "hits": 52,
+            "interval": [
+              0.6297,
+              0.8307
+            ],
+            "rate": 0.7429,
+            "total": 70
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "future": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "hypothetical": {
+              "hits": 15,
+              "interval": [
+                0.7961,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 15
+            },
+            "negation": {
+              "hits": 13,
+              "interval": [
+                0.6212,
+                0.9626
+              ],
+              "rate": 0.8667,
+              "total": 15
+            },
+            "plan": {
+              "hits": 14,
+              "interval": [
+                0.7018,
+                0.9881
+              ],
+              "rate": 0.9333,
+              "total": 15
+            }
+          },
+          "scripts": 150,
+          "strict": {
+            "floor": "reported",
+            "measure": "notes with an unsupported number or name, names by spelling",
+            "met": null,
+            "value": 41
+          },
+          "unreadable": 0,
+          "unsupported": {
+            "count": 40,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-006",
+              "note-11-012",
+              "note-11-026",
+              "note-11-030",
+              "note-11-033",
+              "note-11-034",
+              "note-11-037",
+              "note-11-040",
+              "note-11-046",
+              "note-11-050",
+              "note-11-051",
+              "note-11-058",
+              "note-11-062",
+              "note-11-063",
+              "note-11-067",
+              "note-11-078",
+              "note-11-081",
+              "note-11-085",
+              "note-11-086",
+              "note-11-087",
+              "note-11-091",
+              "note-11-093",
+              "note-11-094",
+              "note-11-096",
+              "note-11-101",
+              "note-11-104",
+              "note-11-107",
+              "note-11-110",
+              "note-11-112",
+              "note-11-115",
+              "note-11-120",
+              "note-11-124",
+              "note-11-138",
+              "note-11-140",
+              "note-11-141",
+              "note-11-145",
+              "note-11-146",
+              "note-11-149"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 41,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-006",
+              "note-11-012",
+              "note-11-026",
+              "note-11-030",
+              "note-11-033",
+              "note-11-034",
+              "note-11-037",
+              "note-11-040",
+              "note-11-046",
+              "note-11-050",
+              "note-11-051",
+              "note-11-058",
+              "note-11-062",
+              "note-11-063",
+              "note-11-067",
+              "note-11-078",
+              "note-11-081",
+              "note-11-085",
+              "note-11-086",
+              "note-11-087",
+              "note-11-091",
+              "note-11-093",
+              "note-11-094",
+              "note-11-096",
+              "note-11-101",
+              "note-11-104",
+              "note-11-107",
+              "note-11-110",
+              "note-11-112",
+              "note-11-115",
+              "note-11-120",
+              "note-11-124",
+              "note-11-135",
+              "note-11-138",
+              "note-11-140",
+              "note-11-141",
+              "note-11-145",
+              "note-11-146",
+              "note-11-149"
+            ]
+          }
+        },
+        "seen": {
+          "actions": {
+            "precision": {
+              "hits": 14,
+              "interval": [
+                0.7847,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 14
+            },
+            "recall": {
+              "hits": 14,
+              "interval": [
+                0.3139,
+                0.6557
+              ],
+              "rate": 0.4828,
+              "total": 29
+            }
+          },
+          "authority_exact": {
+            "hits": 20,
+            "interval": [
+              0.5077,
+              0.8272
+            ],
+            "rate": 0.6897,
+            "total": 29
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.7547,
+              "f1_interval": [
+                0.5909,
+                0.8889
+              ],
+              "fill_rate": {
+                "hits": 24,
+                "interval": [
+                  0.2857,
+                  0.5263
+                ],
+                "rate": 0.4,
+                "total": 60
+              },
+              "fn": 9,
+              "fp": 4,
+              "gold_fill_rate": {
+                "hits": 29,
+                "interval": [
+                  0.3618,
+                  0.6069
+                ],
+                "rate": 0.4833,
+                "total": 60
+              },
+              "tp": 20
+            },
+            "budget": {
+              "f1": 0.7143,
+              "f1_interval": [
+                0.5405,
+                0.88
+              ],
+              "fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "fn": 8,
+              "fp": 8,
+              "gold_fill_rate": {
+                "hits": 28,
+                "interval": [
+                  0.3463,
+                  0.5911
+                ],
+                "rate": 0.4667,
+                "total": 60
+              },
+              "tp": 20
+            },
+            "need": {
+              "f1": 0.6471,
+              "f1_interval": [
+                0.4865,
+                0.8065
+              ],
+              "fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "fn": 12,
+              "fp": 12,
+              "gold_fill_rate": {
+                "hits": 34,
+                "interval": [
+                  0.441,
+                  0.6843
+                ],
+                "rate": 0.5667,
+                "total": 60
+              },
+              "tp": 22
+            },
+            "timeline": {
+              "f1": 0.7463,
+              "f1_interval": [
+                0.6032,
+                0.8684
+              ],
+              "fill_rate": {
+                "hits": 35,
+                "interval": [
+                  0.4573,
+                  0.6994
+                ],
+                "rate": 0.5833,
+                "total": 60
+              },
+              "fn": 7,
+              "fp": 10,
+              "gold_fill_rate": {
+                "hits": 32,
+                "interval": [
+                  0.4089,
+                  0.6537
+                ],
+                "rate": 0.5333,
+                "total": 60
+              },
+              "tp": 25
+            }
+          },
+          "key_terms": {
+            "hits": 77,
+            "interval": [
+              0.6027,
+              0.7718
+            ],
+            "rate": 0.6937,
+            "total": 111
+          },
+          "month_exact": {
+            "hits": 18,
+            "interval": [
+              0.5242,
+              0.8572
+            ],
+            "rate": 0.72,
+            "total": 25
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "future": {
+              "hits": 7,
+              "interval": [
+                0.6457,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 7
+            },
+            "hypothetical": {
+              "hits": 5,
+              "interval": [
+                0.5655,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 5
+            },
+            "negation": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            },
+            "plan": {
+              "hits": 6,
+              "interval": [
+                0.6097,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 6
+            }
+          },
+          "scripts": 60,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 14,
+            "ids": [
+              "note-11-006",
+              "note-11-026",
+              "note-11-046",
+              "note-11-051",
+              "note-11-058",
+              "note-11-067",
+              "note-11-081",
+              "note-11-086",
+              "note-11-096",
+              "note-11-101",
+              "note-11-104",
+              "note-11-112",
+              "note-11-124",
+              "note-11-141"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 14,
+            "ids": [
+              "note-11-006",
+              "note-11-026",
+              "note-11-046",
+              "note-11-051",
+              "note-11-058",
+              "note-11-067",
+              "note-11-081",
+              "note-11-086",
+              "note-11-096",
+              "note-11-101",
+              "note-11-104",
+              "note-11-112",
+              "note-11-124",
+              "note-11-141"
+            ]
+          }
+        },
+        "unseen": {
+          "actions": {
+            "precision": {
+              "hits": 26,
+              "interval": [
+                0.6469,
+                0.9111
+              ],
+              "rate": 0.8125,
+              "total": 32
+            },
+            "recall": {
+              "hits": 26,
+              "interval": [
+                0.4225,
+                0.6979
+              ],
+              "rate": 0.5652,
+              "total": 46
+            }
+          },
+          "authority_exact": {
+            "hits": 41,
+            "interval": [
+              0.5799,
+              0.8082
+            ],
+            "rate": 0.7069,
+            "total": 58
+          },
+          "copied_fields": 0,
+          "fields": {
+            "authority": {
+              "f1": 0.7664,
+              "f1_interval": [
+                0.6545,
+                0.8624
+              ],
+              "fill_rate": {
+                "hits": 49,
+                "interval": [
+                  0.4418,
+                  0.6434
+                ],
+                "rate": 0.5444,
+                "total": 90
+              },
+              "fn": 17,
+              "fp": 8,
+              "gold_fill_rate": {
+                "hits": 58,
+                "interval": [
+                  0.5415,
+                  0.7356
+                ],
+                "rate": 0.6444,
+                "total": 90
+              },
+              "tp": 41
+            },
+            "budget": {
+              "f1": 0.6441,
+              "f1_interval": [
+                0.5179,
+                0.7667
+              ],
+              "fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "fn": 21,
+              "fp": 21,
+              "gold_fill_rate": {
+                "hits": 59,
+                "interval": [
+                  0.5528,
+                  0.7455
+                ],
+                "rate": 0.6556,
+                "total": 90
+              },
+              "tp": 38
+            },
+            "need": {
+              "f1": 0.816,
+              "f1_interval": [
+                0.7246,
+                0.8992
+              ],
+              "fill_rate": {
+                "hits": 65,
+                "interval": [
+                  0.622,
+                  0.8042
+                ],
+                "rate": 0.7222,
+                "total": 90
+              },
+              "fn": 9,
+              "fp": 14,
+              "gold_fill_rate": {
+                "hits": 60,
+                "interval": [
+                  0.5642,
+                  0.7555
+                ],
+                "rate": 0.6667,
+                "total": 90
+              },
+              "tp": 51
+            },
+            "timeline": {
+              "f1": 0.8073,
+              "f1_interval": [
+                0.7158,
+                0.8932
+              ],
+              "fill_rate": {
+                "hits": 54,
+                "interval": [
+                  0.4967,
+                  0.6951
+                ],
+                "rate": 0.6,
+                "total": 90
+              },
+              "fn": 11,
+              "fp": 10,
+              "gold_fill_rate": {
+                "hits": 55,
+                "interval": [
+                  0.5078,
+                  0.7053
+                ],
+                "rate": 0.6111,
+                "total": 90
+              },
+              "tp": 44
+            }
+          },
+          "key_terms": {
+            "hits": 153,
+            "interval": [
+              0.7176,
+              0.8328
+            ],
+            "rate": 0.7806,
+            "total": 196
+          },
+          "month_exact": {
+            "hits": 34,
+            "interval": [
+              0.6133,
+              0.8576
+            ],
+            "rate": 0.7556,
+            "total": 45
+          },
+          "non_actions_without_suggestion": {
+            "colleague": {
+              "hits": 10,
+              "interval": [
+                0.7225,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 10
+            },
+            "future": {
+              "hits": 8,
+              "interval": [
+                0.6756,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 8
+            },
+            "hypothetical": {
+              "hits": 10,
+              "interval": [
+                0.7225,
+                1.0
+              ],
+              "rate": 1.0,
+              "total": 10
+            },
+            "negation": {
+              "hits": 7,
+              "interval": [
+                0.4526,
+                0.9368
+              ],
+              "rate": 0.7778,
+              "total": 9
+            },
+            "plan": {
+              "hits": 8,
+              "interval": [
+                0.565,
+                0.9801
+              ],
+              "rate": 0.8889,
+              "total": 9
+            }
+          },
+          "scripts": 90,
+          "unreadable": 0,
+          "unsupported": {
+            "count": 26,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-012",
+              "note-11-030",
+              "note-11-033",
+              "note-11-034",
+              "note-11-037",
+              "note-11-040",
+              "note-11-050",
+              "note-11-062",
+              "note-11-063",
+              "note-11-078",
+              "note-11-085",
+              "note-11-087",
+              "note-11-091",
+              "note-11-093",
+              "note-11-094",
+              "note-11-107",
+              "note-11-110",
+              "note-11-115",
+              "note-11-120",
+              "note-11-138",
+              "note-11-140",
+              "note-11-145",
+              "note-11-146",
+              "note-11-149"
+            ]
+          },
+          "unsupported_strict": {
+            "count": 27,
+            "ids": [
+              "note-11-001",
+              "note-11-004",
+              "note-11-012",
+              "note-11-030",
+              "note-11-033",
+              "note-11-034",
+              "note-11-037",
+              "note-11-040",
+              "note-11-050",
+              "note-11-062",
+              "note-11-063",
+              "note-11-078",
+              "note-11-085",
+              "note-11-087",
+              "note-11-091",
+              "note-11-093",
+              "note-11-094",
+              "note-11-107",
+              "note-11-110",
+              "note-11-115",
+              "note-11-120",
+              "note-11-135",
+              "note-11-138",
+              "note-11-140",
+              "note-11-145",
+              "note-11-146",
+              "note-11-149"
+            ]
+          }
+        }
+      },
+      "seed": 11,
+      "size": "tiny.en",
+      "structured_output": true,
+      "unanswered": [],
+      "wer": {
+        "errors": 1334,
+        "wer": 0.3105,
+        "words": 4296
+      },
+      "whisper_revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba"
+    }
+  },
+  "pick": {
+    "misses": [
+      {
+        "floor": ">= 0.85",
+        "measure": "authority F1",
+        "met": false,
+        "value": 0.7976
+      },
+      {
+        "floor": ">= 0.85",
+        "measure": "authority exact",
+        "met": false,
+        "value": 0.7701
+      },
+      {
+        "floor": "<= 1",
+        "measure": "notes with an unsupported number or name, names by sound",
+        "met": false,
+        "value": 23
+      }
+    ],
+    "rule": "no size meets every floor, so the largest within the speed bound ships",
+    "size": "small.en"
+  },
+  "prompt_sha256": "93a64f56914201eed01b451b2172d722786c6f24c5c0ae2a734e08197883be59",
+  "seed": 11,
+  "settings": {
+    "beam_size": 5,
+    "compute_type": "int8",
+    "cpu_threads": 2,
+    "language": "en"
+  },
+  "speed_bound": 60,
+  "voices": {
+    "en_GB-alba-medium": 15,
+    "en_GB-cori-high": 15,
+    "en_GB-vctk-medium:p237": 15,
+    "en_GB-vctk-medium:p245": 15,
+    "en_GB-vctk-medium:p326": 15,
+    "en_US-joe-medium": 15,
+    "en_US-kathleen-medium": 15,
+    "en_US-kristin-medium": 15,
+    "en_US-ljspeech-high": 15,
+    "en_US-mike-medium": 15
+  }
+}

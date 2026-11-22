@@ -12,6 +12,8 @@ LOCAL_BASE_URL = "http://localhost:8020"
 LOCAL_DATABASE_URL = (
     "postgresql+psycopg://firstcall:firstcall@127.0.0.1:57432/firstcall"  # pragma: allowlist secret
 )
+# The Whisper sizes ADR-005 names as candidates, smallest first.
+WhisperSize = Literal["tiny.en", "base.en", "small.en"]
 
 
 class Settings(BaseSettings):
@@ -45,7 +47,7 @@ class Settings(BaseSettings):
     # Voice memos (ADR-005). local runs faster-whisper in the transcriber; replay reads
     # recorded transcripts, for tests and the page test.
     transcribe_mode: Literal["local", "replay"] = "local"
-    whisper_size: Literal["tiny.en", "base.en", "small.en"] = "small.en"
+    whisper_size: WhisperSize = "small.en"
     # Where the Whisper model downloads to and stays; empty is Hugging Face's own cache.
     whisper_models: str = ""
     voice_transcripts: str = "evals/recordings/voice-transcripts.jsonl"

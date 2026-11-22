@@ -1,0 +1,11 @@
+{
+ "f1": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "x1": {
+  "status": "deferred",
+  "reason": "The Ctrl-C miscount it describes is fixed in 8d2d059 (counters settled in a finally from the call log, paid from the paid list), reviewed by the late slice's fix check; what remains is that slice's deferred x1.",
+  "fix": "See late slice 2026-11-22-01-05-17-7ccfdf x1."
+ }
+}

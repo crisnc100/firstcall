@@ -1,0 +1,54 @@
+{
+ "mode": "pr",
+ "purpose": "Measure which local Whisper size gives notes good enough to ship, on synthetic seed-11 voice clips (clean and degraded audio), and record the pick. small.en, already the default, ships; the misses are published.",
+ "mechanism": "firstcall/cli.py adds `eval-voice` (per size and condition) and `eval-voice-report`; paid record modes of eval, eval-notes and eval-voice refuse up front when FIRSTCALL_MODEL_OFF is set. firstcall/evaluation/voice_eval.py transcribes a pair once (transcript and metadata written beside their targets, then moved; a stranded pair is repaired on the next run; only what Whisper heard becomes an empty transcript, a decode failure writes nothing), binds every transcript row to its own clip's audio hash in that condition, reads each transcript with the frozen notes prompt in record mode (only that pair's transcripts are allowed out), writes each record pass to the run file as it goes with an id, the id of the pass before it (after), the transcript ids it paid for (paid) and its reused count, scores with the frozen voice scorer, writes no report while a pair is incomplete, and applies the pick rule (smallest size meeting every degraded notes floor within 60 compute s per audio minute on Atlas, else the largest within the bound). firstcall/model/synthetic.py builds the record-mode allowlist bound to the clips folder's manifest. firstcall/settings.py: FIRSTCALL_WHISPER_MODELS is honoured unless --models is given. scripts/check_replay_report.py rebuilds the voice report byte for byte. verify.sh's secret scan skips only the six named transcript and run files and atlas-timing.json. scripts/check_coverage.py adds voice_eval.py's floor.",
+ "decisions": "Resumed record passes are allowed and summed, chained by `after`, instead of exactly one pass per pair (rejected: forbidding a resume, which wasted paid reads). The no-pass branch of the pick rule ships the largest size within the speed bound rather than blocking the release (rejected: stopping until a size meets every floor). Generated eval data is checked by replay, not by model review. Seed-7 audio stays out of the repo.",
+ "readers": "README and docs/failures -> people evaluating the project; docs/rerecord.md and docs/adr -> maintainers re-running the eval; code comments -> the next maintainer.",
+ "base": "origin/main",
+ "docMap": [
+  {
+   "behavior": "eval-voice and eval-voice-report commands, record passes, resume and the pass chain",
+   "docs": [
+    "docs/rerecord.md"
+   ]
+  },
+  {
+   "behavior": "Whisper size pick and its result",
+   "docs": [
+    "docs/adr/ADR-005-local-transcription.md",
+    "docs/adr/README.md",
+    "README.md"
+   ]
+  },
+  {
+   "behavior": "published misses of the voice eval",
+   "docs": [
+    "docs/failures/0002-voice-seed-11.md",
+    "docs/failures/README.md"
+   ]
+  },
+  {
+   "behavior": "model kill switch refusing paid eval runs",
+   "docs": [
+    "docs/rerecord.md",
+    "docs/definitions.md",
+    "docs/board.md"
+   ]
+  },
+  {
+   "behavior": "secret-scan skip for voice eval files",
+   "docs": []
+  },
+  {
+   "behavior": "FIRSTCALL_WHISPER_MODELS honoured by the voice eval unless --models is given",
+   "docs": [
+    "docs/definitions.md",
+    "docs/board.md"
+   ]
+  }
+ ],
+ "untouchable": [
+  "evals/**",
+  "builds/**"
+ ]
+}

@@ -89,6 +89,51 @@ answers too.
 `uv run firstcall eval-notes --unit` reads the five fixed F31 notes and prints the contact
 kinds suggested for each, which should be none.
 
+## Recording the voice eval
+
+The voice eval (ADR-005) runs each Whisper size on seed 11's clean and degraded memos. A run
+is one size and one condition. It first transcribes every clip on this machine, which costs
+nothing but needs faster-whisper (`uv sync --group voice`, on Linux or on macOS 14 or later
+with Apple Silicon); then the note reader reads each transcript with the frozen note prompt,
+and its answers go in the notes file above.
+
+```bash
+uv sync --group voice
+set -a; . ./.env; set +a
+uv run firstcall eval-voice --size small.en --condition degraded --mode record --budget 0.10 \
+  --models /some/scratch/folder
+```
+
+Transcripts and the seconds each clip took go to
+`evals/voice/transcripts/<size>-<condition>.jsonl`, and the run's machine, Whisper revision and
+record passes to `evals/voice/runs/<size>-<condition>.json`. Each pair is transcribed once:
+the command never transcribes over those files, and a clip that fails before Whisper hears it
+writes nothing. A record pass is written to the run file as it goes, so one that runs out of
+budget, hits an error or is stopped with Ctrl-C still shows what it spent. A hard kill (SIGTERM
+or SIGKILL) skips the final write made on a stop, so the read in flight may not be counted. Run the same command again to fill the gaps:
+the new pass pays only for transcripts with no answer yet, and the report adds up every pass,
+telling answers paid for from answers reused from earlier recordings. That resumes the one
+pass; it never transcribes again or replaces an answer, since a recorded answer is reused, not
+asked for again. Before any read, each transcript must be of its own clip's audio, as the
+clips folder's manifest hashes it (`evals/gold/voice/MANIFEST.json` for the voice gold), and
+record mode sends only that pair's transcripts.
+`FIRSTCALL_MODEL_OFF` stops every record run that reads before it starts; `--transcribe-only`
+makes no model call and is not stopped.
+
+`--transcribe-only` stops after transcribing, with no reads and no key; that is how the
+voice image times each size on the beta host. Clips rendered anywhere else take `--clips`
+and `--out` (and `--seed` when it is not 11), and never write into `evals/voice`.
+
+The voice page test (`tests/fault/test_pages_voice_suggestion.py`) replays the shipped size's
+clean transcript of `note-11-141` and its recorded read, so a new recording of the voice eval
+must keep both.
+
+Once all six pairs and `evals/voice/atlas-timing.json` are in, write the report and its pick:
+
+```bash
+uv run firstcall eval-voice-report --date YYYY-MM-DD
+```
+
 ## Replaying
 
 ```bash
@@ -98,6 +143,7 @@ uv run firstcall eval-notes --seed 11 --mode replay --date YYYY-MM-DD
 ```
 
 `check_replay_report` reruns the notes reports too. The record pass is paid for, so a replay
-cannot reproduce it; the check copies it from the committed report.
+cannot reproduce it; the check copies it from the committed report. It reruns the voice
+report from the committed transcripts and run files, with no Whisper.
 
 Replay needs no key and makes no call.

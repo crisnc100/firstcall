@@ -1,0 +1,60 @@
+{
+ "f1": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f2": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f3": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f4": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f5": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f6": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "f7": {
+  "status": "fixed",
+  "response": "real"
+ },
+ "x1": {
+  "status": "deferred",
+  "reason": "One size's transcripts filed under another size's name, same condition. Not in the committed data (each pair's run file and report agree, and replay rebuilds byte for byte); needs a per-pair transcript digest in the run file.",
+  "fix": "Record the transcripts file's sha256 and the Whisper size and revision in each run file at transcription; evaluate_pair and the committed-report test refuse a mismatch."
+ },
+ "x2": {
+  "status": "deferred",
+  "reason": "Reuse is counted before the gateway serves the read, so a budget-refused read is miscounted. Only reachable when a record pass is refused by the budget guard; the committed passes have none (paid + reused equals successful calls for all six).",
+  "fix": "Count reuse only after the gateway returns a cached answer; a refused read counts as unanswered."
+ },
+ "x3": {
+  "status": "deferred",
+  "reason": "SIGTERM between a billed read and the next checkpoint leaves that charge off the run file. Ctrl-C and Python exceptions are handled; only an uncatchable kill loses one read's spend (about $0.0003).",
+  "fix": "Install a SIGTERM handler that writes the checkpoint, or checkpoint before each paid call with a reservation."
+ },
+ "x4": {
+  "status": "deferred",
+  "reason": "Two record passes on the same pair at once can overwrite each other's checkpoint. The runner is operated by one person, one pass per pair at a time; nothing runs it concurrently.",
+  "fix": "Take a lock file per pair for the length of a record pass, or append checkpoints by pass id instead of by index."
+ },
+ "x5": {
+  "status": "deferred",
+  "reason": "A transcription against a stale manifest is caught only when reads start, not at transcription. Replay still refuses the rows, so nothing wrong can be published.",
+  "fix": "Check the manifest digests at the end of transcription, before publishing the two files."
+ },
+ "x6": {
+  "status": "deferred",
+  "reason": "An unrelated JSONL file in evals/voice/transcripts breaks text evals in record mode with a KeyError. The folder holds only the six pair files, and the secret scan now flags anything else there.",
+  "fix": "In SyntheticIndex, read only the six named pair files and skip others."
+ }
+}
