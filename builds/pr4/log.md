@@ -423,3 +423,61 @@ Sibling check, for every check, guard, rule or output PR4b added or changed:
 | `note_eval._gateway` takes an optional index | `evaluate_notes`, `read_unit_notes`, `tests/test_note_replay.py` | Not needed: they pass none and behave as before |
 | `WhisperSize` type in settings | `LocalWhisper` checks sizes against `WHISPER_REVISIONS` | Applied: a test pins `SIZES == tuple(WHISPER_REVISIONS)` |
 | F40 clip, transcript and quote agree | Only the page test; recording the voice eval again | Applied: a fast test checks them, and `docs/rerecord.md` says a new recording must keep both |
+
+## PR review fix round (reviews 2026-11-21-23-43-30-99dfd1, -23-44-34-2207cf, -23-44-43-a91a5d)
+
+No paid call: every check ran on fakes or in replay, and the recordings are unchanged. Spend
+stays $0.260278.
+
+| Finding | Fix | Commits |
+|---|---|---|
+| Code f1 HIGH: the kill switch did not stop a paid eval | One check in the CLI, where every paid eval run is built (`eval` record and live, `eval-notes` record and `--unit`, `eval-voice` record), refuses before any work when `FIRSTCALL_MODEL_OFF` is set; replay still runs | 48bf840 |
+| Code f2: transcripts checked by script id only | Before any read, each transcript must hash its own clip's audio in the pair's condition; record mode sends only that pair's transcripts; the gold index binds the same way | 18d741f, 4b72b24 (test-only) |
+| Code f3: a stopped paid pass vanished | The pass is in the run file before the first read, updated after each and when a read is stopped; null `unanswered` until it ends | ff9425e |
+| Code f4: a stop between the two files stranded the pair | Both files written beside their targets first; the next run of the command finishes a stop between the moves; a pair with only one file stops before any read | 681f4f9 |
+| Code f5: a decoder timeout was scored as no speech | Only what Whisper heard is kept empty; a clip failing before that writes nothing and stops | 681f4f9 |
+| Code f6: the secret-scan skip matched any file | The six size-condition names per folder and `atlas-timing.json`; a planted key elsewhere fails | 2ed0421 |
+| Code f7: no `--models` emptied the setting | `FIRSTCALL_WHISPER_MODELS` holds unless the flag is given | 681f4f9 |
+| Tests f1: wrong condition's transcripts passed | Each hash equals the manifest entry of its own clip; the reviewer's base.en swap now fails | e5daea2 (test-only) |
+| Tests f2: page-test containers leaked on a failed start | Names kept before each launch, every launch inside the cleanup | d763bcd (test-only) |
+| Tests f3: a second dated report broke the helper | The committed report is read by name | e5daea2 (test-only) |
+| Docs f1: resuming conflicted with "one pass" | Resuming is allowed: passes are summed, the last must answer everything, and the report must equal the run file's sum | ff9425e, 256fc42 (test-only) |
+| Docs f2: replayed calls shown as record spend | Each pass counts answers reused from recordings on file; the report gives paid, reused, failed and the ledger | ff9425e, 5a74b97 |
+| Docs f3: no interval on the unsupported floor | Wilson interval of the count's share, in notes, in the report layer | 35eb1a0, 5a74b97 |
+| Docs f4: by-sound count called hearing | Split by origin: degraded 19 transcript, 3 mixed, 1 reader (note-11-113); clean 5, 3, 0 | 1d9a6fd |
+| README pointer to the voice report | Added | 1d9a6fd |
+
+- **Reused counts in the committed passes** (1 to 16 per pair, 49 in all) were derived by
+  replaying the six passes in the order they ran (small.en degraded, base.en degraded, tiny.en
+  degraded, small.en clean, base.en clean, tiny.en clean) against the append-only recordings:
+  all 851 appended answers matched, in order, and new plus reused equals each pass's
+  successful calls.
+- **Report**: written again in replay with `eval-voice-report --date 2026-11-21`; scores and
+  pick unchanged; `scripts.check_replay_report` reruns every committed report byte for byte.
+- **Filed, not fixed** (LOW, per the orchestrator): code f8, f9, s1; tests f4, f5; docs f5, s1.
+  The doc sentence s1 named was rewritten anyway for Docs f1 and now names the clips folder's
+  manifest.
+
+Sibling check, for each check, guard, rule or output this round added or changed:
+
+| Added or changed | Other paths to the same data or state, and what consumes it | Status |
+|---|---|---|
+| Kill switch refuses paid evals (`_paid_key`) | `eval` record and live, `eval-notes` record and `--unit` record, `eval-voice` record | Applied: all go through it |
+| | `eval-voice --transcribe-only` with `--mode record` | Not needed: it makes no model call |
+| | The library's record functions called directly, whose gateways still take the switch as off | Not needed: paid runs are built only in `firstcall/cli.py` (grep); `scripts/check_replay_report.py` builds replay runs only |
+| | Product calls (`Gateway.from_settings`) | Not needed: already honour the switch |
+| Only what Whisper heard is kept as an empty transcript (`ClipFailedError`) | The product's transcription job (`firstcall/voice/job.py`) treats the same `UnusableAudioError`, decode timeouts included, as unusable audio | Not handled: PR4a behaviour, off limits here |
+| Pair publication and repair (`transcribed`) | `eval-voice` (applied); `record_pair` reads the run file before any read (applied); `evaluate_voice` and the report list a stranded pair as missing | Not needed for the report: the next `eval-voice` run repairs it |
+| `--models` defaults to the setting | `local_transcriber` is the eval's only Whisper builder; the product uses `from_settings` directly | Applied |
+| Transcript bound to its own clip (`_own_clips`, `clip_audio`) | `evaluate_pair` in record, replay, the report and the CI replay check (applied); `SyntheticIndex.from_gold` for product record mode and the note and model evals (applied); the committed-report test (applied); the F40 fast check binds its clip's bytes (already) | Applied |
+| | A size's transcripts filed as another size's (same audio, same hashes) | Not handled: outside the stated goal; it needs a transcripts hash in the run files, which the committed ones lack |
+| Pair-only record allowlist | Note and model evals keep the gold index: their inputs are generator text | Not needed |
+| Record pass written as it goes | The notes eval (`record_and_report`, `write_record_pass`) and the model eval (`record`) write their pass only at the end, so a stopped pass there leaves no spend on file | Not handled: PR3 code, outside this brief; their recorded answers still survive |
+| Reused answers counted | The notes eval's record pass counts cache hits as calls in the same way | Not handled: PR3 |
+| | `IncompleteRecordingError`'s message (shared with the notes eval) gives calls and logged cost including reused answers | Not handled: shared PR3 message; the run file and report carry the split |
+| Report spend lines and `spent()` | `_pair_lines` (applied), the committed-report test (applied), the CLI's printout (reports replay reads, accurate) | Applied |
+| Unsupported interval | Voice report Markdown (applied); docs/failures/0002 (applied); the JSON keeps the count and script total it is computed from | Applied |
+| | The notes report (`eval-notes`) has no interval on its unsupported floor | Not handled: PR3 report; the plan's requirement is the voice report's |
+| Secret-scan skip by name | CI runs the same `verify.sh --step secrets` | Applied; a new size needs its names added |
+| Page test registers containers before launch | `tests/fault/test_pages_voice.py` and `tests/fault/test_pages_suggestions.py` start their first worker and api before the cleanup block | Not handled: PR4a and PR3 tests, outside this brief |
+| Committed report read by name | No other test globs for it | Applied |
