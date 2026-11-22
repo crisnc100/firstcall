@@ -22,6 +22,7 @@ from firstcall.evaluation.voice_eval import (
     pick,
     read_transcripts,
     run_path,
+    spent,
     transcripts_path,
 )
 from firstcall.settings import Settings
@@ -65,13 +66,17 @@ def test_seed_11_ran_once_per_pair_with_150_reads_under_the_frozen_prompt() -> N
         assert pair["prompt_sha256"] == report["prompt_sha256"], (size, condition)
         assert pair["calls"]["calls"] == 150, (size, condition)
         assert pair["structured_output"] is True, (size, condition)
-        assert pair["record_pass"]["passes"] == 1, (size, condition)
         rows = read_transcripts(transcripts_path(VOICE_RUNS, size, condition))
         own = [audio[f"{clips.folder.name}/{clip['file']}"] for clip in clips.rows(condition)]
         assert [row["id"] for row in rows] == [row["id"] for row in clips.rows(condition)]
         assert [row["sha256"] for row in rows] == own, (size, condition)
         meta = json.loads(run_path(VOICE_RUNS, size, condition).read_text())
         assert (meta["seed"], meta["whisper_revision"]) == (11, WHISPER_REVISIONS[size])
+        # A stopped pass may be resumed by another; the last one ended with every
+        # transcript answered, and the report adds them all up.
+        assert meta["record_passes"], (size, condition)
+        assert meta["record_passes"][-1]["unanswered"] == [], (size, condition)
+        assert pair["record_pass"] == spent(meta["record_passes"]), (size, condition)
 
 
 def test_every_miss_of_the_shipped_size_is_published() -> None:
