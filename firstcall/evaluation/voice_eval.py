@@ -35,6 +35,7 @@ from firstcall.core.delivery import sha256
 from firstcall.corpus.notes import LABELS, SCRIPTS, read_jsonl
 from firstcall.corpus.voice import CLIPS, CONDITIONS, VOICE_DIR, VOICE_MANIFEST, VOICE_SEED
 from firstcall.evaluation import voice_score
+from firstcall.evaluation.metrics import wilson
 from firstcall.evaluation.note_eval import (
     RECORDINGS,
     ZONE,
@@ -504,11 +505,14 @@ def _interval(interval: Sequence[float] | None) -> str:
 
 def _intervals(part: Mapping[str, Any]) -> list[str]:
     """Each floor's 95% interval, in the order `voice_score.floors` lists the floors. The
-    unsupported count has none."""
+    unsupported floor is a count of notes, so its interval is the Wilson interval of that
+    count's share of the scripts, as a count of notes."""
     found = [_interval(part["fields"][name]["f1_interval"]) for name in BANT_FIELDS]
     found += [_interval(part[key]["interval"]) for key in ("key_terms", "authority_exact",
                                                            "month_exact")]  # fmt: skip
-    return [*found, ""]
+    share = wilson(part["unsupported"]["count"], part["scripts"])
+    notes = None if share is None else [round(bound * part["scripts"], 1) for bound in share]
+    return [*found, _interval(notes)]
 
 
 def _rate(rate: Mapping[str, Any]) -> str:

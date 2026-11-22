@@ -563,6 +563,22 @@ def test_replay_rebuilds_the_report_byte_for_byte_and_it_picks(
     assert "a test host" in text
 
 
+def test_the_unsupported_floor_has_an_interval_counted_in_notes() -> None:
+    from firstcall.evaluation.note_score import BANT_FIELDS
+    from firstcall.evaluation.voice_eval import _intervals
+
+    part = {
+        "fields": {name: {"f1_interval": [0.5, 0.9]} for name in BANT_FIELDS},
+        **{key: {"interval": [0.6, 0.8]} for key in ("key_terms", "authority_exact",
+                                                     "month_exact")},
+        "scripts": 150,
+    }  # fmt: skip
+    # The Wilson interval of 23 notes in 150, then of none, counted in notes.
+    assert _intervals({**part, "unsupported": {"count": 23}})[-1] == "[15.7, 32.9]"
+    assert _intervals({**part, "unsupported": {"count": 0}})[-1] == "[0.0, 3.7]"
+    assert _intervals({**part, "scripts": 0, "unsupported": {"count": 0}})[-1] == ""
+
+
 def test_a_report_with_a_pair_missing_is_not_written(
     clips: Clips, tmp_path: Path, database_url: str
 ) -> None:
