@@ -58,9 +58,9 @@ Two effects of how the audio was made, kept as they are:
 
 On degraded audio 20 notes get the wrong authority, against 1 on clean audio. In 13 of the 20
 the sentence is "Buying for his (or her) parents, who make the final call", heard as "… to
-make the final call", "he makes the final call" and the like, which the reader then reads as a
-shared decision or the buyer's own. Who decides rides on one or two short words, and those
-are what the degraded audio loses.
+make the final call", "he makes the final call" and the like. The reader then took 11 of those
+as a shared decision or the buyer's own, and left 2 as unknown. Who decides rides on one or
+two short words, and those are what the degraded audio loses.
 
 ## What it costs
 
