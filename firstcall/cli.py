@@ -409,8 +409,8 @@ def eval_voice_report_command(
     from firstcall.settings import Settings
 
     day = date or datetime.now(UTC).date().isoformat()
-    report = evaluate_voice(Settings().database_url, model)
     try:
+        report = evaluate_voice(Settings().database_url, model)
         paths = write_voice(report, day)
     except ValueError as error:
         typer.echo(str(error), err=True)

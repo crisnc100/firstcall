@@ -337,6 +337,12 @@ def evaluate_pair(
                 with sessions() as session:
                     on_read({**_calls(session), "reused": reused, "paid": list(paid)})
 
+        def answered() -> int:
+            """Calls the gateway logged as answered: a read served from file logs one, as a
+            paid read does, and a refused read logs none."""
+            with sessions() as session:
+                return int(_calls(session)["ok"])
+
         report_progress()
         try:
             for row in transcripts:
@@ -344,16 +350,21 @@ def evaluate_pair(
                     answers[row["id"]] = None
                     continue
                 note_date = scripts[row["id"]]["note_date"]
-                read.append({"text": row["text"], "note_date": note_date})
                 outbound = gateway.outbound(reader.request(org, None, row["text"], note_date, ZONE))
                 already = on_record(outbound)
-                outcome = reader.read(org, None, row["text"], note_date, ZONE)
-                # On file is not served: a read the gateway refused (over budget, the model
-                # off) is unanswered, not reused.
-                served = outcome.answer is not None or outcome.reason == UNREADABLE
-                reused += already and served
-                if not already and on_record(outbound):
-                    paid.append(row["id"])
+                before = answered()
+                try:
+                    outcome = reader.read(org, None, row["text"], note_date, ZONE)
+                finally:
+                    # Settled from the call log and the recordings, not from the outcome, so
+                    # a read stopped after the gateway logged or recorded its answer is
+                    # counted as what it was.
+                    served = answered() > before
+                    if served:
+                        read.append({"text": row["text"], "note_date": note_date})
+                    reused += already and served
+                    if not already and on_record(outbound):
+                        paid.append(row["id"])
                 if outcome.answer is not None:
                     answers[row["id"]] = outcome.answer.as_json()
                 elif outcome.reason == UNREADABLE:
@@ -434,14 +445,31 @@ def record_pair(
     return result
 
 
+def _counts_agree(record_pass: Mapping[str, Any]) -> None:
+    """Each answer a pass reused or paid for is one answered call in its log, and no
+    transcript is paid for twice. A stop between a paid call's log and its recording leaves
+    one answered call with neither, its cost still on the ledger; counts past the log are
+    wrong, as a pass from before reuse was counted only when served can be."""
+    paid, reused, answered = record_pass["paid"], record_pass["reused"], record_pass["ok"]
+    if len(set(paid)) != len(paid) or reused < 0 or reused + len(paid) > answered:
+        raise ValueError(
+            f"record pass {record_pass.get('id', 'with no id')}: {reused} reused and "
+            f"{len(paid)} paid for, from {answered} answered calls; its counts disagree, so "
+            "the passes are not added up"
+        )
+
+
 def spent(record_passes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Every record pass of a pair added up: the answers paid for, those reused from
-    recordings already on file, failed attempts, the ledger's spend, and how many passes
-    were stopped before their end."""
+    """Every record pass of a pair added up: the answers paid for (the transcripts each
+    pass names as paid), those reused from recordings already on file, failed attempts, the
+    ledger's spend, and how many passes were stopped before their end. A pass whose counts
+    disagree raises ValueError."""
+    for record_pass in record_passes:
+        _counts_agree(record_pass)
     return {
         "passes": len(record_passes),
         "stopped": sum(p["unanswered"] is None for p in record_passes),
-        "answers": sum(p["ok"] - p["reused"] for p in record_passes),
+        "answers": sum(len(p["paid"]) for p in record_passes),
         "reused": sum(p["reused"] for p in record_passes),
         "failed": sum(p["failed"] for p in record_passes),
         "ledger_usd": f"{sum(Decimal(p['ledger_usd']) for p in record_passes):.6f}",

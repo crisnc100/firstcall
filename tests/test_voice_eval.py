@@ -574,6 +574,89 @@ def test_a_read_refused_over_budget_is_unanswered_not_reused(
     assert spent([refused])["answers"] == 0
 
 
+def _recorded_twice(
+    clips: Clips, out: Path, recordings: Path, url: str, transport: FakeTransport | None = None
+) -> None:
+    """tiny.en and base.en hear every clip alike; tiny.en's pass records every answer."""
+    for size in ("tiny.en", "base.en"):
+        transcribe_pair(clips, size, "clean", out, Heard(clips), _ticks())
+    record_pair(clips, "tiny.en", "clean", url,
+                _run("record", recordings, transport or _gold_reader()), out)  # fmt: skip
+
+
+def test_a_read_stopped_between_the_log_and_the_parse_is_counted_as_reused(
+    clips: Clips, tmp_path: Path, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    _recorded_twice(clips, out, recordings, database_url)
+    from firstcall.notes import reader
+
+    def stop(content: str, text: str) -> None:
+        raise KeyboardInterrupt
+
+    # The gateway has served and logged the first answer from file when the stop comes.
+    monkeypatch.setattr(reader, "parse_note_answer", stop)
+    unused = FakeTransport()
+    with pytest.raises(KeyboardInterrupt):
+        record_pair(clips, "base.en", "clean", database_url,
+                    _run("record", recordings, unused), out)  # fmt: skip
+    assert unused.requests == []
+    [stopped] = json.loads(run_path(out, "base.en", "clean").read_text())["record_passes"]
+    assert (stopped["ok"], stopped["reused"], stopped["paid"]) == (1, 1, [])
+    assert spent([stopped])["answers"] == 0
+    assert spent([stopped])["reused"] == 1
+
+
+def test_a_pass_whose_counts_disagree_is_not_added_up(
+    clips: Clips, tmp_path: Path, database_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    transcribe_pair(clips, "tiny.en", "clean", out, Heard(clips), _ticks())
+    # As a pass written before reuse was counted only when served: refused over budget,
+    # yet every read counted as reused.
+    inherited = {"id": "0" * 32, "after": None, "calls": 0, "ok": 0, "failed": 0,
+                 "reused": len(IDS), "paid": [], "cost_usd": "0.000000",
+                 "ledger_usd": "0.000000", "prompt_tokens": 0, "completion_tokens": 0,
+                 "json_prompt_calls": 0, "model": MODEL, "unanswered": IDS}  # fmt: skip
+    path = run_path(out, "tiny.en", "clean")
+    meta = json.loads(path.read_text())
+    path.write_text(json.dumps({**meta, "record_passes": [inherited]}))
+    record_pair(clips, "tiny.en", "clean", database_url,
+                _run("record", recordings, _gold_reader()), out)  # fmt: skip
+    passes = json.loads(path.read_text())["record_passes"]
+    assert [p["after"] for p in passes] == [None, inherited["id"]]
+    with pytest.raises(ValueError, match=f"record pass {'0' * 32}: 6 reused and 0 paid for, "
+                                         "from 0 answered calls; its counts disagree"):  # fmt: skip
+        spent(passes)
+    assert spent(passes[1:])["answers"] == len(IDS)
+
+    from firstcall.evaluation import voice_eval
+
+    def refused(url: str, model: str) -> dict[str, Any]:
+        spent(passes)
+        return {}
+
+    monkeypatch.setattr(voice_eval, "evaluate_voice", refused)
+    result = CliRunner().invoke(app, ["eval-voice-report", "--date", "2026-01-01"])
+    assert result.exit_code == 1
+    assert "its counts disagree" in result.output
+
+
+def test_a_read_refused_over_budget_adds_no_json_prompt_answer(
+    clips: Clips, tmp_path: Path, database_url: str
+) -> None:
+    out, recordings = tmp_path / "out", tmp_path / "recordings"
+    prompted = _gold_reader()
+    prompted.output_mode = "json_prompt"
+    _recorded_twice(clips, out, recordings, database_url, prompted)
+    refused = NoteRun(mode="record", model=MODEL, budget_usd=Decimal(0), recordings=recordings,
+                      transport=FakeTransport(), prices=PRICES)  # fmt: skip
+    record_pair(clips, "base.en", "clean", database_url, refused, out)
+    [paid] = json.loads(run_path(out, "base.en", "clean").read_text())["record_passes"]
+    assert (paid["ok"], paid["reused"], paid["json_prompt_calls"]) == (0, 0, 0)
+    assert paid["unanswered"] == IDS
+
+
 def test_answers_already_recorded_are_counted_as_reused_not_paid_for(
     clips: Clips, tmp_path: Path, database_url: str
 ) -> None:
